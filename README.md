@@ -6,17 +6,17 @@ Mini Banking System - Java Spring Boot Microservices + React + PostgreSQL
 
 ## Structure
 doc/
-backend/
-/auth-service
-/user-service
-/account-service
-/transaction-service
-/notification-service
-/admin-service
-/crypto-service
-frontend/
-web-client-react
-docs/
+- backend/
+- /auth-service
+  /user-service
+- /account-service
+- /transaction-service
+- /notification-service
+- /admin-service
+- /crypto-service
+- frontend/
+/web-client-react
+- docs/
  ├── schema.sql
  ├── api-flow.md
  └── architecture.png
