@@ -1,113 +1,106 @@
 # Log Service
 
-Microservice để ghi log và lưu vết hành động trong hệ thống Mini Banking.
+Microservice để quản lý và lưu trữ logs của hệ thống banking.
 
-## Yêu Cầu
+## Tính năng
 
-- Java 17+
-- Maven 3.6+
-- Docker & Docker Compose
+- Lưu trữ logs từ các services khác qua Kafka
+- API để truy vấn logs với pagination và filtering
+- Search logs theo user, action, time range
+- Statistics về logs
+- Health check endpoint
 
-## Cấu Hình Docker
+## Tech Stack
 
-Service này sử dụng Docker để chạy PostgreSQL và Kafka. Đảm bảo Docker Desktop đang chạy trước khi start service.
-
-### Khởi động Docker services:
-
-Từ thư mục root của dự án:
-```bash
-docker-compose up -d
-```
-
-Điều này sẽ khởi động:
-- PostgreSQL (port 5433) - Database cho log service
-- Kafka (port 9092) - Message broker
-- Zookeeper (port 2181) - Required by Kafka
-
-### Kiểm tra services đang chạy:
-```bash
-docker-compose ps
-```
-
-### Xem logs:
-```bash
-docker-compose logs -f
-```
-
-## Chạy Application
-
-### 1. Build project:
-```bash
-mvn clean install
-```
-
-### 2. Run application:
-```bash
-mvn spring-boot:run
-```
-
-Hoặc chạy từ IDE:
-- Main class: `com.minibank.logservice.LogServiceApplication`
-
-### 3. Kiểm tra service đang chạy:
-- Health check: `http://localhost:8085/actuator/health` (nếu có actuator)
-- API base: `http://localhost:8085/api/v1`
-
-## Cấu Hình
-
-File cấu hình: `src/main/resources/application.properties`
-
-### Database:
-- Host: `localhost:5433`
-- Database: `log_db`
-- Username: `log_user`
-- Password: `log_password`
-
-### Kafka:
-- Bootstrap servers: `localhost:9092`
-- Consumer group: `log-service-group`
+- Java 17
+- Spring Boot 4.0.0
+- PostgreSQL
+- Apache Kafka
+- Maven
 
 ## API Endpoints
 
-### Admin Endpoints (ADMIN only):
-- `GET /api/v1/admin/logs` - Lấy tất cả logs
+### Admin Endpoints
 
-### User Endpoints:
+- `GET /api/v1/admin/logs` - Lấy tất cả logs
+- `GET /api/v1/admin/logs/search` - Tìm kiếm logs với filters
+- `GET /api/v1/admin/logs/statistics` - Lấy thống kê logs
+
+### User Endpoints
+
 - `GET /api/v1/logs/me` - Lấy logs của user hiện tại
+
+### Health Check
+
+- `GET /api/v1/health` - Health check endpoint
+- `GET /actuator/health` - Spring Boot Actuator health
 
 ## Kafka Topics
 
-Service này lắng nghe các topics sau:
-- `USER_EVENT` - Events từ User Service
-- `TRANSACTION_COMPLETED` - Events từ Transaction Service  
-- `ADMIN_ACTION` - Events từ Admin Service
-- `ACCOUNT_EVENT` - Events từ Account Service
+Service lắng nghe các topics:
+- `USER_EVENT`
+- `TRANSACTION_COMPLETED`
+- `ADMIN_ACTION`
+- `ACCOUNT_EVENT`
 
-## Database Schema
+## Cấu trúc Project
 
-Bảng `log`:
-- `log_id` (UUID, PK)
-- `user_id` (UUID, FK)
-- `action` (VARCHAR(255))
-- `detail` (TEXT)
-- `time` (TIMESTAMP)
+```
+log-service/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/minibank/logservice/
+│   │   │       ├── config/          # Configuration classes
+│   │   │       ├── controller/      # REST controllers
+│   │   │       ├── consumer/        # Kafka consumers
+│   │   │       ├── dto/             # Data Transfer Objects
+│   │   │       ├── entity/          # JPA entities
+│   │   │       ├── exception/       # Exception handlers
+│   │   │       ├── repository/      # Data repositories
+│   │   │       ├── service/         # Business logic
+│   │   │       ├── util/            # Utility classes
+│   │   │       └── validation/      # Custom validators
+│   │   └── resources/
+│   │       └── application.properties
+│   └── test/                        # Unit tests
+├── pom.xml
+└── README.md
+```
 
-Schema được tự động tạo khi PostgreSQL container khởi động lần đầu.
+## Chạy Service
 
-## Troubleshooting
+Xem chi tiết trong [RUN_GUIDE.md](./RUN_GUIDE.md) hoặc [QUICK_START.md](./QUICK_START.md)
 
-### Database connection error:
-1. Kiểm tra PostgreSQL container đang chạy: `docker-compose ps postgres-log`
-2. Kiểm tra logs: `docker-compose logs postgres-log`
-3. Đảm bảo port 5433 không bị chiếm dụng
+## Testing
 
-### Kafka connection error:
-1. Kiểm tra Kafka container: `docker-compose ps kafka`
-2. Kiểm tra Zookeeper: `docker-compose ps zookeeper`
-3. Xem logs: `docker-compose logs kafka`
+```bash
+# Run all tests
+mvn test
 
-### Port conflicts:
-Nếu port 8085, 5433, hoặc 9092 đã được sử dụng, thay đổi trong:
-- `application.properties` (server.port, datasource.url, kafka.bootstrap-servers)
-- `docker-compose.yml` (port mappings)
+# Run specific test class
+mvn test -Dtest=LogServiceTest
+```
+
+## Build
+
+```bash
+# Build JAR
+mvn clean package
+
+# Run JAR
+java -jar target/log-service-0.0.1-SNAPSHOT.jar
+```
+
+## Configuration
+
+Xem `application.properties` để cấu hình:
+- Database connection
+- Kafka settings
+- Server port
+- Logging levels
+
+## License
+
+Internal project
 
