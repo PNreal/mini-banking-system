@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# IDE
+.idea
+.vscode
+*.iml
+*.swp
+*.swo
+
+# Build
+target/
+*.class
+*.jar
+*.war
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend
+frontend/
+node_modules/
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
