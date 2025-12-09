@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: log_user
       POSTGRES_PASSWORD: log_password
     ports:
-      - "5433:5432"  # Port 5433 để tránh conflict với PostgreSQL khác
+      - "5433:5432"
     volumes:
       - postgres-log-data:/var/lib/postgresql/data
       - ./docker/init-scripts/log-service-init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -18,6 +18,27 @@ services:
       - banking-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U log_user -d log_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Transaction Service
+  postgres-transaction:
+    image: postgres:15-alpine
+    container_name: postgres-transaction-service
+    environment:
+      POSTGRES_DB: transaction_db
+      POSTGRES_USER: transaction_user
+      POSTGRES_PASSWORD: transaction_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres-transaction-data:/var/lib/postgresql/data
+      - ./docker/init-scripts/transaction-service-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - banking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U transaction_user -d transaction_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -67,6 +88,7 @@ services:
 
 volumes:
   postgres-log-data:
+  postgres-transaction-data:
 
 networks:
   banking-network:

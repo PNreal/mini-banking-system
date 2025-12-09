@@ -12,7 +12,7 @@
 | API Gateway | `8080` | Reserved | - | Main entry point |
 | User Service | `8081` | Reserved | - | - |
 | Account Service | `8082` | Reserved | - | - |
-| Transaction Service | `8083` | Reserved | - | - |
+| Transaction Service | `8083` | In Use | Transaction Service | Currently active |
 | Notification Service | `8084` | Reserved | - | - |
 | Log Service | `8085` | In Use | Log Service | Currently active |
 | Admin Service | `8086` | Reserved | - | - |
@@ -29,7 +29,7 @@
 | Log Service | `log_db` | `5433` | In Use | Log Service | Currently active |
 | User Service | `user_db` | `5434` | Reserved | - | - |
 | Account Service | `account_db` | `5435` | Reserved | - | - |
-| Transaction Service | `transaction_db` | `5436` | Reserved | - | - |
+| Transaction Service | `transaction_db` | `5436` | In Use | Transaction Service | Currently active |
 | Notification Service | `notif_db` | `5437` | Reserved | - | - |
 | Admin Service | `admin_db` | `5438` | Reserved | - | - |
 | - | - | `5439` | Available | - | For future use |
