@@ -233,6 +233,13 @@ Transaction → Kafka(TRANSACTION_COMPLETED)
 - Account status phải ACTIVE
 - Amount > 0
 
+**Bổ sung bước xác nhận (nếu chính sách yêu cầu):**
+- Tùy cấu hình, Transaction Service tạo yêu cầu nạp ở trạng thái `PENDING`.
+- Gửi OTP/2FA cho user **hoặc** chuyển yêu cầu sang Admin Service để duyệt.
+- Nếu chọn duyệt admin: Transaction Service phát event `DEPOSIT_PENDING`, Admin Service hiển thị danh sách chờ duyệt, admin APPROVE/REJECT qua API nội bộ.
+- Khi APPROVE: Transaction Service mới gọi Account Service cập nhật số dư, ghi transaction, phát `TRANSACTION_COMPLETED`.
+- Khi REJECT hoặc hết hạn: hủy yêu cầu, không cộng số dư, có thể phát event `DEPOSIT_REJECTED` để log/thông báo.
+
 ## **7.3.1 Rút tiền (Withdraw)** {#rút-tiền-withdraw}
 
 Client → Transaction Service
