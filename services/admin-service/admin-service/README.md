@@ -25,8 +25,8 @@ Admin Service cho hệ thống Mini Banking System, cung cấp các chức năng
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/v1/admin/users` | Lấy danh sách tất cả users |
-| PATCH | `/api/v1/admin/lock/{userId}` | Khóa tài khoản user |
-| PATCH | `/api/v1/admin/unlock/{userId}` | Mở khóa tài khoản user |
+| PATCH | `/api/v1/admin/lock/{userId}` | Khóa user và khóa account tương ứng |
+| PATCH | `/api/v1/admin/unlock/{userId}` | Mở khóa user và account tương ứng |
 | PATCH | `/api/v1/admin/freeze/{userId}` | Đóng băng tài khoản user |
 | PATCH | `/api/v1/admin/unfreeze/{userId}` | Gỡ đóng băng tài khoản user |
 | GET | `/api/v1/admin/report` | Lấy báo cáo hệ thống |
@@ -84,8 +84,8 @@ CREATE INDEX idx_admin_logs_time ON admin_logs(time);
 
 Admin Service giao tiếp với các services khác:
 
-1. **User Service**: Lấy danh sách users
-2. **Account Service**: Lock/unlock, freeze/unfreeze accounts
+1. **User Service**: Lấy danh sách users, lock/unlock user theo SIS 3.4
+2. **Account Service**: Lấy account theo user, lock/unlock, freeze/unfreeze accounts theo SIS 3.3
 3. **Kafka**: Gửi ADMIN_ACTION events để log-service ghi log
 
 ## Authentication

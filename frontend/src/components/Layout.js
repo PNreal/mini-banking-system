@@ -31,6 +31,7 @@ const FlashMessages = ({ messages, onDismiss }) => {
 const Layout = ({
   children,
   isAuthenticated,
+  isAdmin = false,
   onLogout,
   user,
   flashMessages,
@@ -78,6 +79,32 @@ const Layout = ({
               <div className="navbar-nav">
                 {isAuthenticated ? (
                   <>
+                    <NavLink
+                      className={({ isActive }) =>
+                        `nav-item nav-link${isActive ? ' active' : ''}`
+                      }
+                      to="/dashboard"
+                    >
+                      Dashboard
+                    </NavLink>
+                    <NavLink
+                      className={({ isActive }) =>
+                        `nav-item nav-link${isActive ? ' active' : ''}`
+                      }
+                      to="/notifications"
+                    >
+                      Thông báo
+                    </NavLink>
+                    {isAdmin && (
+                      <NavLink
+                        className={({ isActive }) =>
+                          `nav-item nav-link${isActive ? ' active' : ''}`
+                        }
+                        to="/admin/dashboard"
+                      >
+                        Admin
+                      </NavLink>
+                    )}
                     <NavLink
                       className={({ isActive }) =>
                         `nav-item nav-link${isActive ? ' active' : ''}`

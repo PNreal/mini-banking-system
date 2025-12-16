@@ -1,5 +1,7 @@
 package com.minibank.logservice.consumer;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minibank.logservice.dto.LogRequest;
 import com.minibank.logservice.service.LogService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,9 @@ import java.util.UUID;
 public class LogEventConsumer {
 
     private final LogService logService;
+    private final ObjectMapper objectMapper;
+
+    private static final UUID UNKNOWN_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
     @KafkaListener(topics = "${kafka.topics.user-event}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeUserEvent(@Payload String payload,
@@ -83,14 +88,13 @@ public class LogEventConsumer {
 
     private void processEvent(String payload, String eventType) {
         try {
-            // Simple JSON parsing - extract userId and action from JSON string
-            // In production, use proper JSON library or Spring's ObjectMapper
-            UUID userId = extractUserIdFromJson(payload);
-            String action = extractActionFromJson(payload, eventType);
-            String detail = "Event Type: " + eventType + ", Payload: " + payload;
+            JsonNode root = parsePayload(payload);
+            UUID userId = extractUserId(root, eventType);
+            String action = extractAction(root, eventType);
+            String detail = root != null ? root.toString() : payload;
 
             LogRequest logRequest = LogRequest.builder()
-                    .userId(userId)
+                    .userId(userId != null ? userId : UNKNOWN_USER_ID)
                     .action(action)
                     .detail(detail)
                     .build();
@@ -103,45 +107,73 @@ public class LogEventConsumer {
         }
     }
 
-    private UUID extractUserIdFromJson(String json) {
-        // Simple extraction - look for "userId" or "user_id" field
-        // Support both quoted and unquoted UUIDs
-        String userIdPattern = "\"userId\"\\s*:\\s*\"([^\"]+)\"";
-        String userIdPattern2 = "\"user_id\"\\s*:\\s*\"([^\"]+)\"";
-        String userIdPattern3 = "\"userId\"\\s*:\\s*([a-fA-F0-9\\-]{36})";
-        String userIdPattern4 = "\"user_id\"\\s*:\\s*([a-fA-F0-9\\-]{36})";
-        
-        java.util.regex.Pattern[] patterns = {
-            java.util.regex.Pattern.compile(userIdPattern),
-            java.util.regex.Pattern.compile(userIdPattern2),
-            java.util.regex.Pattern.compile(userIdPattern3),
-            java.util.regex.Pattern.compile(userIdPattern4)
-        };
-        
-        for (java.util.regex.Pattern pattern : patterns) {
-            java.util.regex.Matcher matcher = pattern.matcher(json);
-            if (matcher.find()) {
-                try {
-                    return UUID.fromString(matcher.group(1));
-                } catch (IllegalArgumentException e) {
-                    log.warn("Invalid UUID format found: {}", matcher.group(1));
-                }
-            }
+    private JsonNode parsePayload(String payload) {
+        try {
+            return objectMapper.readTree(payload);
+        } catch (Exception e) {
+            log.warn("Cannot parse payload as JSON, fallback to raw string: {}", e.getMessage());
+            return null;
         }
-        
-        log.error("userId not found in payload: {}", json);
-        throw new IllegalArgumentException("userId not found in payload");
     }
 
-    private String extractActionFromJson(String json, String eventType) {
-        // Simple extraction - look for "action" field
-        String actionPattern = "\"action\"\\s*:\\s*\"([^\"]+)\"";
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(actionPattern);
-        java.util.regex.Matcher matcher = pattern.matcher(json);
-        if (matcher.find()) {
-            return matcher.group(1);
+    private UUID extractUserId(JsonNode root, String eventType) {
+        if (root == null) {
+            return null;
+        }
+        switch (eventType) {
+            case "USER_EVENT":
+            case "ACCOUNT_EVENT":
+            case "TRANSACTION_COMPLETED":
+                JsonNode userIdNode = root.path("userId");
+                return userIdNode.isMissingNode() || userIdNode.isNull() ? null : toUuid(userIdNode.asText());
+            case "ADMIN_ACTION":
+                // Ưu tiên user bị tác động, fallback admin
+                JsonNode targetUserNode = root.path("targetUserId");
+                if (!targetUserNode.isMissingNode() && !targetUserNode.isNull()) {
+                    UUID targetUser = toUuid(targetUserNode.asText());
+                    if (targetUser != null) {
+                        return targetUser;
+                    }
+                }
+                JsonNode adminIdNode = root.path("adminId");
+                return adminIdNode.isMissingNode() || adminIdNode.isNull() ? null : toUuid(adminIdNode.asText());
+            default:
+                JsonNode defaultUserIdNode = root.path("userId");
+                return defaultUserIdNode.isMissingNode() || defaultUserIdNode.isNull() ? null : toUuid(defaultUserIdNode.asText());
+        }
+    }
+
+    private String extractAction(JsonNode root, String eventType) {
+        if (root == null) {
+            return eventType;
+        }
+        JsonNode actionNode = root.path("action");
+        if (!actionNode.isMissingNode() && !actionNode.isNull()) {
+            String action = actionNode.asText();
+            if (action != null && !action.isBlank()) {
+                return action.toUpperCase();
+            }
+        }
+        // Transaction event có field type/status
+        if (root.hasNonNull("type") && root.hasNonNull("status")) {
+            return (root.get("type").asText("") + "_" + root.get("status").asText("")).toUpperCase();
+        }
+        if (root.hasNonNull("type")) {
+            return root.get("type").asText("").toUpperCase();
         }
         return eventType;
+    }
+
+    private UUID toUuid(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException e) {
+            log.warn("Giá trị UUID không hợp lệ: {}", raw);
+            return null;
+        }
     }
 
 }

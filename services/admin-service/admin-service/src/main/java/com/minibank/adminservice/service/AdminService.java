@@ -34,9 +34,11 @@ public class AdminService {
     public void lockUser(UUID adminId, UUID userId, String authToken) {
         log.info("Admin {} locking user {}", adminId, userId);
         
-        // Get user account ID (simplified - in real scenario, get from user service)
-        UUID accountId = userId; // Assuming accountId = userId for simplicity
-        
+        // Khóa user trên user-service (theo SIS 3.4)
+        userServiceClient.lockUser(userId, authToken);
+
+        // Lấy accountId đúng từ account-service rồi khóa account (theo SIS 3.3)
+        UUID accountId = accountServiceClient.getAccountIdByUser(userId, authToken);
         accountServiceClient.lockAccount(accountId, authToken);
         
         // Save admin log
@@ -58,7 +60,9 @@ public class AdminService {
     public void unlockUser(UUID adminId, UUID userId, String authToken) {
         log.info("Admin {} unlocking user {}", adminId, userId);
         
-        UUID accountId = userId;
+        userServiceClient.unlockUser(userId, authToken);
+
+        UUID accountId = accountServiceClient.getAccountIdByUser(userId, authToken);
         accountServiceClient.unlockAccount(accountId, authToken);
         
         AdminLog adminLog = AdminLog.builder()
@@ -78,7 +82,7 @@ public class AdminService {
     public void freezeUser(UUID adminId, UUID userId, String authToken) {
         log.info("Admin {} freezing user {}", adminId, userId);
         
-        UUID accountId = userId;
+        UUID accountId = accountServiceClient.getAccountIdByUser(userId, authToken);
         accountServiceClient.freezeAccount(accountId, authToken);
         
         AdminLog adminLog = AdminLog.builder()
@@ -98,7 +102,7 @@ public class AdminService {
     public void unfreezeUser(UUID adminId, UUID userId, String authToken) {
         log.info("Admin {} unfreezing user {}", adminId, userId);
         
-        UUID accountId = userId;
+        UUID accountId = accountServiceClient.getAccountIdByUser(userId, authToken);
         accountServiceClient.unfreezeAccount(accountId, authToken);
         
         AdminLog adminLog = AdminLog.builder()

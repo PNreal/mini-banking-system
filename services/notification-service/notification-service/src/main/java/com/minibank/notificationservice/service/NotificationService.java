@@ -31,6 +31,9 @@ public class NotificationService {
     
     private final NotificationRepository notificationRepository;
     private final JavaMailSender mailSender;
+    private final WebSocketService webSocketService;
+    private final SmsService smsService;
+    private final PushNotificationService pushNotificationService;
     
     @Transactional
     public NotificationResponse createNotification(NotificationRequest request) {
@@ -52,6 +55,14 @@ public class NotificationService {
         
         Notification savedNotification = notificationRepository.save(notification);
         log.info("Notification created: {}", savedNotification.getNotificationId());
+        
+        // Push to WebSocket for real-time delivery
+        try {
+            webSocketService.pushNotification(savedNotification);
+        } catch (Exception e) {
+            log.warn("Failed to push notification via WebSocket: {}", e.getMessage());
+            // Don't fail the whole operation if WebSocket push fails
+        }
         
         // Send notification asynchronously
         sendNotificationAsync(savedNotification);
@@ -281,25 +292,61 @@ public class NotificationService {
     }
     
     private void sendSMS(Notification notification) {
-        // In a real implementation, integrate with SMS provider (Twilio, AWS SNS, etc.)
-        log.info("SMS notification would be sent to: {}", notification.getRecipientPhone());
-        log.warn("SMS sending not implemented - using mock");
-        
-        // Mock implementation
-        notification.setStatus(Notification.NotificationStatus.SENT);
-        notification.setSentAt(LocalDateTime.now());
-        notificationRepository.save(notification);
+        try {
+            boolean sent = smsService.sendSms(
+                notification.getRecipientPhone(),
+                notification.getMessage()
+            );
+            
+            if (sent) {
+                notification.setStatus(Notification.NotificationStatus.SENT);
+                notification.setSentAt(LocalDateTime.now());
+                log.info("SMS sent successfully to: {}", notification.getRecipientPhone());
+            } else {
+                notification.setStatus(Notification.NotificationStatus.FAILED);
+                log.warn("SMS sending failed or disabled for: {}", notification.getRecipientPhone());
+            }
+            
+            notificationRepository.save(notification);
+        } catch (Exception e) {
+            log.error("Failed to send SMS: {}", e.getMessage(), e);
+            notification.setStatus(Notification.NotificationStatus.FAILED);
+            notificationRepository.save(notification);
+            throw new NotificationServiceException("Failed to send SMS: " + e.getMessage());
+        }
     }
     
     private void sendPushNotification(Notification notification) {
-        // In a real implementation, integrate with push notification service (FCM, APNS, etc.)
-        log.info("Push notification would be sent to user: {}", notification.getUserId());
-        log.warn("Push notification sending not implemented - using mock");
-        
-        // Mock implementation
-        notification.setStatus(Notification.NotificationStatus.SENT);
-        notification.setSentAt(LocalDateTime.now());
-        notificationRepository.save(notification);
+        try {
+            // In a real implementation, you would retrieve device tokens from a database
+            // For now, we'll use a mock device token
+            String deviceToken = "mock-device-token-" + notification.getUserId();
+            String platform = "android"; // Could be retrieved from user preferences
+            
+            boolean sent = pushNotificationService.sendPushNotification(
+                notification.getUserId(),
+                deviceToken,
+                notification.getTitle(),
+                notification.getMessage(),
+                platform
+            );
+            
+            if (sent) {
+                notification.setStatus(Notification.NotificationStatus.SENT);
+                notification.setSentAt(LocalDateTime.now());
+                log.info("Push notification sent successfully to user: {}", notification.getUserId());
+            } else {
+                notification.setStatus(Notification.NotificationStatus.FAILED);
+                log.warn("Push notification sending failed or disabled for user: {}", notification.getUserId());
+            }
+            
+            notificationRepository.save(notification);
+        } catch (Exception e) {
+            log.error("Failed to send push notification: {}", e.getMessage(), e);
+            notification.setStatus(Notification.NotificationStatus.FAILED);
+            notificationRepository.save(notification);
+            throw new NotificationServiceException("Failed to send push notification: " + e.getMessage());
+        }
     }
 }
 

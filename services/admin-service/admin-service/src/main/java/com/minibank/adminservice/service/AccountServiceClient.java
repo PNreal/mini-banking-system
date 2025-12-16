@@ -20,12 +20,33 @@ public class AccountServiceClient {
 
     @Value("${services.account-service.url}")
     private String accountServiceUrl;
+    @Value("${services.internal-secret:internal-secret}")
+    private String internalSecret;
+
+    public UUID getAccountIdByUser(UUID userId, String authToken) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", authToken);
+            headers.set("X-Internal-Secret", internalSecret);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            String url = accountServiceUrl + "/internal/accounts/by-user/" + userId;
+            var response = restTemplate.exchange(url, HttpMethod.GET, entity, com.minibank.adminservice.dto.AccountResponse.class);
+            if (response.getBody() == null || response.getBody().getAccountId() == null) {
+                throw new IllegalStateException("Account not found for user " + userId);
+            }
+            return response.getBody().getAccountId();
+        } catch (Exception e) {
+            log.error("Error getting account by user {}: {}", userId, e.getMessage(), e);
+            throw new RuntimeException("Failed to get account by user", e);
+        }
+    }
 
     public void freezeAccount(UUID accountId, String authToken) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", authToken);
-            headers.set("X-Internal-Secret", "internal-secret");
+            headers.set("X-Internal-Secret", internalSecret);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
             String url = accountServiceUrl + "/internal/accounts/" + accountId + "/freeze";
@@ -41,7 +62,7 @@ public class AccountServiceClient {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", authToken);
-            headers.set("X-Internal-Secret", "internal-secret");
+            headers.set("X-Internal-Secret", internalSecret);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
             String url = accountServiceUrl + "/internal/accounts/" + accountId + "/unfreeze";
@@ -57,7 +78,7 @@ public class AccountServiceClient {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", authToken);
-            headers.set("X-Internal-Secret", "internal-secret");
+            headers.set("X-Internal-Secret", internalSecret);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
             String url = accountServiceUrl + "/internal/accounts/" + accountId + "/lock";
@@ -73,7 +94,7 @@ public class AccountServiceClient {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", authToken);
-            headers.set("X-Internal-Secret", "internal-secret");
+            headers.set("X-Internal-Secret", internalSecret);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
             String url = accountServiceUrl + "/internal/accounts/" + accountId + "/unlock";

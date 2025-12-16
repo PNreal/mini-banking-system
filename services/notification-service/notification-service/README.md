@@ -271,12 +271,28 @@ Email được gửi với HTML template đẹp mắt, bao gồm:
 - Formatted content
 - Footer với disclaimer
 
+## WebSocket Support (Real-time Notifications)
+
+Service hỗ trợ WebSocket để gửi real-time notifications:
+
+- **Endpoint:** `ws://localhost:8086/ws/notifications`
+- **Protocol:** STOMP over WebSocket với SockJS fallback
+- **Authentication:** JWT token qua query parameter hoặc Authorization header
+- **Channels:**
+  - `/topic/transactions/{userId}` - Transaction notifications
+  - `/topic/account-status/{userId}` - Account status changes
+  - `/topic/security/{userId}` - Security alerts
+  - `/topic/system` - System broadcasts
+
+Xem chi tiết trong [WEBSOCKET_IMPLEMENTATION.md](./WEBSOCKET_IMPLEMENTATION.md)
+
 ## Lưu ý
 
 - Service cần PostgreSQL database đang chạy
 - Service cần Kafka broker đang chạy để nhận events
 - Email configuration cần được cấu hình đúng để gửi email (MAIL_USERNAME, MAIL_PASSWORD)
 - SMS và Push Notification hiện tại là mock implementation - cần tích hợp với provider thực tế (Twilio, AWS SNS, FCM, APNS)
+- WebSocket yêu cầu JWT token để authenticate (cấu hình qua `jwt.secret`)
 - Notification operations yêu cầu authentication qua API Gateway
 - Service-to-service communication sử dụng header `X-Internal-Secret`
 

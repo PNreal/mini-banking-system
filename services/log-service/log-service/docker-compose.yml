@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  log-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: log-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-log-service:5432/log_db
+      SPRING_DATASOURCE_USERNAME: log_user
+      SPRING_DATASOURCE_PASSWORD: log_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8085:8085"
+    networks:
+      - banking-network
+    restart: unless-stopped
+
+networks:
+  banking-network:
+    external: true
+    name: mini-banking-system_banking-network
+

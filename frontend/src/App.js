@@ -14,6 +14,11 @@ import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import About from './pages/About';
+import AdminDashboard from './pages/AdminDashboard';
+import Notifications from './pages/Notifications';
+import NotFound from './pages/NotFound';
+import Forbidden from './pages/Forbidden';
+import ServerError from './pages/ServerError';
 import './App.css';
 
 const initialUser = {
@@ -28,6 +33,7 @@ const initialUser = {
 function App() {
   const [user, setUser] = useState(initialUser);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // Demo: set true để test admin pages
   const [flashMessages, setFlashMessages] = useState([]);
   const [transactions, setTransactions] = useState(() => [
     {
@@ -156,6 +162,7 @@ function App() {
     <BrowserRouter>
       <Layout
         isAuthenticated={isAuthenticated}
+        isAdmin={isAdmin}
         onLogout={handleLogout}
         user={user}
         flashMessages={flashMessages}
@@ -223,7 +230,30 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword onSubmit={handleForgotPassword} />} />
           <Route path="/reset-password" element={<ResetPassword onSubmit={handleResetPassword} />} />
           <Route path="/about" element={<About />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route
+            path="/notifications"
+            element={
+              isAuthenticated ? (
+                <Notifications user={user} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              isAuthenticated && isAdmin ? (
+                <AdminDashboard user={user} />
+              ) : (
+                <Forbidden />
+              )
+            }
+          />
+          <Route path="/403" element={<Forbidden />} />
+          <Route path="/500" element={<ServerError />} />
+          <Route path="/404" element={<NotFound />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
     </BrowserRouter>

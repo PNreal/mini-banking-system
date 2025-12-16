@@ -62,15 +62,35 @@ log-service/
 │   │   │       ├── util/            # Utility classes
 │   │   │       └── validation/      # Custom validators
 │   │   └── resources/
-│   │       └── application.properties
+│   │       ├── application.properties          # Local development
+│   │       └── application-docker.properties   # Docker environment
 │   └── test/                        # Unit tests
+├── Dockerfile                        # Docker image build
+├── docker-compose.yml                # Docker Compose configuration
 ├── pom.xml
 └── README.md
 ```
 
 ## Chạy Service
 
+### Chạy bằng Maven (Local)
+
 Xem chi tiết trong [RUN_GUIDE.md](./RUN_GUIDE.md) hoặc [QUICK_START.md](./QUICK_START.md)
+
+### Chạy bằng Docker
+
+```bash
+# Khởi động tất cả services (PostgreSQL, Kafka, Log Service)
+docker-compose up -d
+
+# Xem logs
+docker-compose logs -f log-service
+
+# Dừng services
+docker-compose down
+```
+
+**Lưu ý:** Khi chạy bằng Docker, service sẽ tự động sử dụng `application-docker.properties` với cấu hình phù hợp cho môi trường container.
 
 ## Testing
 

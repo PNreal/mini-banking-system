@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Value
@@ -15,6 +16,7 @@ public class AccountResponse {
     UUID userId;
     BigDecimal balance;
     AccountStatus status;
+    LocalDateTime createdAt;
 
     public static AccountResponse from(Account account) {
         return AccountResponse.builder()
@@ -22,6 +24,7 @@ public class AccountResponse {
                 .userId(account.getUserId())
                 .balance(account.getBalance())
                 .status(account.getStatus())
+                .createdAt(account.getCreatedAt())
                 .build();
     }
 }
