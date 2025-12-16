@@ -1,0 +1,235 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<style>
+    /* Sử dụng tông màu Cam/Vàng cho trang Rút tiền */
+    :root {
+        --withdraw-primary: #f59e0b; /* Amber 500 */
+        --withdraw-secondary: #d97706; /* Amber 600 */
+        --withdraw-light: #fef3c7; /* Amber 100 */
+        --withdraw-shadow: rgba(245, 158, 11, 0.4);
+    }
+
+    .withdraw-page-wrapper {
+        min-height: calc(100vh - 120px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, #fffbeb 0%, #fdfbfb 100%); /* Nền hơi ấm nhẹ */
+        padding: 30px 0;
+    }
+
+    .withdraw-card {
+        border-radius: 18px;
+        border: none;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        overflow: hidden;
+        background: #ffffff;
+        position: relative;
+    }
+
+    /* Hiệu ứng nền background gradient nhẹ */
+    .withdraw-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(251, 146, 60, 0.05));
+        opacity: 0.35;
+        pointer-events: none;
+    }
+
+    .withdraw-card .card-body {
+        position: relative;
+        z-index: 1;
+    }
+
+    .withdraw-icon-wrapper {
+        background: linear-gradient(135deg, #fcd34d, #fbbf24);
+        color: #b45309;
+        width: 70px;
+        height: 70px;
+        font-size: 1.8rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(251, 191, 36, 0.6);
+    }
+
+    .withdraw-balance-box {
+        background: #fffbeb; /* Nền vàng rất nhạt */
+        border-radius: 14px;
+        padding: 14px 18px;
+        box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.3); /* Viền vàng nhạt */
+    }
+
+    .withdraw-balance-box small {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.7rem;
+        color: #92400e;
+    }
+
+    .withdraw-balance-box h4 {
+        font-size: 1.3rem;
+        color: #78350f;
+    }
+
+    /* Input focus màu cam */
+    .form-control.withdraw-amount-input {
+        border-radius: 12px 0 0 12px;
+        border-color: #e2e8f0;
+        box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.25);
+        transition: all 0.2s ease;
+    }
+
+    .form-control.withdraw-amount-input:focus {
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+        border-color: var(--withdraw-primary);
+    }
+
+    .withdraw-currency {
+        border-radius: 0 12px 12px 0;
+        background: #f9fafb !important;
+        border-color: #e2e8f0;
+        font-weight: 600;
+        color: #475569;
+    }
+
+    .withdraw-quick-buttons {
+        gap: 0.4rem;
+    }
+
+    .withdraw-quick-btn {
+        border-radius: 999px;
+        font-size: 0.8rem;
+        padding: 0.3rem 0.8rem;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        background: #ffffff;
+        transition: all 0.18s ease;
+    }
+
+    /* Hover nút quick thành màu cam */
+    .withdraw-quick-btn:hover {
+        background: var(--withdraw-primary);
+        color: #ffffff;
+        border-color: var(--withdraw-secondary);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(245, 158, 11, 0.3);
+    }
+
+    /* Nút Submit Gradient Cam */
+    .withdraw-submit-btn {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 14px 30px rgba(245, 158, 11, 0.4);
+        transition: all 0.18s ease;
+        color: white;
+    }
+
+    .withdraw-submit-btn:hover {
+        filter: brightness(1.05);
+        transform: translateY(-1px);
+        box-shadow: 0 18px 35px rgba(217, 119, 6, 0.5);
+    }
+
+    .withdraw-cancel-btn {
+        border-radius: 12px;
+    }
+
+    @media (max-width: 576px) {
+        .withdraw-card .card-body {
+            padding: 1.8rem !important;
+        }
+    }
+</style>
+
+<div class="dashboard-wrapper withdraw-page-wrapper">
+    <div class="container dashboard-container fade-in">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+
+                <div class="card dashboard-card withdraw-card">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <div class="withdraw-icon-wrapper mx-auto mb-3">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <h3 class="fw-bold mb-1">Rút Tiền</h3>
+                            <p class="text-muted mb-0">Rút tiền về tài khoản ngân hàng liên kết</p>
+                        </div>
+
+                        <div class="withdraw-balance-box text-center mb-4">
+                            <small>Số dư khả dụng</small>
+                            <h4 class="mb-0 fw-bold">
+                                {{ "{:,.0f}".format(current_user.balance) }} VND
+                            </h4>
+                        </div>
+
+                        <form method="POST" action="">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="form-group mb-4">
+                                {{ form.amount.label(class="form-label fw-bold") }}
+                                <div class="input-group input-group-lg">
+                                    {{ form.amount(class="form-control withdraw-amount-input", placeholder="Nhập số tiền...", id="amount") }}
+                                    <span class="input-group-text withdraw-currency">VND</span>
+                                </div>
+                                {% if form.amount.errors %}
+                                    {% for error in form.amount.errors %}
+                                        <span class="text-danger small d-block mt-1">{{ error }}</span>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-4 text-center">
+                                <span class="d-block text-muted small mb-2">Chọn nhanh:</span>
+                                <div class="d-flex justify-content-center flex-wrap withdraw-quick-buttons">
+                                    <button type="button" class="btn withdraw-quick-btn"
+                                            onclick="setAmount(200000)">200k</button>
+                                    <button type="button" class="btn withdraw-quick-btn"
+                                            onclick="setAmount(1000000)">1 Triệu</button>
+                                    <button type="button" class="btn withdraw-quick-btn"
+                                            onclick="setAmount(5000000)">5 Triệu</button>
+                                    <button type="button" class="btn withdraw-quick-btn"
+                                            onclick="setAllBalance()">Tất cả</button>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                {{ form.submit(class="btn btn-lg btn-block py-3 withdraw-submit-btn fw-semibold") }}
+                                <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-block py-3 withdraw-cancel-btn">
+                                    Hủy bỏ
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function setAmount(value) {
+        const input = document.getElementById('amount');
+        if (input) {
+            input.value = value;
+            input.focus();
+        }
+    }
+    function setAllBalance() {
+        const input = document.getElementById('amount');
+        
+        const maxBalance = {{ current_user.balance }}; 
+        
+        if (input) {
+            input.value = maxBalance;
+            input.focus();
+        }
+    }
+</script>
+{% endblock content %}
