@@ -1,15 +1,18 @@
 package com.minibank.transactionservice.service;
 
 import com.minibank.transactionservice.dto.AccountResponse;
+import com.minibank.transactionservice.exception.TransactionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -40,9 +43,16 @@ public class AccountServiceClient {
                     url, HttpMethod.GET, entity, AccountResponse.class);
 
             return response.getBody();
+        } catch (RestClientResponseException ex) {
+            handleHttpError(ex, "RECEIVER_ACCOUNT_NOT_FOUND", "Receiver account not found: " + accountId);
+            return null; // unreachable
         } catch (Exception e) {
             log.error("Error fetching account {}: {}", accountId, e.getMessage(), e);
-            throw new RuntimeException("Failed to fetch account: " + e.getMessage(), e);
+            throw new TransactionException(
+                    "TRANSACTION_FAILED",
+                    "Failed to fetch account: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -57,9 +67,16 @@ public class AccountServiceClient {
                     url, HttpMethod.GET, entity, AccountResponse.class);
 
             return response.getBody();
+        } catch (RestClientResponseException ex) {
+            handleHttpError(ex, "ACCOUNT_NOT_FOUND", "Account not found for user: " + userId);
+            return null; // unreachable
         } catch (Exception e) {
             log.error("Error fetching account for user {}: {}", userId, e.getMessage(), e);
-            throw new RuntimeException("Failed to fetch account: " + e.getMessage(), e);
+            throw new TransactionException(
+                    "TRANSACTION_FAILED",
+                    "Failed to fetch account: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -79,9 +96,16 @@ public class AccountServiceClient {
                     url, HttpMethod.PATCH, entity, AccountResponse.class);
 
             return response.getBody();
+        } catch (RestClientResponseException ex) {
+            handleHttpError(ex, "TRANSACTION_FAILED", "Failed to update balance for account: " + accountId);
+            return null; // unreachable
         } catch (Exception e) {
             log.error("Error updating balance for account {}: {}", accountId, e.getMessage(), e);
-            throw new RuntimeException("Failed to update balance: " + e.getMessage(), e);
+            throw new TransactionException(
+                    "TRANSACTION_FAILED",
+                    "Failed to update balance: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -103,10 +127,33 @@ public class AccountServiceClient {
                     url, HttpMethod.POST, entity, AccountResponse.class);
 
             return response.getBody();
+        } catch (RestClientResponseException ex) {
+            handleHttpError(ex, "TRANSACTION_FAILED",
+                    "Failed to transfer from " + fromAccountId + " to " + toAccountId);
+            return null; // unreachable
         } catch (Exception e) {
             log.error("Error transferring from {} to {}: {}", fromAccountId, toAccountId, e.getMessage(), e);
-            throw new RuntimeException("Failed to transfer: " + e.getMessage(), e);
+            throw new TransactionException(
+                    "TRANSACTION_FAILED",
+                    "Failed to transfer: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
+    }
+
+    private void handleHttpError(RestClientResponseException ex, String notFoundCode, String notFoundMessage) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == HttpStatus.NOT_FOUND) {
+            log.warn("Resource not found: {}", notFoundMessage);
+            throw new TransactionException(notFoundCode, notFoundMessage, HttpStatus.NOT_FOUND);
+        }
+        log.error("Downstream service error: status={}, body={}", status != null ? status.value() : "unknown",
+                ex.getResponseBodyAsString());
+        throw new TransactionException(
+                "TRANSACTION_FAILED",
+                "Downstream service error: " + ex.getMessage(),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
     }
 }
 

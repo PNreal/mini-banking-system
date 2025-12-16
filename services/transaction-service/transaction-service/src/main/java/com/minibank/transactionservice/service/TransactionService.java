@@ -3,6 +3,7 @@ package com.minibank.transactionservice.service;
 import com.minibank.transactionservice.dto.*;
 import com.minibank.transactionservice.entity.Transaction;
 import com.minibank.transactionservice.repository.TransactionRepository;
+import com.minibank.transactionservice.exception.TransactionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -28,11 +30,25 @@ public class TransactionService {
 
         AccountResponse account = accountServiceClient.getAccountByUserId(userId);
         if (account == null) {
-            throw new RuntimeException("Account not found for user: " + userId);
+            throw new TransactionException(
+                    "ACCOUNT_NOT_FOUND",
+                    "Account does not exist for user: " + userId,
+                    HttpStatus.NOT_FOUND
+            );
         }
 
         if (!"ACTIVE".equals(account.getStatus())) {
-            throw new RuntimeException("Account is not active. Current status: " + account.getStatus());
+            String status = account.getStatus();
+            String code = switch (status) {
+                case "FROZEN" -> "ACCOUNT_FROZEN";
+                case "LOCKED" -> "ACCOUNT_LOCKED";
+                default -> "ACCOUNT_INVALID_STATUS";
+            };
+            throw new TransactionException(
+                    code,
+                    "Account status is invalid for deposit: " + status,
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         AccountResponse updatedAccount = accountServiceClient.updateBalance(account.getAccountId(), request.getAmount());
@@ -74,15 +90,33 @@ public class TransactionService {
 
         AccountResponse account = accountServiceClient.getAccountByUserId(userId);
         if (account == null) {
-            throw new RuntimeException("Account not found for user: " + userId);
+            throw new TransactionException(
+                    "ACCOUNT_NOT_FOUND",
+                    "Account does not exist for user: " + userId,
+                    HttpStatus.NOT_FOUND
+            );
         }
 
         if (!"ACTIVE".equals(account.getStatus())) {
-            throw new RuntimeException("Account is not active. Current status: " + account.getStatus());
+            String status = account.getStatus();
+            String code = switch (status) {
+                case "FROZEN" -> "ACCOUNT_FROZEN";
+                case "LOCKED" -> "ACCOUNT_LOCKED";
+                default -> "ACCOUNT_INVALID_STATUS";
+            };
+            throw new TransactionException(
+                    code,
+                    "Account status is invalid for withdrawal: " + status,
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         if (account.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new RuntimeException("Insufficient balance");
+            throw new TransactionException(
+                    "INSUFFICIENT_BALANCE",
+                    "Insufficient balance for withdrawal",
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         AccountResponse updatedAccount = accountServiceClient.updateBalance(
@@ -126,24 +160,52 @@ public class TransactionService {
 
         AccountResponse fromAccount = accountServiceClient.getAccountByUserId(userId);
         if (fromAccount == null) {
-            throw new RuntimeException("Sender account not found for user: " + userId);
+            throw new TransactionException(
+                    "ACCOUNT_NOT_FOUND",
+                    "Sender account does not exist for user: " + userId,
+                    HttpStatus.NOT_FOUND
+            );
         }
 
         if (!"ACTIVE".equals(fromAccount.getStatus())) {
-            throw new RuntimeException("Sender account is not active. Current status: " + fromAccount.getStatus());
+            String status = fromAccount.getStatus();
+            String code = switch (status) {
+                case "FROZEN" -> "ACCOUNT_FROZEN";
+                case "LOCKED" -> "ACCOUNT_LOCKED";
+                default -> "ACCOUNT_INVALID_STATUS";
+            };
+            throw new TransactionException(
+                    code,
+                    "Sender account status is invalid for transfer: " + status,
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         AccountResponse toAccount = accountServiceClient.getAccount(request.getToAccountId());
         if (toAccount == null) {
-            throw new RuntimeException("Receiver account not found: " + request.getToAccountId());
+            throw new TransactionException(
+                    "RECEIVER_ACCOUNT_NOT_FOUND",
+                    "Receiver account does not exist: " + request.getToAccountId(),
+                    HttpStatus.NOT_FOUND
+            );
         }
 
         if (!"ACTIVE".equals(toAccount.getStatus()) && !"FROZEN".equals(toAccount.getStatus())) {
-            throw new RuntimeException("Receiver account status is invalid: " + toAccount.getStatus());
+            String status = toAccount.getStatus();
+            String code = "LOCKED".equals(status) ? "RECEIVER_ACCOUNT_LOCKED" : "RECEIVER_ACCOUNT_INVALID_STATUS";
+            throw new TransactionException(
+                    code,
+                    "Receiver account status is invalid for transfer: " + status,
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         if (fromAccount.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new RuntimeException("Insufficient balance");
+            throw new TransactionException(
+                    "INSUFFICIENT_BALANCE",
+                    "Insufficient balance for transfer",
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         AccountResponse updatedFromAccount = accountServiceClient.transfer(
@@ -192,7 +254,11 @@ public class TransactionService {
 
         AccountResponse account = accountServiceClient.getAccountByUserId(userId);
         if (account == null) {
-            throw new RuntimeException("Account not found for user: " + userId);
+            throw new TransactionException(
+                    "ACCOUNT_NOT_FOUND",
+                    "Account does not exist for user: " + userId,
+                    HttpStatus.NOT_FOUND
+            );
         }
 
         UUID accountId = account.getAccountId();

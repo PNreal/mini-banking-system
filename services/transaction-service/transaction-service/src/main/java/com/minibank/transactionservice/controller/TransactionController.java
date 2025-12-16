@@ -1,6 +1,7 @@
 package com.minibank.transactionservice.controller;
 
 import com.minibank.transactionservice.dto.*;
+import com.minibank.transactionservice.exception.TransactionException;
 import com.minibank.transactionservice.service.TransactionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -33,67 +34,30 @@ public class TransactionController {
     public ResponseEntity<ApiResponse<TransactionResponse>> deposit(
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
             @Valid @RequestBody DepositRequest request) {
-        
-        UUID userId = extractUserId(userIdHeader);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("UNAUTHORIZED", "User ID is required", "/api/v1/transactions/deposit"));
-        }
 
-        try {
-            TransactionResponse response = transactionService.deposit(userId, request);
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (RuntimeException e) {
-            log.error("Deposit failed: {}", e.getMessage());
-            String errorCode = getErrorCode(e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(errorCode, e.getMessage(), "/api/v1/transactions/deposit"));
-        }
+        UUID userId = extractUserIdOrThrow(userIdHeader, "/api/v1/transactions/deposit");
+        TransactionResponse response = transactionService.deposit(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping("/withdraw")
     public ResponseEntity<ApiResponse<TransactionResponse>> withdraw(
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
             @Valid @RequestBody WithdrawRequest request) {
-        
-        UUID userId = extractUserId(userIdHeader);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("UNAUTHORIZED", "User ID is required", "/api/v1/transactions/withdraw"));
-        }
 
-        try {
-            TransactionResponse response = transactionService.withdraw(userId, request);
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (RuntimeException e) {
-            log.error("Withdraw failed: {}", e.getMessage());
-            String errorCode = getErrorCode(e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(errorCode, e.getMessage(), "/api/v1/transactions/withdraw"));
-        }
+        UUID userId = extractUserIdOrThrow(userIdHeader, "/api/v1/transactions/withdraw");
+        TransactionResponse response = transactionService.withdraw(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping("/transfer")
     public ResponseEntity<ApiResponse<TransactionResponse>> transfer(
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
             @Valid @RequestBody TransferRequest request) {
-        
-        UUID userId = extractUserId(userIdHeader);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("UNAUTHORIZED", "User ID is required", "/api/v1/transactions/transfer"));
-        }
 
-        try {
-            TransactionResponse response = transactionService.transfer(userId, request);
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (RuntimeException e) {
-            log.error("Transfer failed: {}", e.getMessage());
-            String errorCode = getErrorCode(e.getMessage());
-            HttpStatus status = errorCode.equals("RECEIVER_ACCOUNT_NOT_FOUND") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
-            return ResponseEntity.status(status)
-                    .body(ApiResponse.error(errorCode, e.getMessage(), "/api/v1/transactions/transfer"));
-        }
+        UUID userId = extractUserIdOrThrow(userIdHeader, "/api/v1/transactions/transfer");
+        TransactionResponse response = transactionService.transfer(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/history")
@@ -102,55 +66,34 @@ public class TransactionController {
             @RequestParam(required = false) String type,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size) {
-        
-        UUID userId = extractUserId(userIdHeader);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("UNAUTHORIZED", "User ID is required", "/api/v1/transactions/history"));
-        }
 
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("timestamp").descending());
-            Page<TransactionResponse> transactions = transactionService.getTransactionHistory(
-                    userId, type, from, to, pageable);
-            return ResponseEntity.ok(ApiResponse.success(transactions));
-        } catch (RuntimeException e) {
-            log.error("Failed to fetch transaction history: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("TRANSACTION_HISTORY_ERROR", e.getMessage(), "/api/v1/transactions/history"));
-        }
+        UUID userId = extractUserIdOrThrow(userIdHeader, "/api/v1/transactions/history");
+
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by("timestamp").descending());
+        Page<TransactionResponse> transactions = transactionService.getTransactionHistory(
+                userId, type, from, to, pageable);
+        return ResponseEntity.ok(ApiResponse.success(transactions));
     }
 
-    private UUID extractUserId(String userIdHeader) {
+    private UUID extractUserIdOrThrow(String userIdHeader, String path) {
         if (userIdHeader == null || userIdHeader.trim().isEmpty()) {
-            return null;
+            throw new TransactionException(
+                    "UNAUTHORIZED",
+                    "User ID is required",
+                    HttpStatus.UNAUTHORIZED
+            );
         }
         try {
             return UUID.fromString(userIdHeader.trim());
         } catch (IllegalArgumentException e) {
-            return null;
+            throw new TransactionException(
+                    "INVALID_INPUT",
+                    "X-User-Id header must be a valid UUID",
+                    HttpStatus.BAD_REQUEST
+            );
         }
-    }
-
-    private String getErrorCode(String message) {
-        if (message.contains("not found")) {
-            return "ACCOUNT_NOT_FOUND";
-        }
-        if (message.contains("not active")) {
-            return "ACCOUNT_INVALID_STATUS";
-        }
-        if (message.contains("Insufficient")) {
-            return "INSUFFICIENT_BALANCE";
-        }
-        if (message.contains("Receiver account not found")) {
-            return "RECEIVER_ACCOUNT_NOT_FOUND";
-        }
-        if (message.contains("status is invalid")) {
-            return "RECEIVER_ACCOUNT_INVALID_STATUS";
-        }
-        return "TRANSACTION_FAILED";
     }
 }
 
