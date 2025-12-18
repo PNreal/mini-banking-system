@@ -96,7 +96,30 @@ User Service → Kafka → Log Service
 | Freeze / Unfreeze | PATCH /internal/accounts/{id}/freeze |
 | Lock / Unlock     | PATCH /internal/accounts/{id}/lock   |
 
-## **3.4 User Service ↔ Admin Service** {#user-service-admin-service}
+## **3.4 Transaction Service ↔ User Service** {#transaction-service-user-service}
+
+| **Mục đích**                    | **Method** | **Endpoint**                    |
+|--------------------------------|------------|--------------------------------|
+| Lấy thông tin user (CCCD, employeeCode) | GET | /internal/users/{userId} |
+
+**Lưu ý:**
+- Transaction Service gọi User Service để lấy thông tin user khi tạo giao dịch nạp tiền ở quầy
+- Cần thông tin `citizenId` (CCCD) để tạo mã giao dịch
+- Cần thông tin `employeeCode` của nhân viên được phân bổ
+
+**Request/Response:**
+```json
+// GET /internal/users/{userId}
+Response: {
+  "userId": "uuid",
+  "email": "user@example.com",
+  "fullName": "Nguyễn Văn A",
+  "citizenId": "001234567890",
+  "employeeCode": "EMP001"
+}
+```
+
+## **3.5 User Service ↔ Admin Service** {#user-service-admin-service}
 
 | **Tình huống**           | **Ai gọi ai**        | **Endpoint**                    |
 |--------------------------|----------------------|---------------------------------|
@@ -112,6 +135,8 @@ User Service → Kafka → Log Service
 | USER_EVENT            | User Service        | Log Service        | login, logout, register |
 | ACCOUNT_EVENT         | Account Service     | Log Service        | freeze, unfreeze        |
 | TRANSACTION_COMPLETED | Transaction Service | Notification + Log | gửi thông báo, ghi log  |
+| COUNTER_DEPOSIT_NOTIFICATION | Transaction Service | Notification Service | thông báo đến nhân viên về yêu cầu/hủy nạp tiền |
+| ADMIN_ACTION | Transaction Service | Log Service + Admin | ghi log khi nhân viên xác nhận nạp tiền |
 | ADMIN_ACTION          | Admin Service       | Log Service        | lock, unlock, freeze    |
 
 ## **4.2 Payload Ví Dụ** {#payload-ví-dụ}
@@ -147,6 +172,94 @@ User Service → Kafka → Log Service
 \"action\": \"FREEZE_ACCOUNT\",
 
 \"time\": \"2025-12-01T10:30:00\"
+
+}
+
+### **COUNTER_DEPOSIT_NOTIFICATION**
+
+**Khi tạo yêu cầu nạp tiền:**
+
+{
+
+\"transactionId\": \"uuid\",
+
+\"transactionCode\": \"EMP1234567890123456\",
+
+\"amount\": 1000000,
+
+\"type\": \"COUNTER_DEPOSIT\",
+
+\"status\": \"PENDING\",
+
+\"timestamp\": \"2025-12-01T12:00:00\",
+
+\"userId\": \"uuid\",
+
+\"staffId\": \"uuid\",
+
+\"counterId\": \"uuid\",
+
+\"employeeCode\": \"EMP001\",
+
+\"notificationType\": \"COUNTER_DEPOSIT_REQUEST\",
+
+\"message\": \"Yêu cầu nạp tiền ở quầy với mã giao dịch: EMP1234567890123456, số tiền: 1000000\"
+
+}
+
+**Khi user hủy giao dịch:**
+
+{
+
+\"transactionId\": \"uuid\",
+
+\"transactionCode\": \"EMP1234567890123456\",
+
+\"amount\": 1000000,
+
+\"type\": \"COUNTER_DEPOSIT_CANCELLED\",
+
+\"status\": \"CANCELLED\",
+
+\"timestamp\": \"2025-12-01T12:00:00\",
+
+\"userId\": \"uuid\",
+
+\"staffId\": \"uuid\",
+
+\"counterId\": \"uuid\",
+
+\"notificationType\": \"COUNTER_DEPOSIT_CANCELLED\",
+
+\"message\": \"User đã hủy yêu cầu nạp tiền ở quầy với mã giao dịch: EMP1234567890123456\"
+
+}
+
+### **ADMIN_ACTION (Counter Deposit Confirmed)**
+
+**Khi nhân viên xác nhận đã nhận tiền:**
+
+{
+
+\"transactionId\": \"uuid\",
+
+\"transactionCode\": \"EMP1234567890123456\",
+
+\"amount\": 1000000,
+
+\"type\": \"COUNTER_DEPOSIT_CONFIRMED\",
+
+\"status\": \"SUCCESS\",
+
+\"timestamp\": \"2025-12-01T12:00:00\",
+
+\"staffId\": \"uuid\",
+
+\"counterId\": \"uuid\",
+
+\"logType\": \"ADMIN_LOG\",
+
+\"message\": \"Nhân viên {staffId} đã xác nhận nạp tiền ở quầy với mã giao dịch: {transactionCode}, số tiền: {amount}\"
 
 }
 
@@ -215,7 +328,7 @@ User Service → Kafka(USER_EVENT) → Log Service
 **Validation:**
 - Account status không được LOCKED (ACTIVE hoặc FROZEN đều có thể đăng nhập)
 
-## **7.3 Nạp tiền (Deposit)** {#nạp-tiền-deposit}
+## **7.4 Nạp tiền (Deposit)** {#nạp-tiền-deposit}
 
 Client → Transaction Service
 

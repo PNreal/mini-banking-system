@@ -2,6 +2,7 @@ package com.minibank.transactionservice.controller;
 
 import com.minibank.transactionservice.dto.AmountRequest;
 import com.minibank.transactionservice.dto.ApiResponse;
+import com.minibank.transactionservice.dto.CounterDepositRequest;
 import com.minibank.transactionservice.dto.PagedResponse;
 import com.minibank.transactionservice.dto.TransactionResponse;
 import com.minibank.transactionservice.dto.TransferRequest;
@@ -37,6 +38,32 @@ public class TransactionController {
                                                                     @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
         log.info("Deposit request for user {}", userId);
         TransactionResponse response = transactionService.deposit(request.getAmount(), userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/deposit-counter")
+    public ResponseEntity<ApiResponse<TransactionResponse>> depositAtCounter(@Valid @RequestBody CounterDepositRequest request,
+                                                                             @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+        log.info("Counter deposit request for user {} at counter {}", userId, request.getCounterId());
+        TransactionResponse response = transactionService.depositAtCounter(request.getAmount(), userId, request.getCounterId());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/deposit-counter/{transactionId}/confirm")
+    public ResponseEntity<ApiResponse<TransactionResponse>> confirmCounterDeposit(
+            @PathVariable UUID transactionId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID staffId) {
+        log.info("Confirm counter deposit for transaction {} by staff {}", transactionId, staffId);
+        TransactionResponse response = transactionService.confirmCounterDeposit(transactionId, staffId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/deposit-counter/{transactionId}/cancel")
+    public ResponseEntity<ApiResponse<TransactionResponse>> cancelCounterDeposit(
+            @PathVariable UUID transactionId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+        log.info("Cancel counter deposit for transaction {} by user {}", transactionId, userId);
+        TransactionResponse response = transactionService.cancelCounterDeposit(transactionId, userId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

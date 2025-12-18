@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { validateAccountNumberApi } from '../api/client';
 
 // Rebuild theo mẫu trong `Money Transfer Screen Design (1)/src/App.tsx`
 const transferV2Styles = `
@@ -479,6 +480,10 @@ const Transfer = ({ balance, onSubmit, isFrozen }) => {
   const [receiverDigits, setReceiverDigits] = useState('');
   const [amountText, setAmountText] = useState('');
   const [note, setNote] = useState('');
+  const [receiverInfo, setReceiverInfo] = useState(null);
+  const [validatingAccount, setValidatingAccount] = useState(false);
+  const [accountError, setAccountError] = useState(null);
+  const validationTimeoutRef = useRef(null);
 
   const recentRecipients = useMemo(
     () => [
@@ -497,10 +502,57 @@ const Transfer = ({ balance, onSubmit, isFrozen }) => {
   const newBalance = balance - total;
 
   const MIN_ACCOUNT_LEN = 10;
-  const isReceiverOk = receiverDigits.length >= MIN_ACCOUNT_LEN;
+  const isReceiverOk = receiverDigits.length >= MIN_ACCOUNT_LEN && receiverInfo && !accountError;
   const isAmountOk = amount > 0;
   const isBalanceOk = newBalance >= 0;
-  const canSubmit = isReceiverOk && isAmountOk && isBalanceOk && !isFrozen;
+  const canSubmit = isReceiverOk && isAmountOk && isBalanceOk && !isFrozen && !validatingAccount;
+
+  // Validate account number khi người dùng nhập
+  useEffect(() => {
+    // Clear timeout cũ nếu có
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+
+    // Reset state khi số tài khoản thay đổi
+    setReceiverInfo(null);
+    setAccountError(null);
+
+    // Nếu số tài khoản đủ độ dài, validate sau 500ms (debounce)
+    if (receiverDigits.length >= MIN_ACCOUNT_LEN) {
+      setValidatingAccount(true);
+      validationTimeoutRef.current = setTimeout(async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await validateAccountNumberApi(token, receiverDigits);
+          if (response && response.data) {
+            setReceiverInfo({
+              accountId: response.data.accountId,
+              accountNumber: response.data.accountNumber,
+              fullName: response.data.fullName,
+              status: response.data.status,
+            });
+            setAccountError(null);
+          }
+        } catch (error) {
+          setAccountError(error.message || 'Số tài khoản không tồn tại');
+          setReceiverInfo(null);
+        } finally {
+          setValidatingAccount(false);
+        }
+      }, 500);
+    } else if (receiverDigits.length > 0) {
+      // Nếu chưa đủ độ dài nhưng đã có ký tự, không validate
+      setValidatingAccount(false);
+    }
+
+    // Cleanup
+    return () => {
+      if (validationTimeoutRef.current) {
+        clearTimeout(validationTimeoutRef.current);
+      }
+    };
+  }, [receiverDigits]);
 
   const handleReceiverChange = (e) => {
     const digits = e.target.value.replace(/\D/g, '').slice(0, 20);
@@ -518,10 +570,14 @@ const Transfer = ({ balance, onSubmit, isFrozen }) => {
     setReceiverDigits(recipient.account);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = onSubmit(receiverDigits, amount);
-    if (success) navigate('/');
+    if (!receiverInfo || !receiverInfo.accountId) {
+      setAccountError('Vui lòng nhập số tài khoản hợp lệ');
+      return;
+    }
+    const success = await onSubmit(receiverInfo.accountId, amount, note);
+    if (success) navigate('/dashboard');
   };
 
   return (
@@ -628,10 +684,26 @@ const Transfer = ({ balance, onSubmit, isFrozen }) => {
                   <span>Vui lòng nhập tối thiểu {MIN_ACCOUNT_LEN} chữ số.</span>
                 </div>
               )}
-              {isReceiverOk && (
+              {receiverDigits.length >= MIN_ACCOUNT_LEN && validatingAccount && (
+                <div className="transfer-v2-hint">
+                  <i className="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <span>Đang kiểm tra số tài khoản...</span>
+                </div>
+              )}
+              {receiverDigits.length >= MIN_ACCOUNT_LEN && !validatingAccount && accountError && (
+                <div className="transfer-v2-hint transfer-v2-hint-error">
+                  <i className="fas fa-exclamation-circle" aria-hidden="true"></i>
+                  <span>{accountError}</span>
+                </div>
+              )}
+              {isReceiverOk && receiverInfo && (
                 <div className="transfer-v2-hint transfer-v2-hint-success">
                   <i className="fas fa-check-circle" aria-hidden="true"></i>
-                  <span>Số tài khoản đã sẵn sàng.</span>
+                  <span>
+                    {receiverInfo.status === 'LOCKED' 
+                      ? 'Tài khoản người nhận đã bị khóa' 
+                      : `Người nhận: ${receiverInfo.fullName || 'Không có tên'}`}
+                  </span>
                 </div>
               )}
             </div>

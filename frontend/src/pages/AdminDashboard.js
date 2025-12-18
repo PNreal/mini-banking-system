@@ -149,6 +149,16 @@ const AdminDashboard = ({ user }) => {
     <div className="container admin-dashboard-container fade-in">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="h3 mb-0">Bảng điều khiển Admin</h1>
+        <div className="btn-group">
+          <Link to="/admin/employees" className="btn btn-primary">
+            <i className="fas fa-users me-2"></i>
+            Quản lý nhân viên
+          </Link>
+          <Link to="/admin/counters" className="btn btn-primary">
+            <i className="fas fa-building me-2"></i>
+            Quản lý quầy giao dịch
+          </Link>
+        </div>
       </div>
 
       {/* Summary Cards */}

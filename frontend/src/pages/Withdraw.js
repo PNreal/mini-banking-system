@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCountersApi } from '../api/client';
 
 // Port UI từ prototype trong folder `rút/` (Vite/Tailwind) sang JSX + CSS thuần trong CRA.
 // Lưu ý: chỉ port giao diện/UX, phần xử lý giao dịch vẫn dùng props: balance, onSubmit, isFrozen.
@@ -354,15 +355,9 @@ const withdrawPrototypeStyles = `
 const Withdraw = ({ balance, onSubmit, isFrozen }) => {
   const navigate = useNavigate();
 
-  // Mock data (từ prototype)
-  const atmLocations = useMemo(
-    () => [
-      { id: 1, name: 'ATM Nguyễn Huệ', address: '123 Nguyễn Huệ, Q.1', distance: '0.5 km' },
-      { id: 2, name: 'ATM Lê Lợi', address: '456 Lê Lợi, Q.1', distance: '1.2 km' },
-      { id: 3, name: 'ATM Trần Hưng Đạo', address: '789 Trần Hưng Đạo, Q.5', distance: '2.1 km' },
-    ],
-    []
-  );
+  // State cho quầy giao dịch
+  const [counters, setCounters] = useState([]);
+  const [loadingCounters, setLoadingCounters] = useState(false);
 
   const linkedBanks = useMemo(
     () => [
@@ -409,14 +404,14 @@ const Withdraw = ({ balance, onSubmit, isFrozen }) => {
   const quickAmounts = useMemo(() => [200000, 500000, 1000000, 5000000], []);
 
   const destinations = useMemo(() => {
-    if (withdrawMethod === 'atm') return atmLocations;
+    if (withdrawMethod === 'atm') return counters;
     if (withdrawMethod === 'bank') return linkedBanks;
     if (withdrawMethod === 'ewallet') return eWallets;
     return [];
-  }, [withdrawMethod, atmLocations, linkedBanks, eWallets]);
+  }, [withdrawMethod, counters, linkedBanks, eWallets]);
 
   const methodName = useMemo(() => {
-    if (withdrawMethod === 'atm') return 'ATM';
+    if (withdrawMethod === 'atm') return 'Rút tiền tại quầy';
     if (withdrawMethod === 'bank') return 'Chuyển khoản ngân hàng';
     if (withdrawMethod === 'ewallet') return 'Ví điện tử';
     return '';
@@ -424,7 +419,7 @@ const Withdraw = ({ balance, onSubmit, isFrozen }) => {
 
   const feeDescription = useMemo(() => {
     if (!withdrawMethod) return '';
-    if (withdrawMethod === 'atm') return 'Miễn phí rút tại ATM';
+    if (withdrawMethod === 'atm') return 'Miễn phí rút tại quầy';
     if (withdrawMethod === 'bank') return 'Phí chuyển khoản 5.000đ';
     return 'Phí giao dịch 2.000đ';
   }, [withdrawMethod]);
@@ -440,6 +435,28 @@ const Withdraw = ({ balance, onSubmit, isFrozen }) => {
     // Chỉ cho số nguyên dương
     const sanitized = raw.replace(/[^\d]/g, '');
     setAmount(sanitized);
+  };
+
+  // Load danh sách quầy khi chọn phương thức rút tiền tại quầy
+  useEffect(() => {
+    if (withdrawMethod === 'atm') {
+      loadCounters();
+    }
+  }, [withdrawMethod]);
+
+  const loadCounters = async () => {
+    setLoadingCounters(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await getCountersApi(token);
+      if (response && response.data) {
+        setCounters(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load counters:', error);
+    } finally {
+      setLoadingCounters(false);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -567,29 +584,8 @@ const Withdraw = ({ balance, onSubmit, isFrozen }) => {
                       <i className="fas fa-university"></i>
                     </div>
                     <div style={{ textAlign: 'left' }}>
-                      <p className="wds-method-title">Rút tại ATM</p>
+                      <p className="wds-method-title">Rút tiền tại quầy</p>
                       <p className="wds-method-sub">Miễn phí giao dịch</p>
-                    </div>
-                  </div>
-                  <i className={`fas fa-chevron-right wds-chevron`}></i>
-                </button>
-
-                <button
-                  type="button"
-                  className={`wds-method ${withdrawMethod === 'bank' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setWithdrawMethod('bank');
-                    setSelectedDestination(null);
-                  }}
-                  disabled={isFrozen}
-                >
-                  <div className="wds-method-left">
-                    <div className="wds-method-icon">
-                      <i className="fas fa-credit-card"></i>
-                    </div>
-                    <div style={{ textAlign: 'left' }}>
-                      <p className="wds-method-title">Chuyển khoản ngân hàng</p>
-                      <p className="wds-method-sub">Phí 5.000đ</p>
                     </div>
                   </div>
                   <i className={`fas fa-chevron-right wds-chevron`}></i>
@@ -622,32 +618,38 @@ const Withdraw = ({ balance, onSubmit, isFrozen }) => {
             {!!withdrawMethod && (
               <div className="wds-section">
                 <div className="wds-label">
-                  {withdrawMethod === 'atm' && 'Chọn ATM gần bạn'}
+                  {withdrawMethod === 'atm' && 'Chọn quầy giao dịch'}
                   {withdrawMethod === 'bank' && 'Chọn tài khoản ngân hàng'}
                   {withdrawMethod === 'ewallet' && 'Chọn ví điện tử'}
                 </div>
                 <div className="wds-destination-list">
-                  {withdrawMethod === 'atm' &&
-                    destinations.map((atm) => (
-                      <button
-                        key={atm.id}
-                        type="button"
-                        className={`wds-destination ${selectedDestination === atm.id ? 'is-active' : ''}`}
-                        onClick={() => setSelectedDestination(atm.id)}
-                        disabled={isFrozen}
-                      >
-                        <div className="wds-destination-left">
-                          <div className="wds-destination-icon">
-                            <i className="fas fa-map-marker-alt"></i>
+                  {withdrawMethod === 'atm' && (
+                    loadingCounters ? (
+                      <p style={{ textAlign: 'center', color: '#6b7280', padding: '1rem' }}>Đang tải danh sách quầy...</p>
+                    ) : counters.length === 0 ? (
+                      <p style={{ textAlign: 'center', color: '#dc2626', padding: '1rem' }}>Không có quầy giao dịch nào khả dụng</p>
+                    ) : (
+                      destinations.map((counter) => (
+                        <button
+                          key={counter.counterId}
+                          type="button"
+                          className={`wds-destination ${selectedDestination === counter.counterId ? 'is-active' : ''}`}
+                          onClick={() => setSelectedDestination(counter.counterId)}
+                          disabled={isFrozen}
+                        >
+                          <div className="wds-destination-left" style={{ alignItems: 'center' }}>
+                            <div className="wds-destination-icon">
+                              <i className="fas fa-landmark"></i>
+                            </div>
+                            <div>
+                              <p className="wds-destination-name">{counter.name}</p>
+                              <p className="wds-destination-sub">{counter.address || 'Địa chỉ không có'}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="wds-destination-name">{atm.name}</p>
-                            <p className="wds-destination-sub">{atm.address}</p>
-                            <span className="wds-pill">{atm.distance}</span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      ))
+                    )
+                  )}
 
                   {withdrawMethod === 'bank' &&
                     destinations.map((bank) => (

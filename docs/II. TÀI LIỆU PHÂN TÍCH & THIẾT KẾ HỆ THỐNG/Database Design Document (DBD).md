@@ -1,9 +1,17 @@
 # **DATABASE DESIGN DOCUMENT (DBD)**
 
 **Dự án:** Mini Banking System  
-**Phiên bản:** 1.0  
+**Phiên bản:** 1.1  
 **Ngày:** 20/11/2025  
+**Cập nhật:** 17/12/2025  
 **Người biên soạn:** Nhóm 7
+
+**Changelog v1.1:**
+- Thêm bảng `counters` và `counter_staff` để quản lý quầy giao dịch
+- Cập nhật bảng `users` với trường `citizen_id` và `employee_code`
+- Cập nhật bảng `transactions` với các trường mới: `transaction_code`, `staff_id`, `counter_id`
+- Thêm loại giao dịch mới: `COUNTER_DEPOSIT`
+- Thêm trạng thái giao dịch mới: `PENDING`, `CANCELLED`
 
 ## **1. Giới thiệu** {#giới-thiệu}
 
@@ -54,6 +62,14 @@ User (1) ─── (n) Log
 
 Admin (1) ─── (n) Log
 
+Counter (1) ─── (n) CounterStaff
+
+CounterStaff (n) ─── (1) User
+
+Transaction (n) ─── (1) Counter (optional, cho COUNTER_DEPOSIT)
+
+Transaction (n) ─── (1) User (staff_id, optional, cho COUNTER_DEPOSIT)
+
 ## **4. Thiết kế chi tiết từng bảng** {#thiết-kế-chi-tiết-từng-bảng}
 
 ### **4.1. Bảng users (user_db)** {#bảng-users-user_db}
@@ -64,6 +80,8 @@ Admin (1) ─── (n) Log
 | email          | VARCHAR(100)     | UNIQUE, NOT NULL | Email đăng ký            |
 | password       | VARCHAR(255)     | NOT NULL         | Mật khẩu mã hóa (bcrypt) |
 | full_name      | VARCHAR(100)     | NULL             | Tên người dùng           |
+| citizen_id     | VARCHAR(20)      | NULL             | Số CMND/CCCD             |
+| employee_code  | VARCHAR(20)      | NULL             | Mã nhân viên (cho STAFF/ADMIN) |
 | created_at     | TIMESTAMP        | NOT NULL         | Ngày tạo                 |
 | last_login     | TIMESTAMP        | NULL             | Lần đăng nhập gần nhất   |
 
@@ -105,9 +123,12 @@ Constraint này đảm bảo số dư không bao giờ âm ở database level, n
 | from_acc       | UUID             | NULLABLE                                                | Tài khoản gửi       |
 | to_acc         | UUID             | NULLABLE                                                | Tài khoản nhận      |
 | amount         | DECIMAL(18,2)    | NOT NULL                                                | Số tiền             |
-| type           | VARCHAR(20)      | CHECK (type IN (\'DEPOSIT\',\'WITHDRAW\',\'TRANSFER\')) | Loại giao dịch      |
+| type           | VARCHAR(20)      | CHECK (type IN (\'DEPOSIT\',\'WITHDRAW\',\'TRANSFER\',\'COUNTER_DEPOSIT\')) | Loại giao dịch      |
 | timestamp      | TIMESTAMP        | NOT NULL                                                | Thời gian thực hiện |
-| status         | VARCHAR(20)      | CHECK (status IN (\'SUCCESS\',\'FAILED\'))              | Trạng thái          |
+| status         | VARCHAR(20)      | CHECK (status IN (\'PENDING\',\'SUCCESS\',\'FAILED\',\'CANCELLED\')) | Trạng thái          |
+| transaction_code | VARCHAR(50)    | NULLABLE                                                | Mã giao dịch (cho COUNTER_DEPOSIT) |
+| staff_id       | UUID             | NULLABLE                                                | ID nhân viên xử lý (cho COUNTER_DEPOSIT) |
+| counter_id     | UUID             | NULLABLE                                                | ID quầy giao dịch (cho COUNTER_DEPOSIT) |
 
 **Ràng buộc nghiệp vụ:**
 
@@ -118,6 +139,8 @@ Constraint này đảm bảo số dư không bao giờ âm ở database level, n
 - DEPOSIT → to_acc NOT NULL và from_acc phải NULL
 
 - WITHDRAW → from_acc NOT NULL và to_acc phải NULL
+
+- COUNTER_DEPOSIT → to_acc NOT NULL, from_acc NULL, staff_id và counter_id NOT NULL, transaction_code NOT NULL
 
 - Giao dịch **atomic** (rollback khi lỗi).
 
@@ -131,7 +154,8 @@ CHECK (amount > 0)
 CHECK (
   (type = 'DEPOSIT' AND from_acc IS NULL AND to_acc IS NOT NULL) OR
   (type = 'WITHDRAW' AND from_acc IS NOT NULL AND to_acc IS NULL) OR
-  (type = 'TRANSFER' AND from_acc IS NOT NULL AND to_acc IS NOT NULL)
+  (type = 'TRANSFER' AND from_acc IS NOT NULL AND to_acc IS NOT NULL) OR
+  (type = 'COUNTER_DEPOSIT' AND from_acc IS NULL AND to_acc IS NOT NULL AND staff_id IS NOT NULL AND counter_id IS NOT NULL AND transaction_code IS NOT NULL)
 )
 ```
 
@@ -165,7 +189,38 @@ CHECK (type IN ('EMAIL', 'SMS'))
 CHECK (status IN ('SENT', 'FAILED'))
 ```
 
-### **4.6. Bảng admin_logs (admin_db)** {#bảng-admin_logs-admin_db}
+### **4.6. Bảng counters (transaction_db)** {#bảng-counters-transaction_db}
+
+| **Tên trường** | **Kiểu dữ liệu** | **Ràng buộc**    | **Mô tả**                |
+|----------------|------------------|------------------|--------------------------|
+| counter_id     | UUID             | PK               | ID quầy giao dịch        |
+| name           | VARCHAR(100)     | NOT NULL         | Tên quầy                 |
+| address        | VARCHAR(200)     | NULL             | Địa chỉ quầy             |
+| max_staff      | INTEGER          | NOT NULL         | Số nhân viên tối đa      |
+| is_active      | BOOLEAN          | NOT NULL, DEFAULT TRUE | Trạng thái hoạt động |
+| created_at     | TIMESTAMP        | NOT NULL         | Ngày tạo                 |
+| updated_at     | TIMESTAMP        | NOT NULL         | Ngày cập nhật            |
+
+**Ràng buộc:**
+- max_staff > 0
+- Mỗi quầy có thể có nhiều nhân viên (quan hệ 1-n với counter_staff)
+
+### **4.7. Bảng counter_staff (transaction_db)** {#bảng-counter_staff-transaction_db}
+
+| **Tên trường** | **Kiểu dữ liệu** | **Ràng buộc**    | **Mô tả**                |
+|----------------|------------------|------------------|--------------------------|
+| counter_staff_id | UUID           | PK               | ID bản ghi               |
+| counter_id     | UUID             | FK → counters.counter_id, NOT NULL | ID quầy |
+| user_id        | UUID             | FK → users.user_id, NOT NULL | ID nhân viên |
+| is_active      | BOOLEAN          | NOT NULL, DEFAULT TRUE | Trạng thái hoạt động |
+| created_at     | TIMESTAMP        | NOT NULL         | Ngày tạo                 |
+| updated_at     | TIMESTAMP        | NOT NULL         | Ngày cập nhật            |
+
+**Ràng buộc:**
+- Unique constraint: (counter_id, user_id) - Mỗi nhân viên chỉ có thể thuộc một quầy
+- Mỗi quầy có thể có nhiều nhân viên, mỗi nhân viên chỉ thuộc một quầy
+
+### **4.8. Bảng admin_logs (admin_db)** {#bảng-admin_logs-admin_db}
 
 | **Trường**   | **Kiểu dữ liệu** | **Ràng buộc**      | **Mô tả**              |
 |--------------|------------------|--------------------|------------------------|

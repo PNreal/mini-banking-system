@@ -15,7 +15,10 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import About from './pages/About';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminCounters from './pages/AdminCounters';
+import AdminEmployees from './pages/AdminEmployees';
 import StaffDashboard from './pages/StaffDashboard';
+import CounterAdminDashboard from './pages/CounterAdminDashboard';
 import AdminLogin from './pages/AdminLogin';
 import StaffLogin from './pages/StaffLogin';
 import Notifications from './pages/Notifications';
@@ -24,7 +27,7 @@ import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import ServerError from './pages/ServerError';
 import './App.css';
-import { loginApi, loginAdminApi, loginStaffApi, registerApi, getAccountInfoApi, getUserInfoApi, depositApi } from './api/client';
+import { loginApi, loginAdminApi, loginStaffApi, registerApi, getAccountInfoApi, getUserInfoApi, depositApi, transferApi } from './api/client';
 
 const initialUser = {
   username: 'BK88 User',
@@ -351,8 +354,8 @@ function App() {
     return true;
   };
 
-  const handleTransfer = (receiver, amount) => {
-    if (!receiver) {
+  const handleTransfer = async (toAccountId, amount, note) => {
+    if (!toAccountId) {
       addFlash('danger', 'Vui lòng nhập số tài khoản người nhận.');
       return false;
     }
@@ -364,9 +367,22 @@ function App() {
       addFlash('warning', 'Số dư không đủ.');
       return false;
     }
-    updateBalance(-amount, `Chuyển khoản tới ${receiver}`);
-    addFlash('success', 'Chuyển khoản thành công (demo).');
-    return true;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await transferApi(token, toAccountId, amount, note);
+      if (response && response.data) {
+        // Cập nhật số dư từ response
+        const newBalance = response.data.newBalance;
+        setUser((prev) => ({ ...prev, balance: newBalance }));
+        addFlash('success', 'Chuyển khoản thành công.');
+        return true;
+      }
+    } catch (error) {
+      addFlash('danger', error.message || 'Chuyển khoản thất bại. Vui lòng thử lại.');
+      return false;
+    }
+    return false;
   };
 
   const handleUpdateProfile = (data) => {
@@ -413,6 +429,18 @@ function App() {
                 <Navigate to="/dashboard" replace />
               ) : (
                 <Home />
+              )
+            }
+          />
+          <Route
+            path="/counter/admin"
+            element={
+              isAuthenticated && (isStaff || isAdmin) ? (
+                <Navigate to="/counter/admin/dashboard" replace />
+              ) : isAuthenticated ? (
+                <Forbidden />
+              ) : (
+                <Navigate to="/staff/login" replace />
               )
             }
           />
@@ -526,10 +554,42 @@ function App() {
             }
           />
           <Route
+            path="/admin/counters"
+            element={
+              isAuthenticated && isAdmin ? (
+                <AdminCounters user={user} />
+              ) : (
+                <Forbidden />
+              )
+            }
+          />
+          <Route
+            path="/admin/employees"
+            element={
+              isAuthenticated && isAdmin ? (
+                <AdminEmployees user={user} />
+              ) : (
+                <Forbidden />
+              )
+            }
+          />
+          <Route
             path="/staff/dashboard"
             element={
               isAuthenticated && (isStaff || isAdmin) ? (
                 <StaffDashboard user={user} />
+              ) : isAuthenticated ? (
+                <Forbidden />
+              ) : (
+                <Navigate to="/staff/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/counter/admin/dashboard"
+            element={
+              isAuthenticated && (isStaff || isAdmin) ? (
+                <CounterAdminDashboard user={user} />
               ) : isAuthenticated ? (
                 <Forbidden />
               ) : (

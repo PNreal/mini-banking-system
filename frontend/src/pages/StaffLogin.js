@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { checkIsCounterAdminApi } from '../api/client';
 
 const StaffLogin = ({ onLogin }) => {
   const [form, setForm] = useState({ email: '', password: '' });
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -12,9 +14,30 @@ const StaffLogin = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const ok = await onLogin(form);
-    if (ok) {
-      navigate('/staff/dashboard');
+    setLoading(true);
+    try {
+      const ok = await onLogin(form);
+      if (ok) {
+        // Kiểm tra xem user có phải là admin quầy không
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        if (token) {
+          try {
+            const isCounterAdmin = await checkIsCounterAdminApi(token);
+            if (isCounterAdmin) {
+              // Nếu là admin quầy, điều hướng đến trang admin quầy
+              navigate('/counter/admin/dashboard');
+              return;
+            }
+          } catch (error) {
+            // Nếu API không có hoặc lỗi, tiếp tục điều hướng bình thường
+            console.log('Could not check counter admin status:', error);
+          }
+        }
+        // Nếu không phải admin quầy, điều hướng đến dashboard nhân viên
+        navigate('/staff/dashboard');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -62,9 +85,18 @@ const StaffLogin = ({ onLogin }) => {
             </fieldset>
 
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <button type="submit" className="btn btn-primary px-4">
-                <i className="fas fa-sign-in-alt me-2"></i>
-                Đăng nhập Nhân viên
+              <button type="submit" className="btn btn-primary px-4" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" />
+                    Đang đăng nhập...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-sign-in-alt me-2"></i>
+                    Đăng nhập Nhân viên
+                  </>
+                )}
               </button>
               <small className="text-muted">
                 <Link to="/login">Đăng nhập khách hàng</Link>

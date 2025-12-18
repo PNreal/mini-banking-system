@@ -1,7 +1,7 @@
-# **MINI BANKING SYSTEM -- API SPECIFICATION (v1.0)** {#mini-banking-system-api-specification-v1.0}
+# **MINI BANKING SYSTEM -- API SPECIFICATION (v1.1)** {#mini-banking-system-api-specification-v1.1}
 
-**Version:** 1.0  
-**Last update:** 2025-12-01  
+**Version:** 1.1  
+**Last update:** 2025-01-XX  
 **Base URL:** /api/v1
 
 # **1. Authentication & Authorization** {#authentication-authorization}
@@ -499,7 +499,55 @@ Một số API yêu cầu **ADMIN ONLY**.
 - INSUFFICIENT_BALANCE - Account balance is insufficient
 - INVALID_AMOUNT - Amount must be greater than 0
 
-## **5.3 Transfer -- Chuyển tiền** {#transfer-chuyển-tiền}
+## **5.3 Validate Account Number -- Kiểm tra số tài khoản** {#validate-account-number-kiểm-tra-số-tài-khoản}
+
+### **GET /accounts/validate**
+
+**Kiểm tra số tài khoản có tồn tại và lấy thông tin người nhận**
+
+**Authentication:** JWT Bearer Token required
+
+**Header:** Authorization: Bearer \<token\>
+
+**Query Parameters:**
+- accountNumber: Required, String, số tài khoản cần kiểm tra (10-20 chữ số)
+
+**HTTP Status Codes:**
+- 200 OK - Account found
+- 400 Bad Request - Invalid account number format
+- 401 Unauthorized - Invalid or missing token
+- 404 Not Found - Account not found
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": {
+    "accountId": "uuid",
+    "accountNumber": "1234567890",
+    "fullName": "Nguyễn Văn A",
+    "status": "ACTIVE"
+  }
+}
+
+**Error Response (404 Not Found):**
+
+{
+  "success": false,
+  "error": {
+    "code": "ACCOUNT_NOT_FOUND",
+    "message": "Account number does not exist",
+    "timestamp": "2025-12-01T12:00:00",
+    "path": "/api/v1/accounts/validate"
+  }
+}
+
+**Validation Rules:**
+- accountNumber: Required, must be 10-20 digits
+- Account must exist in database
+- Returns account information if found
+
+## **5.4 Transfer -- Chuyển tiền** {#transfer-chuyển-tiền}
 
 ### **POST /transactions/transfer**
 
@@ -519,16 +567,20 @@ Một số API yêu cầu **ADMIN ONLY**.
 
 \"toAccountId\": \"uuid-receiver\",
 
-\"amount\": 200000
+\"amount\": 200000,
+
+\"note\": \"Chuyển tiền thanh toán\"
 
 }
 
 **Validation Rules:**
 - toAccountId: Required, must be valid UUID
 - amount: Required, must be > 0, DECIMAL(18,2)
+- note: Optional, String, max 100 characters
 - Sender account status must be ACTIVE
-- Receiver account must exist and be ACTIVE or FROZEN
+- Receiver account must exist and be ACTIVE or FROZEN (LOCKED accounts cannot receive)
 - Sender account balance must be sufficient
+- Cannot transfer to own account
 
 **Response (200 OK):**
 
@@ -580,12 +632,487 @@ Một số API yêu cầu **ADMIN ONLY**.
 - ACCOUNT_FROZEN - Sender account is FROZEN
 - ACCOUNT_LOCKED - Sender account is LOCKED
 - RECEIVER_ACCOUNT_NOT_FOUND - Receiver account does not exist
-- RECEIVER_ACCOUNT_LOCKED - Receiver account is LOCKED
+- RECEIVER_ACCOUNT_LOCKED - Receiver account is LOCKED and cannot receive transfers
 - RECEIVER_ACCOUNT_INVALID_STATUS - Receiver account status is invalid
 - INSUFFICIENT_BALANCE - Sender account balance is insufficient
 - INVALID_AMOUNT - Amount must be greater than 0
+- CANNOT_TRANSFER_TO_SELF - Cannot transfer to own account
 
-## **5.4 Lịch sử giao dịch** {#lịch-sử-giao-dịch}
+**Business Logic:**
+- Transaction is processed immediately (status = SUCCESS)
+- Both sender and receiver balances are updated atomically
+- Transaction is recorded in database with type = TRANSFER
+- If any step fails, entire transaction is rolled back
+
+## **5.5 Counter Deposit -- Nạp tiền ở quầy** {#counter-deposit-nạp-tiền-ở-quầy}
+
+### **POST /transactions/deposit-counter**
+
+**Authentication:** JWT Bearer Token required
+
+**Header:** Authorization: Bearer \<token\>
+
+**HTTP Status Codes:**
+- 200 OK - Success
+- 400 Bad Request - Validation error (counter not found, no staff available)
+- 401 Unauthorized - Invalid or missing token
+
+**Request:**
+
+{
+  "amount": 1000000,
+  "counterId": "uuid-counter-id"
+}
+
+**Validation Rules:**
+- amount: Required, must be > 0, DECIMAL(18,2)
+- counterId: Required, must be valid UUID of an active counter
+- Account status must be ACTIVE
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": {
+    "transactionId": "uuid",
+    "type": "COUNTER_DEPOSIT",
+    "status": "PENDING",
+    "amount": 1000000,
+    "transactionCode": "EMP1234567890123456",
+    "counterId": "uuid-counter-id",
+    "staffId": "uuid-staff-id",
+    "timestamp": "2025-12-01T12:00:00"
+  }
+}
+
+**Error Codes:**
+- COUNTER_NOT_FOUND - Counter does not exist or is inactive
+- COUNTER_NO_STAFF - Counter has no active staff
+- ACCOUNT_FROZEN - Account status is FROZEN
+- INVALID_AMOUNT - Amount must be greater than 0
+
+**Ghi chú:**
+- Hệ thống tự động phân bổ nhân viên từ quầy đã chọn (nhân viên có ít đơn PENDING nhất)
+- Mã giao dịch được tạo theo format: `mã nhân viên + 4 số cuối CCCD + ngày/tháng/năm (DDMMYY)`
+- Giao dịch có status PENDING cho đến khi nhân viên xác nhận
+
+## **5.5 Confirm Counter Deposit -- Nhân viên xác nhận nạp tiền** {#confirm-counter-deposit-nhân-viên-xác-nhận-nạp-tiền}
+
+### **POST /transactions/deposit-counter/{transactionId}/confirm**
+
+**Authentication:** JWT Bearer Token required (STAFF role)
+
+**Header:** Authorization: Bearer \<token\>
+
+**HTTP Status Codes:**
+- 200 OK - Success
+- 400 Bad Request - Transaction is not pending or staff ID does not match
+- 401 Unauthorized - Invalid or missing token
+- 404 Not Found - Transaction not found
+
+**Path Parameters:**
+- transactionId: UUID of the transaction
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": {
+    "transactionId": "uuid",
+    "type": "COUNTER_DEPOSIT",
+    "status": "SUCCESS",
+    "amount": 1000000,
+    "transactionCode": "EMP1234567890123456",
+    "newBalance": 6000000,
+    "timestamp": "2025-12-01T12:00:00"
+  }
+}
+
+**Error Codes:**
+- TRANSACTION_NOT_FOUND - Transaction does not exist
+- TRANSACTION_NOT_PENDING - Transaction is not in PENDING status
+- STAFF_ID_MISMATCH - Staff ID does not match the assigned staff
+
+**Ghi chú:**
+- Chỉ nhân viên được phân bổ mới có thể xác nhận giao dịch
+- Khi xác nhận, số dư tài khoản được cập nhật ngay lập tức
+- Hệ thống ghi log cho admin qua Kafka topic ADMIN_ACTION
+
+## **5.6 Cancel Counter Deposit -- Hủy giao dịch nạp tiền** {#cancel-counter-deposit-hủy-giao-dịch-nạp-tiền}
+
+### **POST /transactions/deposit-counter/{transactionId}/cancel**
+
+**Authentication:** JWT Bearer Token required
+
+**Header:** Authorization: Bearer \<token\>
+
+**HTTP Status Codes:**
+- 200 OK - Success
+- 400 Bad Request - Transaction is not pending or user does not own the transaction
+- 401 Unauthorized - Invalid or missing token
+- 404 Not Found - Transaction not found
+
+**Path Parameters:**
+- transactionId: UUID of the transaction
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": {
+    "transactionId": "uuid",
+    "type": "COUNTER_DEPOSIT",
+    "status": "CANCELLED",
+    "amount": 1000000,
+    "transactionCode": "EMP1234567890123456",
+    "timestamp": "2025-12-01T12:00:00"
+  }
+}
+
+**Error Codes:**
+- TRANSACTION_NOT_FOUND - Transaction does not exist
+- TRANSACTION_NOT_PENDING - Only pending transactions can be cancelled
+- UNAUTHORIZED_CANCELLATION - User can only cancel their own transactions
+
+**Ghi chú:**
+- Chỉ user sở hữu tài khoản mới được hủy giao dịch của mình
+- Chỉ giao dịch PENDING mới được hủy
+- Hệ thống gửi thông báo đến nhân viên khi user hủy giao dịch
+
+## **5.7 Counter Management -- Quản lý quầy giao dịch** {#counter-management-quản-lý-quầy-giao-dịch}
+
+### **GET /counters**
+
+**Authentication:** JWT Bearer Token required
+
+**Header:** Authorization: Bearer \<token\>
+
+**HTTP Status Codes:**
+- 200 OK - Success
+- 401 Unauthorized - Invalid or missing token
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": [
+    {
+      "counterId": "uuid",
+      "name": "Quầy giao dịch số 1",
+      "address": "123 Đường ABC, Quận 1, TP.HCM",
+      "maxStaff": 10,
+      "isActive": true,
+      "createdAt": "2025-12-01T12:00:00",
+      "updatedAt": "2025-12-01T12:00:00"
+    }
+  ]
+}
+
+### **GET /counters/{counterId}**
+
+**Authentication:** JWT Bearer Token required
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": {
+    "counterId": "uuid",
+    "name": "Quầy giao dịch số 1",
+    "address": "123 Đường ABC, Quận 1, TP.HCM",
+    "maxStaff": 10,
+    "isActive": true,
+    "createdAt": "2025-12-01T12:00:00",
+    "updatedAt": "2025-12-01T12:00:00"
+  }
+}
+
+### **GET /counters/{counterId}/staff**
+
+**Authentication:** JWT Bearer Token required
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": [
+    "uuid-staff-1",
+    "uuid-staff-2"
+  ]
+}
+
+## **5.8 Admin Counter Management -- Quản lý quầy giao dịch (Admin Only)** {#admin-counter-management-quản-lý-quầy-giao-dịch-admin-only}
+
+**Lưu ý:** Tất cả các API trong phần này yêu cầu quyền ADMIN.
+
+### **POST /admin/counters**
+
+**Tạo quầy giao dịch mới**
+
+**Authentication:** JWT Bearer Token required (ADMIN only)
+
+**Request Body:**
+
+{
+  "name": "Quầy giao dịch số 1",
+  "address": "123 Đường ABC, Quận 1, TP.HCM"
+}
+
+**Validation Rules:**
+- name: Required, String, max 100 characters
+- address: Optional, String, max 200 characters
+
+**HTTP Status Codes:**
+- 201 Created - Counter created successfully
+- 400 Bad Request - Validation error
+- 401 Unauthorized - Invalid or missing token
+- 403 Forbidden - Not admin role
+
+**Response (201 Created):**
+
+{
+  "success": true,
+  "data": {
+    "counterId": "uuid",
+    "name": "Quầy giao dịch số 1",
+    "address": "123 Đường ABC, Quận 1, TP.HCM",
+    "maxStaff": 10,
+    "isActive": true,
+    "createdAt": "2025-12-01T12:00:00",
+    "updatedAt": "2025-12-01T12:00:00"
+  }
+}
+
+### **PUT /admin/counters/{counterId}**
+
+**Cập nhật thông tin quầy giao dịch**
+
+**Authentication:** JWT Bearer Token required (ADMIN only)
+
+**Request Body:**
+
+{
+  "name": "Quầy giao dịch số 1 (Đã cập nhật)",
+  "address": "456 Đường XYZ, Quận 2, TP.HCM"
+}
+
+**Validation Rules:**
+- name: Required, String, max 100 characters
+- address: Optional, String, max 200 characters
+
+**HTTP Status Codes:**
+- 200 OK - Counter updated successfully
+- 400 Bad Request - Validation error
+- 401 Unauthorized - Invalid or missing token
+- 403 Forbidden - Not admin role
+- 404 Not Found - Counter not found
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": {
+    "counterId": "uuid",
+    "name": "Quầy giao dịch số 1 (Đã cập nhật)",
+    "address": "456 Đường XYZ, Quận 2, TP.HCM",
+    "maxStaff": 10,
+    "isActive": true,
+    "createdAt": "2025-12-01T12:00:00",
+    "updatedAt": "2025-12-01T13:00:00"
+  }
+}
+
+### **DELETE /admin/counters/{counterId}**
+
+**Xóa quầy giao dịch**
+
+**Authentication:** JWT Bearer Token required (ADMIN only)
+
+**HTTP Status Codes:**
+- 200 OK - Counter deleted successfully
+- 401 Unauthorized - Invalid or missing token
+- 403 Forbidden - Not admin role
+- 404 Not Found - Counter not found
+- 400 Bad Request - Counter has active transactions or staff
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "message": "Counter deleted successfully"
+}
+
+**Error Response (400 Bad Request):**
+
+{
+  "success": false,
+  "error": {
+    "code": "COUNTER_HAS_ACTIVE_STAFF",
+    "message": "Cannot delete counter with active staff. Please remove all staff first.",
+    "timestamp": "2025-12-01T12:00:00"
+  }
+}
+
+### **GET /admin/counters/{counterId}**
+
+**Lấy chi tiết quầy giao dịch (bao gồm danh sách nhân viên)**
+
+**Authentication:** JWT Bearer Token required (ADMIN only)
+
+**HTTP Status Codes:**
+- 200 OK - Success
+- 401 Unauthorized - Invalid or missing token
+- 403 Forbidden - Not admin role
+- 404 Not Found - Counter not found
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": {
+    "counterId": "uuid",
+    "name": "Quầy giao dịch số 1",
+    "address": "123 Đường ABC, Quận 1, TP.HCM",
+    "maxStaff": 10,
+    "isActive": true,
+    "createdAt": "2025-12-01T12:00:00",
+    "updatedAt": "2025-12-01T12:00:00",
+    "staff": [
+      {
+        "staffId": "uuid-staff-1",
+        "staffCode": "NV001",
+        "staffName": "Nguyễn Văn A"
+      },
+      {
+        "staffId": "uuid-staff-2",
+        "staffCode": "NV002",
+        "staffName": "Trần Thị B"
+      }
+    ]
+  }
+}
+
+## **5.9 Admin Staff Management -- Quản lý nhân viên trong quầy (Admin Only)** {#admin-staff-management-quản-lý-nhân-viên-trong-quầy-admin-only}
+
+**Lưu ý:** Tất cả các API trong phần này yêu cầu quyền ADMIN.
+
+### **POST /admin/counters/{counterId}/staff**
+
+**Thêm nhân viên vào quầy giao dịch**
+
+**Authentication:** JWT Bearer Token required (ADMIN only)
+
+**Request Body:**
+
+{
+  "staffCode": "NV001",
+  "staffName": "Nguyễn Văn A"
+}
+
+**Validation Rules:**
+- staffCode: Required, String, max 20 characters, unique within counter
+- staffName: Required, String, max 100 characters
+
+**HTTP Status Codes:**
+- 201 Created - Staff added successfully
+- 400 Bad Request - Validation error or counter reached max staff
+- 401 Unauthorized - Invalid or missing token
+- 403 Forbidden - Not admin role
+- 404 Not Found - Counter not found
+
+**Response (201 Created):**
+
+{
+  "success": true,
+  "data": {
+    "staffId": "uuid-staff-1",
+    "staffCode": "NV001",
+    "staffName": "Nguyễn Văn A",
+    "counterId": "uuid-counter-id",
+    "createdAt": "2025-12-01T12:00:00"
+  }
+}
+
+**Error Response (400 Bad Request):**
+
+{
+  "success": false,
+  "error": {
+    "code": "COUNTER_MAX_STAFF_REACHED",
+    "message": "Counter has reached maximum staff capacity",
+    "timestamp": "2025-12-01T12:00:00"
+  }
+}
+
+### **PUT /admin/counters/{counterId}/staff/{staffId}**
+
+**Cập nhật thông tin nhân viên trong quầy**
+
+**Authentication:** JWT Bearer Token required (ADMIN only)
+
+**Request Body:**
+
+{
+  "staffCode": "NV001",
+  "staffName": "Nguyễn Văn A (Đã cập nhật)"
+}
+
+**Validation Rules:**
+- staffCode: Required, String, max 20 characters, unique within counter
+- staffName: Required, String, max 100 characters
+
+**HTTP Status Codes:**
+- 200 OK - Staff updated successfully
+- 400 Bad Request - Validation error
+- 401 Unauthorized - Invalid or missing token
+- 403 Forbidden - Not admin role
+- 404 Not Found - Counter or staff not found
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "data": {
+    "staffId": "uuid-staff-1",
+    "staffCode": "NV001",
+    "staffName": "Nguyễn Văn A (Đã cập nhật)",
+    "counterId": "uuid-counter-id",
+    "updatedAt": "2025-12-01T13:00:00"
+  }
+}
+
+### **DELETE /admin/counters/{counterId}/staff/{staffId}**
+
+**Xóa nhân viên khỏi quầy giao dịch**
+
+**Authentication:** JWT Bearer Token required (ADMIN only)
+
+**HTTP Status Codes:**
+- 200 OK - Staff removed successfully
+- 401 Unauthorized - Invalid or missing token
+- 403 Forbidden - Not admin role
+- 404 Not Found - Counter or staff not found
+- 400 Bad Request - Staff has active transactions
+
+**Response (200 OK):**
+
+{
+  "success": true,
+  "message": "Staff removed from counter successfully"
+}
+
+**Error Response (400 Bad Request):**
+
+{
+  "success": false,
+  "error": {
+    "code": "STAFF_HAS_ACTIVE_TRANSACTIONS",
+    "message": "Cannot remove staff with active transactions",
+    "timestamp": "2025-12-01T12:00:00"
+  }
+}
+
+## **5.10 Lịch sử giao dịch** {#lịch-sử-giao-dịch}
 
 ### **GET /transactions/history**
 
@@ -611,7 +1138,7 @@ Một số API yêu cầu **ADMIN ONLY**.
 **Validation Rules:**
 - page: Must be >= 1
 - size: Must be between 1 and 100
-- type: Must be one of: DEPOSIT, WITHDRAW, TRANSFER
+- type: Must be one of: DEPOSIT, WITHDRAW, TRANSFER, COUNTER_DEPOSIT
 - from, to: Must be valid ISO 8601 date format
 
 ### **Response (200 OK)**

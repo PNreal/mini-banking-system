@@ -25,6 +25,7 @@ public class TransactionResponse {
     private BigDecimal amount;
     private OffsetDateTime timestamp;
     private BigDecimal newBalance;
+    private String transactionCode;
 
     public static TransactionResponse from(Transaction tx) {
         return TransactionResponse.builder()
@@ -35,6 +36,7 @@ public class TransactionResponse {
                 .toAccountId(tx.getToAccountId())
                 .amount(tx.getAmount())
                 .timestamp(tx.getTimestamp())
+                .transactionCode(tx.getTransactionCode())
                 .build();
     }
 

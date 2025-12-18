@@ -1,11 +1,14 @@
 package com.minibank.transactionservice.service;
 
 import com.minibank.transactionservice.client.AccountServiceClient;
+import com.minibank.transactionservice.client.UserServiceClient;
+import com.minibank.transactionservice.service.CounterService;
 import com.minibank.transactionservice.dto.AccountResponse;
 import com.minibank.transactionservice.dto.AccountTransferRequest;
 import com.minibank.transactionservice.dto.PagedResponse;
 import com.minibank.transactionservice.dto.TransactionResponse;
 import com.minibank.transactionservice.dto.UpdateBalanceRequest;
+import com.minibank.transactionservice.dto.UserResponse;
 import com.minibank.transactionservice.entity.Transaction;
 import com.minibank.transactionservice.entity.TransactionStatus;
 import com.minibank.transactionservice.entity.TransactionType;
@@ -23,7 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,6 +38,8 @@ import java.util.UUID;
 public class TransactionService {
 
     private final AccountServiceClient accountServiceClient;
+    private final UserServiceClient userServiceClient;
+    private final CounterService counterService;
     private final TransactionRepository transactionRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -55,6 +62,39 @@ public class TransactionService {
 
         BigDecimal newBalance = account != null ? account.getBalance() : null;
         return TransactionResponse.from(saved).withBalance(newBalance);
+    }
+
+    @Transactional
+    public TransactionResponse depositAtCounter(BigDecimal amount, UUID userId, UUID counterId) {
+        validateAmount(amount);
+        UUID accountId = resolveAccountId(userId);
+
+        // Lấy thông tin user để lấy CCCD
+        UserResponse user = userServiceClient.getUser(userId);
+        if (user == null) {
+            throw new BadRequestException("User not found");
+        }
+
+        // Tự động phân bổ nhân viên từ quầy
+        UUID staffId = counterService.assignStaffFromCounter(counterId);
+        
+        // Lấy employeeCode của nhân viên được phân bổ
+        String employeeCode = counterService.getEmployeeCodeFromUserId(staffId);
+
+        // Tạo mã giao dịch: mã nhân viên + 4 số cuối CCCD + ngày/tháng/năm
+        String transactionCode = generateTransactionCode(employeeCode, user.getCitizenId());
+
+        // Tạo transaction với status PENDING (chờ nhân viên xác nhận)
+        Transaction tx = buildTransaction(null, accountId, amount, TransactionType.COUNTER_DEPOSIT, TransactionStatus.PENDING);
+        tx.setTransactionCode(transactionCode);
+        tx.setCounterId(counterId);
+        tx.setStaffId(staffId);
+        Transaction saved = transactionRepository.save(tx);
+
+        // Gửi thông báo đến nhân viên dựa vào mã giao dịch
+        publishCounterDepositNotification(saved, userId, employeeCode, transactionCode);
+
+        return TransactionResponse.from(saved);
     }
 
     @Transactional
@@ -145,6 +185,23 @@ public class TransactionService {
         }
     }
 
+    private String generateTransactionCode(String employeeCode, String citizenId) {
+        // Lấy 4 số cuối CCCD
+        String lastFourDigits = "";
+        if (citizenId != null && citizenId.length() >= 4) {
+            lastFourDigits = citizenId.substring(citizenId.length() - 4);
+        } else {
+            lastFourDigits = "0000"; // Default nếu không có CCCD
+        }
+
+        // Lấy ngày/tháng/năm hiện tại (format: DDMMYY)
+        LocalDate now = LocalDate.now();
+        String dateStr = now.format(DateTimeFormatter.ofPattern("ddMMyy"));
+
+        // Mã giao dịch = mã nhân viên + 4 số cuối CCCD + ngày/tháng/năm
+        return (employeeCode != null ? employeeCode : "EMP") + lastFourDigits + dateStr;
+    }
+
     private Transaction buildTransaction(UUID from, UUID to, BigDecimal amount, TransactionType type, TransactionStatus status) {
         Transaction tx = new Transaction();
         tx.setFromAccountId(from);
@@ -154,6 +211,78 @@ public class TransactionService {
         tx.setStatus(status);
         tx.setTimestamp(OffsetDateTime.now());
         return tx;
+    }
+
+    /**
+     * Nhân viên xác nhận đã nhận tiền ở quầy
+     */
+    @Transactional
+    public TransactionResponse confirmCounterDeposit(UUID transactionId, UUID staffId) {
+        Transaction tx = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new NotFoundException("Transaction not found"));
+
+        if (tx.getType() != TransactionType.COUNTER_DEPOSIT) {
+            throw new BadRequestException("Transaction is not a counter deposit");
+        }
+
+        if (tx.getStatus() != TransactionStatus.PENDING) {
+            throw new BadRequestException("Transaction is not pending");
+        }
+
+        if (!tx.getStaffId().equals(staffId)) {
+            throw new BadRequestException("Staff ID does not match");
+        }
+
+        // Cập nhật số dư tài khoản
+        AccountResponse account = accountServiceClient.updateBalance(
+                tx.getToAccountId(),
+                new UpdateBalanceRequest(UpdateBalanceRequest.Operation.DEPOSIT, tx.getAmount())
+        );
+
+        // Cập nhật status thành SUCCESS
+        tx.setStatus(TransactionStatus.SUCCESS);
+        Transaction saved = transactionRepository.save(tx);
+
+        // Ghi log cho admin
+        publishCounterDepositConfirmed(saved, staffId);
+
+        // Gửi thông báo hoàn tất
+        publishCompletedEvent(saved, null);
+
+        BigDecimal newBalance = account != null ? account.getBalance() : null;
+        return TransactionResponse.from(saved).withBalance(newBalance);
+    }
+
+    /**
+     * User hủy giao dịch nạp tiền ở quầy (chỉ khi chưa được nhân viên xác nhận)
+     */
+    @Transactional
+    public TransactionResponse cancelCounterDeposit(UUID transactionId, UUID userId) {
+        Transaction tx = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new NotFoundException("Transaction not found"));
+
+        if (tx.getType() != TransactionType.COUNTER_DEPOSIT) {
+            throw new BadRequestException("Transaction is not a counter deposit");
+        }
+
+        if (tx.getStatus() != TransactionStatus.PENDING) {
+            throw new BadRequestException("Only pending transactions can be cancelled");
+        }
+
+        // Kiểm tra user có quyền hủy giao dịch này không (phải là chủ tài khoản nhận tiền)
+        UUID accountId = resolveAccountId(userId);
+        if (!accountId.equals(tx.getToAccountId())) {
+            throw new BadRequestException("You can only cancel your own transactions");
+        }
+
+        // Cập nhật status thành CANCELLED
+        tx.setStatus(TransactionStatus.CANCELLED);
+        Transaction saved = transactionRepository.save(tx);
+
+        // Gửi thông báo đến nhân viên về việc hủy giao dịch
+        publishCounterDepositCancelled(saved, userId);
+
+        return TransactionResponse.from(saved);
     }
 
     private void publishCompletedEvent(Transaction tx, UUID userId) {
@@ -167,12 +296,87 @@ public class TransactionService {
                         "type", tx.getType().name(),
                         "timestamp", tx.getTimestamp().toString(),
                         "status", tx.getStatus().name(),
-                        "userId", userId != null ? String.valueOf(userId) : null
+                        "userId", userId != null ? String.valueOf(userId) : null,
+                        "transactionCode", tx.getTransactionCode() != null ? tx.getTransactionCode() : ""
                 );
                 kafkaTemplate.send(completedTopic, tx.getId().toString(), payload);
             }
         } catch (Exception ex) {
             log.warn("Failed to publish transaction completed event for {}", tx.getId(), ex);
+        }
+    }
+
+    private void publishCounterDepositNotification(Transaction tx, UUID userId, String employeeCode, String transactionCode) {
+        try {
+            if (kafkaTemplate != null) {
+                Map<String, Object> payload = new java.util.HashMap<>();
+                payload.put("transactionId", String.valueOf(tx.getId()));
+                payload.put("transactionCode", transactionCode);
+                payload.put("amount", tx.getAmount());
+                payload.put("type", "COUNTER_DEPOSIT");
+                payload.put("status", "PENDING");
+                payload.put("timestamp", tx.getTimestamp().toString());
+                payload.put("userId", userId != null ? String.valueOf(userId) : null);
+                payload.put("staffId", tx.getStaffId() != null ? String.valueOf(tx.getStaffId()) : null);
+                payload.put("counterId", tx.getCounterId() != null ? String.valueOf(tx.getCounterId()) : null);
+                payload.put("employeeCode", employeeCode != null ? employeeCode : "");
+                payload.put("notificationType", "COUNTER_DEPOSIT_REQUEST");
+                payload.put("message", String.format("Yêu cầu nạp tiền ở quầy với mã giao dịch: %s, số tiền: %s", transactionCode, tx.getAmount()));
+                // Gửi đến topic riêng cho thông báo nhân viên
+                kafkaTemplate.send("COUNTER_DEPOSIT_NOTIFICATION", transactionCode, payload);
+                log.info("Published counter deposit notification for transaction code: {}", transactionCode);
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to publish counter deposit notification for {}", transactionCode, ex);
+        }
+    }
+
+    private void publishCounterDepositConfirmed(Transaction tx, UUID staffId) {
+        try {
+            if (kafkaTemplate != null) {
+                Map<String, Object> payload = new java.util.HashMap<>();
+                payload.put("transactionId", String.valueOf(tx.getId()));
+                payload.put("transactionCode", tx.getTransactionCode() != null ? tx.getTransactionCode() : "");
+                payload.put("amount", tx.getAmount());
+                payload.put("type", "COUNTER_DEPOSIT_CONFIRMED");
+                payload.put("status", "SUCCESS");
+                payload.put("timestamp", tx.getTimestamp().toString());
+                payload.put("staffId", staffId != null ? String.valueOf(staffId) : null);
+                payload.put("counterId", tx.getCounterId() != null ? String.valueOf(tx.getCounterId()) : null);
+                payload.put("logType", "ADMIN_LOG");
+                payload.put("message", String.format("Nhân viên %s đã xác nhận nạp tiền ở quầy với mã giao dịch: %s, số tiền: %s", 
+                        staffId, tx.getTransactionCode(), tx.getAmount()));
+                // Gửi log đến admin
+                kafkaTemplate.send("ADMIN_ACTION", tx.getId().toString(), payload);
+                log.info("Published counter deposit confirmed log for transaction: {}", tx.getId());
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to publish counter deposit confirmed log for {}", tx.getId(), ex);
+        }
+    }
+
+    private void publishCounterDepositCancelled(Transaction tx, UUID userId) {
+        try {
+            if (kafkaTemplate != null) {
+                Map<String, Object> payload = new java.util.HashMap<>();
+                payload.put("transactionId", String.valueOf(tx.getId()));
+                payload.put("transactionCode", tx.getTransactionCode() != null ? tx.getTransactionCode() : "");
+                payload.put("amount", tx.getAmount());
+                payload.put("type", "COUNTER_DEPOSIT_CANCELLED");
+                payload.put("status", "CANCELLED");
+                payload.put("timestamp", tx.getTimestamp().toString());
+                payload.put("userId", userId != null ? String.valueOf(userId) : null);
+                payload.put("staffId", tx.getStaffId() != null ? String.valueOf(tx.getStaffId()) : null);
+                payload.put("counterId", tx.getCounterId() != null ? String.valueOf(tx.getCounterId()) : null);
+                payload.put("notificationType", "COUNTER_DEPOSIT_CANCELLED");
+                payload.put("message", String.format("User đã hủy yêu cầu nạp tiền ở quầy với mã giao dịch: %s, số tiền: %s", 
+                        tx.getTransactionCode(), tx.getAmount()));
+                // Gửi thông báo đến nhân viên
+                kafkaTemplate.send("COUNTER_DEPOSIT_NOTIFICATION", tx.getTransactionCode(), payload);
+                log.info("Published counter deposit cancelled notification for transaction: {}", tx.getId());
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to publish counter deposit cancelled notification for {}", tx.getId(), ex);
         }
     }
 }

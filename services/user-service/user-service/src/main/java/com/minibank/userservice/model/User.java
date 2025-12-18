@@ -41,6 +41,12 @@ public class User {
     @Column(nullable = false, length = 20)
     private String role = "CUSTOMER";
 
+    @Column(length = 20)
+    private String citizenId; // CCCD/CMND
+
+    @Column(length = 20)
+    private String employeeCode; // Mã nhân viên (cho STAFF/ADMIN)
+
     private String resetToken;
     private Instant resetTokenExpiry;
 
@@ -176,5 +182,21 @@ public class User {
 
     public void setLoginLockedUntil(Instant loginLockedUntil) {
         this.loginLockedUntil = loginLockedUntil;
+    }
+
+    public String getCitizenId() {
+        return citizenId;
+    }
+
+    public void setCitizenId(String citizenId) {
+        this.citizenId = citizenId;
+    }
+
+    public String getEmployeeCode() {
+        return employeeCode;
+    }
+
+    public void setEmployeeCode(String employeeCode) {
+        this.employeeCode = employeeCode;
     }
 }

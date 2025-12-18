@@ -166,4 +166,264 @@ export async function depositApi(token, amount) {
   });
 }
 
+export async function getCountersApi(token) {
+  // Lấy danh sách quầy giao dịch
+  // GET /counters
+  return request(GATEWAY_API_BASE, '/counters', {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function depositAtCounterApi(token, amount, counterId) {
+  // Nạp tiền ở quầy
+  // POST /transactions/deposit-counter
+  return request(GATEWAY_API_BASE, '/transactions/deposit-counter', {
+    method: 'POST',
+    body: { amount, counterId },
+    token,
+  });
+}
+
+export async function cancelCounterDepositApi(token, transactionId) {
+  // Hủy giao dịch nạp tiền ở quầy
+  // POST /transactions/deposit-counter/{transactionId}/cancel
+  return request(GATEWAY_API_BASE, `/transactions/deposit-counter/${transactionId}/cancel`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function validateAccountNumberApi(token, accountNumber) {
+  // Kiểm tra số tài khoản có tồn tại và lấy thông tin
+  // GET /accounts/validate?accountNumber={accountNumber}
+  return request(GATEWAY_API_BASE, `/accounts/validate?accountNumber=${accountNumber}`, {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function transferApi(token, toAccountId, amount, note) {
+  // Chuyển tiền từ tài khoản hiện tại đến tài khoản khác
+  // POST /transactions/transfer
+  return request(GATEWAY_API_BASE, '/transactions/transfer', {
+    method: 'POST',
+    body: { toAccountId, amount, note },
+    token,
+  });
+}
+
+// ========== Admin Counter Management APIs ==========
+
+export async function createCounterApi(token, payload) {
+  // Tạo quầy giao dịch mới
+  // POST /admin/counters
+  return request(GATEWAY_API_BASE, '/admin/counters', {
+    method: 'POST',
+    body: payload,
+    token,
+  });
+}
+
+export async function updateCounterApi(token, counterId, payload) {
+  // Cập nhật thông tin quầy giao dịch
+  // PUT /admin/counters/{counterId}
+  return request(GATEWAY_API_BASE, `/admin/counters/${counterId}`, {
+    method: 'PUT',
+    body: payload,
+    token,
+  });
+}
+
+export async function deleteCounterApi(token, counterId) {
+  // Xóa quầy giao dịch
+  // DELETE /admin/counters/{counterId}
+  return request(GATEWAY_API_BASE, `/admin/counters/${counterId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export async function getCounterDetailsApi(token, counterId) {
+  // Lấy chi tiết quầy giao dịch (bao gồm danh sách nhân viên)
+  // GET /admin/counters/{counterId}
+  return request(GATEWAY_API_BASE, `/admin/counters/${counterId}`, {
+    method: 'GET',
+    token,
+  });
+}
+
+// ========== Admin Staff Management APIs ==========
+
+export async function addStaffToCounterApi(token, counterId, payload) {
+  // Thêm nhân viên vào quầy giao dịch
+  // POST /admin/counters/{counterId}/staff
+  return request(GATEWAY_API_BASE, `/admin/counters/${counterId}/staff`, {
+    method: 'POST',
+    body: payload,
+    token,
+  });
+}
+
+export async function updateStaffInCounterApi(token, counterId, staffId, payload) {
+  // Cập nhật thông tin nhân viên trong quầy
+  // PUT /admin/counters/{counterId}/staff/{staffId}
+  return request(GATEWAY_API_BASE, `/admin/counters/${counterId}/staff/${staffId}`, {
+    method: 'PUT',
+    body: payload,
+    token,
+  });
+}
+
+export async function removeStaffFromCounterApi(token, counterId, staffId) {
+  // Xóa nhân viên khỏi quầy giao dịch
+  // DELETE /admin/counters/{counterId}/staff/{staffId}
+  return request(GATEWAY_API_BASE, `/admin/counters/${counterId}/staff/${staffId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+// ========== Admin Employee Management APIs ==========
+
+export async function getEmployeesApi(token) {
+  // Lấy danh sách tất cả nhân viên
+  // GET /admin/employees
+  return request(GATEWAY_API_BASE, '/admin/employees', {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function getEmployeeByIdApi(token, employeeId) {
+  // Lấy thông tin chi tiết nhân viên
+  // GET /admin/employees/{employeeId}
+  return request(GATEWAY_API_BASE, `/admin/employees/${employeeId}`, {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function createEmployeeApi(token, payload) {
+  // Tạo nhân viên mới
+  // POST /admin/employees
+  return request(GATEWAY_API_BASE, '/admin/employees', {
+    method: 'POST',
+    body: payload,
+    token,
+  });
+}
+
+export async function updateEmployeeApi(token, employeeId, payload) {
+  // Cập nhật thông tin nhân viên
+  // PUT /admin/employees/{employeeId}
+  return request(GATEWAY_API_BASE, `/admin/employees/${employeeId}`, {
+    method: 'PUT',
+    body: payload,
+    token,
+  });
+}
+
+export async function deleteEmployeeApi(token, employeeId) {
+  // Xóa nhân viên
+  // DELETE /admin/employees/{employeeId}
+  return request(GATEWAY_API_BASE, `/admin/employees/${employeeId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export async function toggleEmployeeStatusApi(token, employeeId, status) {
+  // Thay đổi trạng thái nhân viên (ACTIVE/INACTIVE)
+  // PATCH /admin/employees/{employeeId}/status
+  return request(GATEWAY_API_BASE, `/admin/employees/${employeeId}/status`, {
+    method: 'PATCH',
+    body: { status },
+    token,
+  });
+}
+
+// ========== Counter Admin APIs ==========
+
+export async function getCounterByAdminApi(token) {
+  // Lấy thông tin quầy mà user là admin
+  // GET /counter/admin/my-counter
+  return request(GATEWAY_API_BASE, '/counter/admin/my-counter', {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function checkIsCounterAdminApi(token) {
+  // Kiểm tra xem user có phải là admin quầy không
+  // GET /counter/admin/check
+  try {
+    const response = await request(GATEWAY_API_BASE, '/counter/admin/check', {
+      method: 'GET',
+      token,
+    });
+    return response?.data || false;
+  } catch (error) {
+    // Nếu API không tồn tại hoặc lỗi, trả về false
+    return false;
+  }
+}
+
+export async function getCounterStaffApi(token, counterId) {
+  // Lấy danh sách nhân viên trong quầy (cho counter admin)
+  // GET /counter/admin/{counterId}/staff
+  return request(GATEWAY_API_BASE, `/counter/admin/${counterId}/staff`, {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function addCounterStaffApi(token, counterId, payload) {
+  // Thêm nhân viên vào quầy (counter admin)
+  // POST /counter/admin/{counterId}/staff
+  return request(GATEWAY_API_BASE, `/counter/admin/${counterId}/staff`, {
+    method: 'POST',
+    body: payload,
+    token,
+  });
+}
+
+export async function updateCounterStaffApi(token, counterId, staffId, payload) {
+  // Cập nhật nhân viên trong quầy (counter admin)
+  // PUT /counter/admin/{counterId}/staff/{staffId}
+  return request(GATEWAY_API_BASE, `/counter/admin/${counterId}/staff/${staffId}`, {
+    method: 'PUT',
+    body: payload,
+    token,
+  });
+}
+
+export async function removeCounterStaffApi(token, counterId, staffId) {
+  // Xóa nhân viên khỏi quầy (counter admin)
+  // DELETE /counter/admin/{counterId}/staff/{staffId}
+  return request(GATEWAY_API_BASE, `/counter/admin/${counterId}/staff/${staffId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export async function getCounterTransactionsApi(token, counterId, params = {}) {
+  // Lấy danh sách giao dịch của quầy (counter admin)
+  // GET /counter/admin/{counterId}/transactions
+  const queryParams = new URLSearchParams(params).toString();
+  return request(GATEWAY_API_BASE, `/counter/admin/${counterId}/transactions${queryParams ? '?' + queryParams : ''}`, {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function getCounterStatsApi(token, counterId) {
+  // Lấy thống kê quầy (counter admin)
+  // GET /counter/admin/{counterId}/stats
+  return request(GATEWAY_API_BASE, `/counter/admin/${counterId}/stats`, {
+    method: 'GET',
+    token,
+  });
+}
+
 

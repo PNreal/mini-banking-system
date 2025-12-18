@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCountersApi, depositAtCounterApi } from '../api/client';
 
 const Deposit = ({ balance, onSubmit, isFrozen }) => {
   const [amount, setAmount] = useState('');
   const [depositMethod, setDepositMethod] = useState(null); // 'bank', 'ewallet', 'qrcode'
   const [selectedSource, setSelectedSource] = useState(null);
+  const [selectedCounter, setSelectedCounter] = useState(null);
+  const [counters, setCounters] = useState([]);
+  const [loadingCounters, setLoadingCounters] = useState(false);
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
@@ -42,7 +46,32 @@ const Deposit = ({ balance, onSubmit, isFrozen }) => {
     }
   };
 
-  const isValidForm = amount && parseFloat(amount) > 0 && depositMethod && (depositMethod === 'bank' || depositMethod === 'qrcode' || selectedSource !== null);
+  const isValidForm = amount && parseFloat(amount) > 0 && depositMethod && 
+    (depositMethod === 'bank' ? selectedCounter !== null : 
+     depositMethod === 'qrcode' ? true : 
+     selectedSource !== null);
+
+  // Load danh sách quầy khi chọn phương thức nạp tiền ở quầy
+  useEffect(() => {
+    if (depositMethod === 'bank') {
+      loadCounters();
+    }
+  }, [depositMethod]);
+
+  const loadCounters = async () => {
+    setLoadingCounters(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await getCountersApi(token);
+      if (response && response.data) {
+        setCounters(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load counters:', error);
+    } finally {
+      setLoadingCounters(false);
+    }
+  };
 
   const formatCurrency = (num) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -73,10 +102,26 @@ const Deposit = ({ balance, onSubmit, isFrozen }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isValidForm || isFrozen) return;
     
+    // Nếu là nạp tiền ở quầy, gọi API riêng
+    if (depositMethod === 'bank' && selectedCounter) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await depositAtCounterApi(token, parseFloat(amount), selectedCounter);
+        if (response && response.data) {
+          alert(`Yêu cầu nạp tiền đã được tạo. Mã giao dịch: ${response.data.transactionCode || 'N/A'}`);
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        alert('Lỗi khi tạo yêu cầu nạp tiền: ' + error.message);
+      }
+      return;
+    }
+    
+    // Các phương thức khác
     const success = onSubmit(parseFloat(amount));
     if (success) {
       navigate('/dashboard');
@@ -831,68 +876,77 @@ const Deposit = ({ balance, onSubmit, isFrozen }) => {
                 </svg>
               </button>
 
-              {/* QR Code */}
-              <button
-                onClick={() => {
-                  setDepositMethod('qrcode');
-                  setSelectedSource(1);
-                }}
-                className={`method-btn ${depositMethod === 'qrcode' ? 'selected' : ''}`}
-                disabled={isFrozen}
-              >
-                <div className="method-icon-wrapper">
-                  <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                  </svg>
-                </div>
-                <div className="method-info">
-                  <p className="method-name">Quét mã QR</p>
-                  <p className="method-fee">Miễn phí, nhanh chóng</p>
-                </div>
-                <svg className="chevron-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
             </div>
           </div>
 
           {/* Counter Deposit Info */}
           {depositMethod === 'bank' && (
             <div className="deposit-section">
-              <div className="qr-code-container">
-                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏦</div>
-                  <p style={{ fontSize: '1rem', color: '#111827', fontWeight: '600', marginBottom: '0.5rem' }}>
-                    Nạp tiền tại quầy giao dịch
-                  </p>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-                    Vui lòng đến quầy giao dịch gần nhất để thực hiện nạp tiền
-                  </p>
+              <label className="deposit-label">
+                Chọn Quầy Giao Dịch
+              </label>
+              {loadingCounters ? (
+                <p style={{ textAlign: 'center', color: '#6b7280', padding: '1rem' }}>Đang tải danh sách quầy...</p>
+              ) : counters.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#dc2626', padding: '1rem' }}>Không có quầy giao dịch nào khả dụng</p>
+              ) : (
+                <div className="source-list">
+                  {counters.map((counter) => (
+                    <button
+                      key={counter.counterId}
+                      onClick={() => setSelectedCounter(counter.counterId)}
+                      className={`source-btn ${selectedCounter === counter.counterId ? 'selected' : ''}`}
+                      disabled={isFrozen}
+                    >
+                      <div className="source-icon" style={{ background: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)' }}>
+                        🏦
+                      </div>
+                      <div className="source-info">
+                        <p className="source-name">{counter.name}</p>
+                        <p className="source-detail">{counter.address || 'Địa chỉ không có'}</p>
+                      </div>
+                      {selectedCounter === counter.counterId && (
+                        <svg className="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
                 </div>
-                
-                <div style={{ background: '#f9fafb', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1rem' }}>
-                  <p style={{ fontSize: '0.875rem', color: '#374151', fontWeight: '500', marginBottom: '0.75rem' }}>
-                    Thông tin cần thiết:
-                  </p>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.6' }}>
-                    <p style={{ marginBottom: '0.5rem' }}>• Số tài khoản của bạn</p>
-                    <p style={{ marginBottom: '0.5rem' }}>• Số CMND/CCCD</p>
-                    <p style={{ marginBottom: '0.5rem' }}>• Số tiền cần nạp</p>
-                    <p>• Mã giao dịch (nếu có)</p>
-                  </div>
-                </div>
+              )}
 
-                <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem' }}>
-                    <svg style={{ width: '1rem', height: '1rem', color: '#d97706', marginTop: '0.125rem', flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <p style={{ fontSize: '0.8125rem', color: '#92400e', lineHeight: '1.5' }}>
-                      Sau khi nạp tiền tại quầy, số tiền sẽ được cập nhật vào tài khoản trong vòng 5-10 phút.
+              {selectedCounter && (
+                <div className="qr-code-container" style={{ marginTop: '1rem' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '1rem', color: '#111827', fontWeight: '600', marginBottom: '0.5rem' }}>
+                      Thông tin cần thiết khi đến quầy
                     </p>
                   </div>
+                  
+                  <div style={{ background: '#f9fafb', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '0.875rem', color: '#374151', fontWeight: '500', marginBottom: '0.75rem' }}>
+                      Thông tin cần thiết:
+                    </p>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.6' }}>
+                      <p style={{ marginBottom: '0.5rem' }}>• Số tài khoản của bạn</p>
+                      <p style={{ marginBottom: '0.5rem' }}>• Số CMND/CCCD</p>
+                      <p style={{ marginBottom: '0.5rem' }}>• Số tiền cần nạp</p>
+                      <p>• Mã giao dịch (sẽ được cung cấp sau khi tạo yêu cầu)</p>
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem' }}>
+                      <svg style={{ width: '1rem', height: '1rem', color: '#d97706', marginTop: '0.125rem', flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <p style={{ fontSize: '0.8125rem', color: '#92400e', lineHeight: '1.5' }}>
+                        Hệ thống sẽ tự động phân bổ nhân viên phù hợp. Sau khi nhân viên xác nhận đã nhận tiền, số tiền sẽ được cập nhật vào tài khoản ngay lập tức.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

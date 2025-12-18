@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { checkIsCounterAdminApi } from '../api/client';
 
 const formatAmount = (value) =>
   Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
@@ -14,6 +15,7 @@ const formatDate = (date) =>
   });
 
 const StaffDashboard = ({ user }) => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     todayTransactions: 0,
     todayAmount: 0,
@@ -23,6 +25,23 @@ const StaffDashboard = ({ user }) => {
   const [pendingTransactions, setPendingTransactions] = useState([]);
   const [recentCustomers, setRecentCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCounterAdmin, setIsCounterAdmin] = useState(false);
+
+  useEffect(() => {
+    // Kiểm tra xem user có phải là admin quầy không
+    const checkCounterAdmin = async () => {
+      try {
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        if (token) {
+          const isAdmin = await checkIsCounterAdminApi(token);
+          setIsCounterAdmin(isAdmin);
+        }
+      } catch (error) {
+        console.log('Could not check counter admin status:', error);
+      }
+    };
+    checkCounterAdmin();
+  }, []);
 
   useEffect(() => {
     // Demo data – sau này sẽ thay bằng gọi API thực tế
@@ -114,10 +133,18 @@ const StaffDashboard = ({ user }) => {
             Xin chào {user?.username || 'Nhân viên'}, chúc bạn một ngày làm việc hiệu quả!
           </p>
         </div>
-        <Link to="/dashboard" className="btn btn-outline-secondary">
-          <i className="fas fa-home me-2"></i>
-          Về Dashboard khách hàng
-        </Link>
+        <div className="btn-group">
+          {isCounterAdmin && (
+            <Link to="/counter/admin/dashboard" className="btn btn-primary">
+              <i className="fas fa-building me-2"></i>
+              Quản lý quầy
+            </Link>
+          )}
+          <Link to="/dashboard" className="btn btn-outline-secondary">
+            <i className="fas fa-home me-2"></i>
+            Về Dashboard khách hàng
+          </Link>
+        </div>
       </div>
 
       {/* Thông tin nhân viên + thống kê nhanh */}

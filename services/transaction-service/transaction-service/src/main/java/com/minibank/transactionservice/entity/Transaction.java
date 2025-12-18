@@ -44,6 +44,15 @@ public class Transaction {
     @Column(nullable = false)
     private OffsetDateTime timestamp;
 
+    @Column(length = 50)
+    private String transactionCode;
+
+    @Column(name = "staff_id")
+    private UUID staffId; // ID của nhân viên xử lý (cho COUNTER_DEPOSIT)
+
+    @Column(name = "counter_id")
+    private UUID counterId; // ID của quầy giao dịch
+
     @PrePersist
     public void prePersist() {
         if (id == null) {

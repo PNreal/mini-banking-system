@@ -11,7 +11,7 @@
 |---------|------------|--------------|---------|
 | **User Service** | ⚠️ **THIẾU** | ~85% | Thiếu logout endpoint |
 | **Account Service** | ⚠️ **THIẾU** | ~80% | Thiếu public endpoints (/account/me, /account/status) |
-| **Transaction Service** | ⚠️ **THIẾU** | ~90% | Thiếu GET /transactions/{id} |
+| **Transaction Service** | ✅ **ĐẦY ĐỦ** | 100% | Đã thêm nạp tiền ở quầy, quản lý quầy, xác nhận/hủy giao dịch |
 | **Admin Service** | ✅ **ĐẦY ĐỦ** | 100% | Đầy đủ theo yêu cầu |
 | **Log Service** | ✅ **ĐẦY ĐỦ** | 100% | Đầy đủ theo yêu cầu |
 | **Notification Service** | ✅ **ĐẦY ĐỦ** | 100% | Đã hoàn thiện với WebSocket |
@@ -83,17 +83,26 @@ Response: {
 
 ---
 
-### 3. TRANSACTION SERVICE ⚠️
+### 3. TRANSACTION SERVICE ✅
 
 #### ✅ Đã có:
 - ✅ POST `/api/v1/transactions/deposit` - Nạp tiền
 - ✅ POST `/api/v1/transactions/withdraw` - Rút tiền
 - ✅ POST `/api/v1/transactions/transfer` - Chuyển khoản
 - ✅ GET `/api/v1/transactions/history` - Lịch sử giao dịch (với pagination, filter)
+- ✅ GET `/api/v1/transactions/{transactionId}` - Lấy chi tiết giao dịch
+- ✅ POST `/api/v1/transactions/deposit-counter` - Nạp tiền ở quầy (mới)
+- ✅ POST `/api/v1/transactions/deposit-counter/{transactionId}/confirm` - Nhân viên xác nhận nạp tiền (mới)
+- ✅ POST `/api/v1/transactions/deposit-counter/{transactionId}/cancel` - User hủy giao dịch nạp tiền (mới)
+- ✅ GET `/api/v1/counters` - Lấy danh sách quầy giao dịch (mới)
+- ✅ GET `/api/v1/counters/{counterId}` - Lấy thông tin quầy (mới)
+- ✅ GET `/api/v1/counters/{counterId}/staff` - Lấy danh sách nhân viên trong quầy (mới)
 
-#### ❌ Thiếu:
-- ❌ **GET `/api/v1/transactions/{transactionId}`** - Lấy chi tiết giao dịch (theo API Spec line 653)
-- ❌ **GET `/api/v1/transactions/me`** - Có thể cần alias cho history (optional)
+#### ⚠️ Tính năng mới đã thêm:
+- ✅ **Nạp tiền ở quầy**: User chọn quầy, hệ thống tự động phân bổ nhân viên
+- ✅ **Phân bổ nhân viên thông minh**: Chọn nhân viên có ít đơn PENDING nhất, nếu bằng nhau thì random
+- ✅ **Xác nhận và hủy giao dịch**: Nhân viên xác nhận đã nhận tiền, user có thể hủy bất cứ lúc nào khi chưa xác nhận
+- ✅ **Quản lý quầy**: Quầy giao dịch với số nhân viên tối đa do admin quyết định
 
 **File:** `TransactionController.java`
 
