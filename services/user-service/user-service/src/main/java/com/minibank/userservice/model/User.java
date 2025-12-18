@@ -38,6 +38,9 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Column(nullable = false, length = 20)
+    private String role = "CUSTOMER";
+
     private String resetToken;
     private Instant resetTokenExpiry;
 
@@ -142,5 +145,13 @@ public class User {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }

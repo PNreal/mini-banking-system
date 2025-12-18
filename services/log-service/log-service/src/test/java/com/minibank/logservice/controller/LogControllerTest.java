@@ -1,6 +1,7 @@
 package com.minibank.logservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.minibank.logservice.config.AppConfig;
 import com.minibank.logservice.dto.LogResponse;
 import com.minibank.logservice.exception.GlobalExceptionHandler;
 import com.minibank.logservice.service.LogService;
@@ -26,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(LogController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, AppConfig.class})
 class LogControllerTest {
 
     @Autowired

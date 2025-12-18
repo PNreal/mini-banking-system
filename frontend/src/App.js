@@ -15,11 +15,15 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import About from './pages/About';
 import AdminDashboard from './pages/AdminDashboard';
+import StaffDashboard from './pages/StaffDashboard';
+import AdminLogin from './pages/AdminLogin';
+import StaffLogin from './pages/StaffLogin';
 import Notifications from './pages/Notifications';
 import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import ServerError from './pages/ServerError';
 import './App.css';
+import { loginApi, loginAdminApi, loginStaffApi, registerApi } from './api/client';
 
 const initialUser = {
   username: 'BK88 User',
@@ -32,8 +36,9 @@ const initialUser = {
 
 function App() {
   const [user, setUser] = useState(initialUser);
+  const [authToken, setAuthToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false); // Demo: set true để test admin pages
+  const [isAdmin, setIsAdmin] = useState(false);
   const [flashMessages, setFlashMessages] = useState([]);
   const [transactions, setTransactions] = useState(() => [
     {
@@ -60,25 +65,72 @@ function App() {
     setFlashMessages((prev) => [...prev, { id: Date.now() + Math.random(), type, text }]);
   };
 
-  const handleLogin = (form) => {
-    setIsAuthenticated(true);
-    setUser((prev) => ({ ...prev, email: form.email }));
-    addFlash('success', 'Đăng nhập thành công (demo).');
+  const handleLogin = async (form) => {
+    return doLogin(form, loginApi);
   };
 
-  const handleRegister = (form) => {
-    setIsAuthenticated(true);
-    setUser((prev) => ({
-      ...prev,
-      username: form.username,
-      email: form.email,
-    }));
-    addFlash('success', 'Đăng ký thành công (demo).');
+  const handleAdminLogin = async (form) => {
+    return doLogin(form, loginAdminApi);
+  };
+
+  const handleStaffLogin = async (form) => {
+    return doLogin(form, loginStaffApi);
+  };
+
+  const doLogin = async (form, loginFn) => {
+    try {
+      const data = await loginFn({
+        email: form.email,
+        password: form.password,
+      });
+
+      const token = data?.token || data?.accessToken || data?.jwt;
+      const profile = data?.user || data?.profile || {};
+      const role = data?.role || profile.role;
+
+      if (!token) {
+        throw new Error('Phản hồi đăng nhập không hợp lệ từ máy chủ.');
+      }
+
+      setAuthToken(token);
+      setIsAuthenticated(true);
+      setIsAdmin(role === 'ADMIN');
+      setUser((prev) => ({
+        ...prev,
+        ...profile,
+        email: profile.email || form.email,
+        role: role,
+      }));
+
+      addFlash('success', 'Đăng nhập thành công.');
+      return true;
+    } catch (error) {
+      addFlash('danger', `Đăng nhập thất bại: ${error.message}`);
+      return false;
+    }
+  };
+
+  const handleRegister = async (form) => {
+    try {
+      await registerApi({
+        fullName: form.username,
+        email: form.email,
+        password: form.password,
+      });
+
+      addFlash('success', 'Đăng ký thành công. Vui lòng đăng nhập.');
+      return true;
+    } catch (error) {
+      addFlash('danger', `Đăng ký thất bại: ${error.message}`);
+      return false;
+    }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    addFlash('info', 'Bạn đã đăng xuất (demo).');
+    setIsAdmin(false);
+    setAuthToken(null);
+    addFlash('info', 'Bạn đã đăng xuất.');
   };
 
   const updateBalance = (delta, typeLabel) => {
@@ -206,6 +258,10 @@ function App() {
             }
           />
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/admin/login" element={<AdminLogin onLogin={handleAdminLogin} />} />
+          <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/staff/login" element={<StaffLogin onLogin={handleStaffLogin} />} />
+          <Route path="/staff" element={<Navigate to="/staff/login" replace />} />
           <Route path="/register" element={<Register onRegister={handleRegister} />} />
           <Route
             path="/deposit"
@@ -247,6 +303,16 @@ function App() {
                 <AdminDashboard user={user} />
               ) : (
                 <Forbidden />
+              )
+            }
+          />
+          <Route
+            path="/staff/dashboard"
+            element={
+              isAuthenticated ? (
+                <StaffDashboard user={user} />
+              ) : (
+                <Navigate to="/" replace />
               )
             }
           />

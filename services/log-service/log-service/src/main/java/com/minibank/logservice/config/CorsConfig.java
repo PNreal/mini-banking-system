@@ -20,8 +20,14 @@ public class CorsConfig {
         // Allow credentials
         config.setAllowCredentials(true);
         
-        // Allow all origins (in production, specify exact origins)
-        config.setAllowedOriginPatterns(List.of("*"));
+        // Allow specific origins (cannot use "*" when allowCredentials is true)
+        // For development, allow localhost. In production, specify exact origins
+        config.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",
+            "http://localhost:8080",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8080"
+        ));
         
         // Allow all headers
         config.setAllowedHeaders(List.of("*"));

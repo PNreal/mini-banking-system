@@ -8,7 +8,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -32,7 +31,7 @@ public class AccountServiceClient {
             headers.set("X-Internal-Secret", internalSecret);
             HttpEntity<CreateAccountRequest> entity = new HttpEntity<>(request, headers);
 
-            ResponseEntity<Void> response = restTemplate.exchange(
+            restTemplate.exchange(
                     accountServiceUrl + "/internal/accounts/create",
                     HttpMethod.POST,
                     entity,
@@ -40,8 +39,9 @@ public class AccountServiceClient {
             );
             log.debug("Account creation triggered for user {}", request.getUserId());
         } catch (Exception ex) {
-            log.error("Failed to create account for user {}", request.getUserId(), ex);
-            throw new RuntimeException("Failed to create account for user");
+            // Không chặn flow đăng ký nếu Account Service tạm thời không khả dụng.
+            // Chỉ log lỗi để có thể xử lý tạo tài khoản lại sau (retry / batch).
+            log.error("Failed to create account for user {} (will not block registration)", request.getUserId(), ex);
         }
     }
 }

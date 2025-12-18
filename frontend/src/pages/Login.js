@@ -10,10 +10,12 @@ const Login = ({ onLogin }) => {
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onLogin(form);
-    navigate('/');
+    const ok = await onLogin(form);
+    if (ok) {
+      navigate('/');
+    }
   };
 
   return (

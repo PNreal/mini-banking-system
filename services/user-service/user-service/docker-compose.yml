@@ -20,41 +20,6 @@ services:
       timeout: 5s
       retries: 5
 
-  zookeeper-user:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: user-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2183
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2183:2183"
-    networks:
-      - banking-network
-
-  kafka-user:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: user-kafka
-    depends_on:
-      zookeeper-user:
-        condition: service_started
-    ports:
-      - "9093:9093"
-      - "29093:29093"
-    environment:
-      KAFKA_BROKER_ID: 3
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-user:2183
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093,PLAINTEXT_INTERNAL://kafka-user:29093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    networks:
-      - banking-network
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9093"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   user-service:
     build:
       context: .
@@ -63,13 +28,12 @@ services:
     depends_on:
       postgres-user:
         condition: service_healthy
-      kafka-user:
-        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-user:5432/user_db
       SPRING_DATASOURCE_USERNAME: user_user
       SPRING_DATASOURCE_PASSWORD: user_password
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-user:29093
+      # Sử dụng Kafka chung được định nghĩa trong docker-compose gốc (service tên 'kafka')
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SPRING_PROFILES_ACTIVE: docker
       INTERNAL_SECRET: internal-secret
     ports:
@@ -82,6 +46,8 @@ volumes:
   postgres_user_data:
 
 networks:
+  # Dùng lại network chung được tạo bởi docker-compose gốc (mini-banking-system_banking-network)
   banking-network:
-    driver: bridge
+    external:
+      name: mini-banking-system_banking-network
 

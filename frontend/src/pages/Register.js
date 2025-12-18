@@ -15,10 +15,23 @@ const Register = ({ onRegister }) => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onRegister(form);
-    navigate('/');
+
+    if (form.password !== form.confirmPassword) {
+      window.alert('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    if (!form.password || form.password.length < 12) {
+      window.alert('Mật khẩu phải có ít nhất 12 ký tự theo yêu cầu hệ thống.');
+      return;
+    }
+
+    const ok = await onRegister(form);
+    if (ok) {
+      navigate('/login');
+    }
   };
 
   return (

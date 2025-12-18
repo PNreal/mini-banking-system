@@ -6,6 +6,7 @@ import lombok.Data;
 public class AuthResponse {
         private String accessToken;
         private String refreshToken;
+        private String role;
 
         public String getAccessToken() {
             return accessToken;
@@ -18,5 +19,11 @@ public class AuthResponse {
         }
         public void setRefreshToken(String refreshToken) {
             this.refreshToken = refreshToken;
+        }
+        public String getRole() {
+            return role;
+        }
+        public void setRole(String role) {
+            this.role = role;
         }
 }

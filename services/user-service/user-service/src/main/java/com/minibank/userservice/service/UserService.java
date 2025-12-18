@@ -61,6 +61,18 @@ public class UserService {
     }
 
     public AuthResponse loginUser(UserLoginRequest request) {
+        return loginWithRole(request, null);
+    }
+
+    public AuthResponse loginAdmin(UserLoginRequest request) {
+        return loginWithRole(request, "ADMIN");
+    }
+
+    public AuthResponse loginStaff(UserLoginRequest request) {
+        return loginWithRole(request, "STAFF");
+    }
+
+    private AuthResponse loginWithRole(UserLoginRequest request, String requiredRole) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
@@ -72,6 +84,11 @@ public class UserService {
         }
         if (user.getStatus() == UserStatus.LOCKED) {
             throw new IllegalStateException("Account is locked");
+        }
+
+        // Kiểm tra role nếu yêu cầu
+        if (requiredRole != null && !requiredRole.equals(user.getRole())) {
+            throw new BadRequestException("Access denied. Required role: " + requiredRole);
         }
 
         String accessToken = jwtService.generateAccessToken(user.getEmail());
@@ -86,6 +103,7 @@ public class UserService {
         AuthResponse response = new AuthResponse();
         response.setAccessToken(accessToken);
         response.setRefreshToken(refreshToken);
+        response.setRole(user.getRole());
         return response;
     }
 

@@ -27,11 +27,9 @@ public class SecurityConfig {
     }
 
     // Public endpoints that don't require authentication
+    // Đơn giản hóa: toàn bộ /api/v1/users/** là public (user-service tự xử lý auth chi tiết)
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/api/v1/users/register",
-            "/api/v1/users/login",
-            "/api/v1/users/forgot-password",
-            "/api/v1/users/reset-password",
+            "/api/v1/users/**",
             "/api/v1/health",
             "/actuator/health",
             "/actuator/info"

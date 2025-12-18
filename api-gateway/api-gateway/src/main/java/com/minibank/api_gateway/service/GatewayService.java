@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
@@ -82,6 +83,23 @@ public class GatewayService {
                     .status(responseEntity.getStatusCode())
                     .headers(responseEntity.getHeaders())
                     .body(responseEntity.getBody());
+
+        } catch (RestClientResponseException ex) {
+            // Trả lại nguyên status + body từ service đích (ví dụ: 400 validation error của user-service)
+            int statusCode = ex.getStatusCode().value();
+            log.warn("Downstream service returned error status: {} with body: {}", statusCode, ex.getResponseBodyAsString());
+
+            HttpHeaders errorHeaders = new HttpHeaders();
+            ex.getResponseHeaders().forEach((key, values) -> {
+                if (!key.equalsIgnoreCase("content-length")) {
+                    errorHeaders.put(key, values);
+                }
+            });
+
+            return ResponseEntity
+                    .status(statusCode)
+                    .headers(errorHeaders)
+                    .body(ex.getResponseBodyAsString());
 
         } catch (Exception e) {
             log.error("Error forwarding request: {}", e.getMessage(), e);

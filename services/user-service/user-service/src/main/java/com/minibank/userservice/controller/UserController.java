@@ -41,6 +41,20 @@ public class UserController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    // --- Đăng nhập Admin ---
+    @PostMapping("/admin/login")
+    public ResponseEntity<AuthResponse> loginAdmin(@Valid @RequestBody UserLoginRequest request) {
+        AuthResponse response = userService.loginAdmin(request);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    // --- Đăng nhập Staff ---
+    @PostMapping("/staff/login")
+    public ResponseEntity<AuthResponse> loginStaff(@Valid @RequestBody UserLoginRequest request) {
+        AuthResponse response = userService.loginStaff(request);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     // --- FR-02: Đăng xuất người dùng ---
     @PostMapping("/logout")
     public ResponseEntity<Void> logoutUser(@RequestHeader("Authorization") String token) {
