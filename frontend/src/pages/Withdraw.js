@@ -1,167 +1,769 @@
 import React, { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-const withdrawStyles = `
-    :root {
-        --withdraw-primary: #f59e0b;
-        --withdraw-secondary: #d97706;
-        --withdraw-light: #fef3c7;
-        --withdraw-shadow: rgba(245, 158, 11, 0.4);
-    }
-    .withdraw-page-wrapper {
-        min-height: calc(100vh - 120px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: radial-gradient(circle at top, #fffbeb 0%, #fdfbfb 100%);
-        padding: 30px 0;
-    }
-    .withdraw-card {
-        border-radius: 18px; border: none; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
-        overflow: hidden; background: #ffffff; position: relative;
-    }
-    .withdraw-card::before {
-        content: ""; position: absolute; inset: 0;
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(251, 146, 60, 0.05));
-        opacity: 0.35; pointer-events: none;
-    }
-    .withdraw-card .card-body { position: relative; z-index: 1; }
-    .withdraw-icon-wrapper {
-        background: linear-gradient(135deg, #fcd34d, #fbbf24);
-        color: #b45309; width: 70px; height: 70px; font-size: 1.8rem;
-        border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 10px 25px rgba(251, 191, 36, 0.6);
-    }
-    .withdraw-balance-box {
-        background: #fffbeb; border-radius: 14px; padding: 14px 18px;
-        box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.3);
-    }
-    .withdraw-balance-box small { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; color: #92400e; }
-    .withdraw-balance-box h4 { font-size: 1.3rem; color: #78350f; }
-    .form-control.withdraw-amount-input {
-        border-radius: 12px 0 0 12px; border-color: #e2e8f0;
-        box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.25);
-        transition: all 0.2s ease;
-    }
-    .form-control.withdraw-amount-input:focus {
-        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
-        border-color: var(--withdraw-primary);
-    }
-    .withdraw-currency { border-radius: 0 12px 12px 0; background: #f9fafb !important; border-color: #e2e8f0; font-weight: 600; color: #475569; }
-    .withdraw-quick-buttons { gap: 0.4rem; }
-    .withdraw-quick-btn {
-        border-radius: 999px; font-size: 0.8rem; padding: 0.3rem 0.8rem;
-        border: 1px solid #cbd5e1; color: #475569; background: #ffffff;
-        transition: all 0.18s ease;
-    }
-    .withdraw-quick-btn:hover {
-        background: var(--withdraw-primary); color: #ffffff; border-color: var(--withdraw-secondary);
-        transform: translateY(-1px); box-shadow: 0 8px 18px rgba(245, 158, 11, 0.3);
-    }
-    .withdraw-submit-btn {
-        background: linear-gradient(135deg, #f59e0b, #d97706);
-        border: none; border-radius: 12px;
-        box-shadow: 0 14px 30px rgba(245, 158, 11, 0.4);
-        transition: all 0.18s ease; color: white;
-    }
-    .withdraw-submit-btn:hover {
-        filter: brightness(1.05); transform: translateY(-1px);
-        box-shadow: 0 18px 35px rgba(217, 119, 6, 0.5);
-    }
-    .withdraw-cancel-btn { border-radius: 12px; }
-    @media (max-width: 576px) { .withdraw-card .card-body { padding: 1.8rem !important; } }
+// Port UI từ prototype trong folder `rút/` (Vite/Tailwind) sang JSX + CSS thuần trong CRA.
+// Lưu ý: chỉ port giao diện/UX, phần xử lý giao dịch vẫn dùng props: balance, onSubmit, isFrozen.
+
+const withdrawPrototypeStyles = `
+  .wds-page {
+    width: 100%;
+    min-height: calc(100vh - 120px);
+    background: #f9fafb;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .wds-shell {
+    max-width: 28rem; /* gần max-w-md */
+    margin: 0 auto;
+    padding: 20px 16px 0;
+  }
+
+  .wds-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .wds-header-inner {
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .wds-back-btn {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 0;
+    background: transparent;
+    color: #374151;
+    transition: background 0.15s ease;
+  }
+  .wds-back-btn:hover { background: #f3f4f6; }
+
+  .wds-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  .wds-content {
+    padding-bottom: 96px; /* chừa chỗ cho CTA sticky */
+  }
+
+  .wds-balance-card {
+    background: linear-gradient(135deg, #059669, #047857);
+    border-radius: 18px;
+    color: #ffffff;
+    padding: 18px;
+    box-shadow: 0 10px 18px rgba(0,0,0,0.10);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .wds-balance-card::before {
+    content: "";
+    position: absolute;
+    width: 160px; height: 160px;
+    border-radius: 999px;
+    right: -80px; top: -80px;
+    background: rgba(255,255,255,0.12);
+  }
+  .wds-balance-card::after {
+    content: "";
+    position: absolute;
+    width: 120px; height: 120px;
+    border-radius: 999px;
+    left: -60px; bottom: -60px;
+    background: rgba(255,255,255,0.06);
+  }
+  .wds-balance-body { position: relative; z-index: 1; }
+  .wds-balance-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .wds-balance-label { font-size: 0.85rem; color: #d1fae5; margin: 0 0 4px; }
+  .wds-balance-amount { font-size: 1.8rem; font-weight: 800; margin: 0; }
+
+  .wds-chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .wds-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(6px);
+  }
+
+  .wds-section { margin-bottom: 18px; }
+  .wds-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+  }
+
+  .wds-input-wrap { position: relative; }
+  .wds-input-prefix {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    font-weight: 700;
+  }
+  .wds-input {
+    width: 100%;
+    padding: 12px 14px 12px 44px;
+    border-radius: 14px;
+    border: 1px solid #d1d5db;
+    outline: none;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    background: #fff;
+  }
+  .wds-input:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+  }
+  .wds-input:disabled { background: #f1f5f9; cursor: not-allowed; }
+
+  .wds-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .wds-quick-btn {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 10px;
+    padding: 8px 6px;
+    font-size: 0.82rem;
+    color: #374151;
+    transition: all 0.15s ease;
+  }
+  .wds-quick-btn:hover:not(:disabled) {
+    border-color: #34d399;
+    background: #ecfdf5;
+  }
+  .wds-quick-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .wds-hint {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.86rem;
+  }
+  .wds-hint-danger { color: #dc2626; }
+  .wds-hint-warn { color: #d97706; }
+
+  .wds-method-list { display: flex; flex-direction: column; gap: 10px; }
+  .wds-method {
+    width: 100%;
+    border: 2px solid #e5e7eb;
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: all 0.15s ease;
+  }
+  .wds-method:hover { border-color: #86efac; }
+  .wds-method.is-active {
+    border-color: #10b981;
+    background: #ecfdf5;
+  }
+  .wds-method-left { display: flex; align-items: center; gap: 12px; }
+  .wds-method-icon {
+    width: 46px; height: 46px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    color: #4b5563;
+  }
+  .wds-method.is-active .wds-method-icon {
+    background: rgba(16,185,129,0.14);
+    color: #059669;
+  }
+  .wds-method-title { margin: 0; font-weight: 700; color: #111827; }
+  .wds-method-sub { margin: 2px 0 0; font-size: 0.8rem; color: #6b7280; }
+  .wds-chevron { color: #9ca3af; }
+  .wds-method.is-active .wds-chevron { color: #059669; }
+
+  .wds-destination-list { display: flex; flex-direction: column; gap: 8px; }
+  .wds-destination {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    transition: all 0.15s ease;
+    text-align: left;
+  }
+  .wds-destination:hover { border-color: #86efac; }
+  .wds-destination.is-active {
+    border-color: #10b981;
+    background: #ecfdf5;
+  }
+  .wds-destination-left { display: flex; gap: 10px; align-items: flex-start; }
+  .wds-destination-icon {
+    width: 22px;
+    display: inline-flex;
+    justify-content: center;
+    margin-top: 2px;
+    color: #9ca3af;
+  }
+  .wds-destination.is-active .wds-destination-icon { color: #059669; }
+  .wds-destination-name { margin: 0; font-weight: 700; color: #111827; }
+  .wds-destination-sub { margin: 4px 0 0; font-size: 0.82rem; color: #6b7280; }
+  .wds-pill {
+    display: inline-block;
+    margin-top: 8px;
+    background: #f3f4f6;
+    color: #4b5563;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+  }
+
+  .wds-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid #d1d5db;
+    outline: none;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    background: #fff;
+    resize: none;
+  }
+  .wds-textarea:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+  }
+  .wds-counter { font-size: 0.75rem; color: #6b7280; text-align: right; margin-top: 6px; }
+
+  .wds-summary {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .wds-summary-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .wds-summary-title { margin: 0; font-weight: 800; color: #111827; font-size: 0.95rem; }
+  .wds-badge {
+    background: #ecfdf5;
+    color: #047857;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .wds-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 0.92rem;
+  }
+  .wds-row span:first-child { color: #6b7280; }
+  .wds-row span:last-child { color: #111827; }
+  .wds-divider { border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 10px; }
+  .wds-total { font-weight: 900; font-size: 1.05rem; }
+
+  .wds-new-balance {
+    margin-top: 10px;
+    border: 1px solid #d1fae5;
+    background: linear-gradient(90deg, #ecfdf5, #f0fdf4);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .wds-cta {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    padding: 12px 0 0;
+    margin-top: 16px;
+  }
+  .wds-cta-inner {
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: 0 16px 16px;
+  }
+  .wds-primary-btn {
+    width: 100%;
+    border: 0;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-weight: 800;
+    color: #ffffff;
+    background: #059669;
+    transition: all 0.15s ease;
+    box-shadow: 0 10px 18px rgba(16,185,129,0.22);
+  }
+  .wds-primary-btn:hover:not(:disabled) { background: #047857; }
+  .wds-primary-btn:disabled {
+    background: #e5e7eb;
+    color: #9ca3af;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 420px) {
+    .wds-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
 `;
 
 const Withdraw = ({ balance, onSubmit, isFrozen }) => {
-  const [amount, setAmount] = useState('');
   const navigate = useNavigate();
-  const quickValues = useMemo(() => [200000, 1000000, 5000000, balance], [balance]);
+
+  // Mock data (từ prototype)
+  const atmLocations = useMemo(
+    () => [
+      { id: 1, name: 'ATM Nguyễn Huệ', address: '123 Nguyễn Huệ, Q.1', distance: '0.5 km' },
+      { id: 2, name: 'ATM Lê Lợi', address: '456 Lê Lợi, Q.1', distance: '1.2 km' },
+      { id: 3, name: 'ATM Trần Hưng Đạo', address: '789 Trần Hưng Đạo, Q.5', distance: '2.1 km' },
+    ],
+    []
+  );
+
+  const linkedBanks = useMemo(
+    () => [
+      { id: 1, name: 'Vietcombank', accountNumber: '****1234' },
+      { id: 2, name: 'Techcombank', accountNumber: '****5678' },
+    ],
+    []
+  );
+
+  const eWallets = useMemo(
+    () => [
+      { id: 1, name: 'MoMo', accountNumber: '0901234567' },
+      { id: 2, name: 'ZaloPay', accountNumber: '0909876543' },
+    ],
+    []
+  );
+
+  const [amount, setAmount] = useState('');
+  const [withdrawMethod, setWithdrawMethod] = useState(null); // 'atm' | 'bank' | 'ewallet'
+  const [selectedDestination, setSelectedDestination] = useState(null);
+  const [note, setNote] = useState('');
+
+  const numericAmount = Number(amount || 0);
+  const isAmountValid = Number.isFinite(numericAmount) && numericAmount > 0;
+
+  const withdrawFee = useMemo(() => {
+    if (!withdrawMethod || !isAmountValid) return 0;
+    if (withdrawMethod === 'atm') return 0;
+    if (withdrawMethod === 'bank') return 5000;
+    return 2000; // ewallet
+  }, [withdrawMethod, isAmountValid]);
+
+  const totalDeduct = isAmountValid ? numericAmount + withdrawFee : 0;
+  const newBalance = balance - totalDeduct;
+  const isOverBalance = isAmountValid && newBalance < 0;
+
+  const isValidForm =
+    isAmountValid &&
+    newBalance >= 0 &&
+    !!withdrawMethod &&
+    selectedDestination !== null &&
+    !isFrozen;
+
+  const quickAmounts = useMemo(() => [200000, 500000, 1000000, 5000000], []);
+
+  const destinations = useMemo(() => {
+    if (withdrawMethod === 'atm') return atmLocations;
+    if (withdrawMethod === 'bank') return linkedBanks;
+    if (withdrawMethod === 'ewallet') return eWallets;
+    return [];
+  }, [withdrawMethod, atmLocations, linkedBanks, eWallets]);
+
+  const methodName = useMemo(() => {
+    if (withdrawMethod === 'atm') return 'ATM';
+    if (withdrawMethod === 'bank') return 'Chuyển khoản ngân hàng';
+    if (withdrawMethod === 'ewallet') return 'Ví điện tử';
+    return '';
+  }, [withdrawMethod]);
+
+  const feeDescription = useMemo(() => {
+    if (!withdrawMethod) return '';
+    if (withdrawMethod === 'atm') return 'Miễn phí rút tại ATM';
+    if (withdrawMethod === 'bank') return 'Phí chuyển khoản 5.000đ';
+    return 'Phí giao dịch 2.000đ';
+  }, [withdrawMethod]);
+
+  const formatMoney = (v) => Number(v || 0).toLocaleString('vi-VN') + ' đ';
+
+  const handleAmountChange = (e) => {
+    const raw = e.target.value;
+    if (raw === '') {
+      setAmount('');
+      return;
+    }
+    // Chỉ cho số nguyên dương
+    const sanitized = raw.replace(/[^\d]/g, '');
+    setAmount(sanitized);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const success = onSubmit(Number(amount));
-    if (success) navigate('/');
+    if (!isValidForm) return;
+    const success = onSubmit(totalDeduct);
+    if (success) navigate('/dashboard');
   };
 
   return (
     <>
-      <style>{withdrawStyles}</style>
-      <div className="dashboard-wrapper withdraw-page-wrapper">
-        <div className="container dashboard-container fade-in">
-          <div className="row justify-content-center">
-            <div className="col-md-6 col-lg-5">
-              <div className="card dashboard-card withdraw-card">
-                <div className="card-body p-5">
-                  <div className="text-center mb-4">
-                    <div className="withdraw-icon-wrapper mx-auto mb-3">
-                      <i className="fas fa-arrow-down"></i>
-                    </div>
-                    <h3 className="fw-bold mb-1">Rút Tiền</h3>
-                    <p className="text-muted mb-0">Rút tiền về tài khoản ngân hàng liên kết</p>
-                  </div>
+      <style>{withdrawPrototypeStyles}</style>
 
-                  <div className="withdraw-balance-box text-center mb-4">
-                    <small>Số dư khả dụng</small>
-                    <h4 className="mb-0 fw-bold">
-                      {balance.toLocaleString('vi-VN')} VND
-                    </h4>
-                  </div>
+      <div className="wds-page fade-in">
+        <div className="wds-header">
+          <div className="wds-header-inner">
+            <button
+              type="button"
+              className="wds-back-btn"
+              onClick={() => navigate('/dashboard')}
+              aria-label="Quay lại"
+            >
+              <i className="fas fa-arrow-left"></i>
+            </button>
+            <h1 className="wds-title">Rút tiền</h1>
+          </div>
+        </div>
 
-                  <form onSubmit={handleSubmit}>
-                    <div className="form-group mb-4">
-                      <label className="form-label fw-bold" htmlFor="amount">
-                        Số tiền
-                      </label>
-                      <div className="input-group input-group-lg">
-                        <input
-                          id="amount"
-                          type="number"
-                          className="form-control withdraw-amount-input"
-                          placeholder="Nhập số tiền..."
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          min="0"
-                          required
-                          disabled={isFrozen}
-                        />
-                        <span className="input-group-text withdraw-currency">VND</span>
-                      </div>
-                    </div>
-
-                    <div className="mb-4 text-center">
-                      <span className="d-block text-muted small mb-2">Chọn nhanh:</span>
-                      <div className="d-flex justify-content-center flex-wrap withdraw-quick-buttons">
-                        {quickValues.map((v) => (
-                          <button
-                            key={v}
-                            type="button"
-                            className="btn withdraw-quick-btn"
-                            onClick={() => setAmount(String(v))}
-                            disabled={isFrozen}
-                          >
-                            {v >= 1000000 ? `${v / 1000000} Triệu` : `${v / 1000}k`}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="d-grid gap-2">
-                      <button
-                        type="submit"
-                        className="btn btn-lg btn-block py-3 withdraw-submit-btn fw-semibold"
-                        disabled={isFrozen}
-                      >
-                        Xác nhận
-                      </button>
-                      <Link to="/" className="btn btn-light btn-block py-3 withdraw-cancel-btn">
-                        Hủy bỏ
-                      </Link>
-                    </div>
-                  </form>
+        <div className="wds-shell wds-content">
+          {/* Balance Card */}
+          <div className="wds-balance-card">
+            <div className="wds-balance-body">
+              <div className="wds-balance-top">
+                <div>
+                  <p className="wds-balance-label">Số dư khả dụng</p>
+                  <p className="wds-balance-amount">{formatMoney(balance)}</p>
+                </div>
+                <div className="wds-chip" style={{ padding: '10px 12px', borderRadius: 14 }}>
+                  <i className="fas fa-chart-line"></i>
+                </div>
+              </div>
+              <div className="wds-chip-row">
+                <div className="wds-chip">
+                  <i className="fas fa-shield-alt"></i>
+                  <span>Bảo mật</span>
+                </div>
+                <div className="wds-chip">
+                  <i className="fas fa-bolt"></i>
+                  <span>Rút nhanh</span>
                 </div>
               </div>
             </div>
           </div>
+
+          <form onSubmit={handleSubmit}>
+            {/* Amount */}
+            <div className="wds-section">
+              <label className="wds-label" htmlFor="withdraw-amount">
+                Số tiền rút
+              </label>
+              <div className="wds-input-wrap">
+                <span className="wds-input-prefix">đ</span>
+                <input
+                  id="withdraw-amount"
+                  className="wds-input"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  disabled={isFrozen}
+                />
+              </div>
+
+              <div className="wds-quick-grid" aria-label="Chọn nhanh số tiền">
+                {quickAmounts.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    className="wds-quick-btn"
+                    onClick={() => setAmount(String(q))}
+                    disabled={isFrozen}
+                  >
+                    {q >= 1000000 ? `${q / 1000000}M` : `${q / 1000}k`}
+                  </button>
+                ))}
+              </div>
+
+              {isFrozen && (
+                <div className="wds-hint wds-hint-danger">
+                  <i className="fas fa-exclamation-circle"></i>
+                  <span>Tài khoản đang bị khóa, không thể thực hiện giao dịch</span>
+                </div>
+              )}
+
+              {!isFrozen && isAmountValid && numericAmount > balance && (
+                <div className="wds-hint wds-hint-danger">
+                  <i className="fas fa-exclamation-circle"></i>
+                  <span>Số dư không đủ</span>
+                </div>
+              )}
+
+              {!isFrozen && isOverBalance && withdrawFee > 0 && (
+                <div className="wds-hint wds-hint-warn">
+                  <i className="fas fa-exclamation-triangle"></i>
+                  <span>Tổng trừ (bao gồm phí) vượt quá số dư khả dụng</span>
+                </div>
+              )}
+            </div>
+
+            {/* Method */}
+            <div className="wds-section">
+              <div className="wds-label">Phương thức rút tiền</div>
+              <div className="wds-method-list">
+                <button
+                  type="button"
+                  className={`wds-method ${withdrawMethod === 'atm' ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setWithdrawMethod('atm');
+                    setSelectedDestination(null);
+                  }}
+                  disabled={isFrozen}
+                >
+                  <div className="wds-method-left">
+                    <div className="wds-method-icon">
+                      <i className="fas fa-university"></i>
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <p className="wds-method-title">Rút tại ATM</p>
+                      <p className="wds-method-sub">Miễn phí giao dịch</p>
+                    </div>
+                  </div>
+                  <i className={`fas fa-chevron-right wds-chevron`}></i>
+                </button>
+
+                <button
+                  type="button"
+                  className={`wds-method ${withdrawMethod === 'bank' ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setWithdrawMethod('bank');
+                    setSelectedDestination(null);
+                  }}
+                  disabled={isFrozen}
+                >
+                  <div className="wds-method-left">
+                    <div className="wds-method-icon">
+                      <i className="fas fa-credit-card"></i>
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <p className="wds-method-title">Chuyển khoản ngân hàng</p>
+                      <p className="wds-method-sub">Phí 5.000đ</p>
+                    </div>
+                  </div>
+                  <i className={`fas fa-chevron-right wds-chevron`}></i>
+                </button>
+
+                <button
+                  type="button"
+                  className={`wds-method ${withdrawMethod === 'ewallet' ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setWithdrawMethod('ewallet');
+                    setSelectedDestination(null);
+                  }}
+                  disabled={isFrozen}
+                >
+                  <div className="wds-method-left">
+                    <div className="wds-method-icon">
+                      <i className="fas fa-wallet"></i>
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <p className="wds-method-title">Ví điện tử</p>
+                      <p className="wds-method-sub">Phí 2.000đ</p>
+                    </div>
+                  </div>
+                  <i className={`fas fa-chevron-right wds-chevron`}></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Destination */}
+            {!!withdrawMethod && (
+              <div className="wds-section">
+                <div className="wds-label">
+                  {withdrawMethod === 'atm' && 'Chọn ATM gần bạn'}
+                  {withdrawMethod === 'bank' && 'Chọn tài khoản ngân hàng'}
+                  {withdrawMethod === 'ewallet' && 'Chọn ví điện tử'}
+                </div>
+                <div className="wds-destination-list">
+                  {withdrawMethod === 'atm' &&
+                    destinations.map((atm) => (
+                      <button
+                        key={atm.id}
+                        type="button"
+                        className={`wds-destination ${selectedDestination === atm.id ? 'is-active' : ''}`}
+                        onClick={() => setSelectedDestination(atm.id)}
+                        disabled={isFrozen}
+                      >
+                        <div className="wds-destination-left">
+                          <div className="wds-destination-icon">
+                            <i className="fas fa-map-marker-alt"></i>
+                          </div>
+                          <div>
+                            <p className="wds-destination-name">{atm.name}</p>
+                            <p className="wds-destination-sub">{atm.address}</p>
+                            <span className="wds-pill">{atm.distance}</span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+
+                  {withdrawMethod === 'bank' &&
+                    destinations.map((bank) => (
+                      <button
+                        key={bank.id}
+                        type="button"
+                        className={`wds-destination ${selectedDestination === bank.id ? 'is-active' : ''}`}
+                        onClick={() => setSelectedDestination(bank.id)}
+                        disabled={isFrozen}
+                      >
+                        <div className="wds-destination-left" style={{ alignItems: 'center' }}>
+                          <div className="wds-destination-icon">
+                            <i className="fas fa-landmark"></i>
+                          </div>
+                          <div>
+                            <p className="wds-destination-name">{bank.name}</p>
+                            <p className="wds-destination-sub">{bank.accountNumber}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+
+                  {withdrawMethod === 'ewallet' &&
+                    destinations.map((wallet) => (
+                      <button
+                        key={wallet.id}
+                        type="button"
+                        className={`wds-destination ${selectedDestination === wallet.id ? 'is-active' : ''}`}
+                        onClick={() => setSelectedDestination(wallet.id)}
+                        disabled={isFrozen}
+                      >
+                        <div className="wds-destination-left" style={{ alignItems: 'center' }}>
+                          <div className="wds-destination-icon">
+                            <i className="fas fa-wallet"></i>
+                          </div>
+                          <div>
+                            <p className="wds-destination-name">{wallet.name}</p>
+                            <p className="wds-destination-sub">{wallet.accountNumber}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Note */}
+            {!!withdrawMethod && (
+              <div className="wds-section">
+                <label className="wds-label" htmlFor="withdraw-note">
+                  Ghi chú (tùy chọn)
+                </label>
+                <textarea
+                  id="withdraw-note"
+                  className="wds-textarea"
+                  rows={3}
+                  maxLength={100}
+                  placeholder="Thêm ghi chú cho giao dịch này"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  disabled={isFrozen}
+                />
+                <div className="wds-counter">{note.length}/100</div>
+              </div>
+            )}
+
+            {/* Summary */}
+            {isAmountValid && !!withdrawMethod && (
+              <div className="wds-section">
+                <div className="wds-summary">
+                  <div className="wds-summary-head">
+                    <h3 className="wds-summary-title">Tóm tắt giao dịch</h3>
+                    <span className="wds-badge" title={feeDescription}>
+                      Xem lại
+                    </span>
+                  </div>
+
+                  <div className="wds-row">
+                    <span>Số tiền rút</span>
+                    <span>{formatMoney(numericAmount)}</span>
+                  </div>
+                  <div className="wds-row">
+                    <span>Phí giao dịch</span>
+                    <span>{formatMoney(withdrawFee)}</span>
+                  </div>
+                  <div className="wds-row">
+                    <span>Phương thức</span>
+                    <span>{methodName}</span>
+                  </div>
+
+                  <div className="wds-divider">
+                    <div className="wds-row">
+                      <span className="wds-total">Tổng trừ</span>
+                      <span className="wds-total">{formatMoney(totalDeduct)}</span>
+                    </div>
+
+                    <div className="wds-new-balance">
+                      <span style={{ color: '#374151', fontWeight: 700 }}>Số dư mới</span>
+                      <span style={{ fontWeight: 900, color: newBalance >= 0 ? '#111827' : '#dc2626' }}>
+                        {formatMoney(newBalance)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CTA */}
+            <div className="wds-cta" aria-label="Xác nhận rút tiền">
+              <div className="wds-cta-inner">
+                <button type="submit" className="wds-primary-btn" disabled={!isValidForm}>
+                  Xác nhận rút tiền
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
       </div>
     </>

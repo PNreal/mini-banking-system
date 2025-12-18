@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -19,11 +19,12 @@ import StaffDashboard from './pages/StaffDashboard';
 import AdminLogin from './pages/AdminLogin';
 import StaffLogin from './pages/StaffLogin';
 import Notifications from './pages/Notifications';
+import AdminNotifications from './pages/AdminNotifications';
 import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import ServerError from './pages/ServerError';
 import './App.css';
-import { loginApi, loginAdminApi, loginStaffApi, registerApi } from './api/client';
+import { loginApi, loginAdminApi, loginStaffApi, registerApi, getAccountInfoApi, getUserInfoApi, depositApi } from './api/client';
 
 const initialUser = {
   username: 'BK88 User',
@@ -38,7 +39,7 @@ function App() {
   const [user, setUser] = useState(initialUser);
   const [authToken, setAuthToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState(null); // 'ADMIN', 'STAFF', 'CUSTOMER'
   const [flashMessages, setFlashMessages] = useState([]);
   const [transactions, setTransactions] = useState(() => [
     {
@@ -65,6 +66,42 @@ function App() {
     setFlashMessages((prev) => [...prev, { id: Date.now() + Math.random(), type, text }]);
   };
 
+  // Hàm fetch thông tin user và account từ backend
+  const fetchUserData = async (token) => {
+    try {
+      // Lấy thông tin account (balance, status)
+      const accountData = await getAccountInfoApi(token);
+      const accountInfo = accountData?.data || {};
+
+      // Thử lấy thông tin user (fullName, email)
+      let userInfo = {};
+      try {
+        const userData = await getUserInfoApi(token);
+        if (userData?.data) {
+          userInfo = userData.data;
+        }
+      } catch (e) {
+        // Nếu không có endpoint user info, bỏ qua
+        console.log('User info endpoint not available');
+      }
+
+      // Kết hợp thông tin từ account và user
+      return {
+        balance: accountInfo.balance || 0,
+        userId: accountInfo.accountId || userInfo.userId || userInfo.accountId || '',
+        isFrozen: accountInfo.status === 'FROZEN',
+        status: accountInfo.status || 'ACTIVE',
+        username: userInfo.fullName || userInfo.username || 'User',
+        email: userInfo.email || '',
+        imageFile: userInfo.imageFile || `${process.env.PUBLIC_URL}/assets/default.jpg`,
+      };
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      // Trả về null để dùng fallback
+      return null;
+    }
+  };
+
   const handleLogin = async (form) => {
     return doLogin(form, loginApi);
   };
@@ -84,23 +121,53 @@ function App() {
         password: form.password,
       });
 
-      const token = data?.token || data?.accessToken || data?.jwt;
-      const profile = data?.user || data?.profile || {};
-      const role = data?.role || profile.role;
+      const token = data?.token || data?.accessToken || data?.jwt || data?.data?.token;
+      const profile = data?.user || data?.profile || data?.data || {};
+      const role = data?.role || profile.role || 'CUSTOMER';
 
       if (!token) {
         throw new Error('Phản hồi đăng nhập không hợp lệ từ máy chủ.');
       }
-
       setAuthToken(token);
       setIsAuthenticated(true);
-      setIsAdmin(role === 'ADMIN');
-      setUser((prev) => ({
-        ...prev,
-        ...profile,
-        email: profile.email || form.email,
-        role: role,
-      }));
+      setUserRole(role);
+
+      // Fetch thông tin user và account từ backend
+      const userData = await fetchUserData(token);
+      if (userData) {
+        setUser({
+          ...userData,
+          email: userData.email || form.email,
+          role: role,
+        });
+
+        // Lưu thông tin phiên
+        try {
+          const storedUser = {
+            ...userData,
+            email: userData.email || form.email,
+            role: role,
+          };
+
+          sessionStorage.setItem('authToken', token);
+          sessionStorage.setItem('userRole', role);
+          sessionStorage.setItem('user', JSON.stringify(storedUser));
+
+          localStorage.setItem('authToken', token);
+          localStorage.setItem('userRole', role);
+          localStorage.setItem('user', JSON.stringify(storedUser));
+        } catch (e) {
+          // Bỏ qua lỗi storage
+        }
+      } else {
+        // Fallback nếu không fetch được
+        setUser((prev) => ({
+          ...prev,
+          ...profile,
+          email: profile.email || form.email,
+          role: role,
+        }));
+      }
 
       addFlash('success', 'Đăng nhập thành công.');
       return true;
@@ -121,17 +188,88 @@ function App() {
       addFlash('success', 'Đăng ký thành công. Vui lòng đăng nhập.');
       return true;
     } catch (error) {
-      addFlash('danger', `Đăng ký thất bại: ${error.message}`);
+      // Mapping thông báo lỗi backend sang tiếng Việt, đặc biệt khi email đã tồn tại
+      let message = error?.message || 'Có lỗi xảy ra trong quá trình đăng ký.';
+      if (message.includes('Email already in use')) {
+        message = 'Email này đã được sử dụng. Vui lòng dùng email khác.';
+      }
+      addFlash('danger', `Đăng ký thất bại: ${message}`);
       return false;
     }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setIsAdmin(false);
+    setUserRole(null);
     setAuthToken(null);
+    // Xoá thông tin phiên đã ghi nhớ (cả sessionStorage và localStorage)
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('userRole');
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('user');
     addFlash('info', 'Bạn đã đăng xuất.');
   };
+
+  // Khôi phục phiên đã ghi nhớ (nếu có) khi reload trang
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        // Ưu tiên kiểm tra sessionStorage trước (phiên hiện tại)
+        let storedToken = sessionStorage.getItem('authToken');
+        let storedRole = sessionStorage.getItem('userRole');
+        let storedUser = sessionStorage.getItem('user');
+
+        // Nếu không có trong sessionStorage, kiểm tra localStorage (ghi nhớ lâu dài)
+        if (!storedToken || !storedRole || !storedUser) {
+          storedToken = localStorage.getItem('authToken');
+          storedRole = localStorage.getItem('userRole');
+          storedUser = localStorage.getItem('user');
+        }
+
+        if (storedToken && storedRole && storedUser) {
+          setAuthToken(storedToken);
+          setUserRole(storedRole);
+          setIsAuthenticated(true);
+
+          // Fetch thông tin mới nhất từ backend
+          const userData = await fetchUserData(storedToken);
+          if (userData) {
+            const parsedUser = JSON.parse(storedUser);
+            setUser({
+              ...userData,
+              email: userData.email || parsedUser.email,
+              role: storedRole,
+            });
+          } else {
+            // Fallback nếu không fetch được
+            const parsedUser = JSON.parse(storedUser);
+            setUser((prev) => ({
+              ...prev,
+              ...parsedUser,
+            }));
+          }
+        }
+      } catch (e) {
+        // Nếu có lỗi parse, xoá dữ liệu lỗi đi
+        console.error('Error restoring session:', e);
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('userRole');
+        sessionStorage.removeItem('user');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('user');
+      }
+    };
+
+    restoreSession();
+  }, []);
+
+  // Helper functions for role checking
+  const isAdmin = userRole === 'ADMIN';
+  const isStaff = userRole === 'STAFF';
+  const isCustomer = userRole === 'CUSTOMER';
 
   const updateBalance = (delta, typeLabel) => {
     setUser((prev) => ({ ...prev, balance: Math.max(prev.balance + delta, 0) }));
@@ -146,14 +284,57 @@ function App() {
     ]);
   };
 
-  const handleDeposit = (amount) => {
+  const handleDeposit = async (amount) => {
     if (!amount || amount <= 0) {
       addFlash('danger', 'Số tiền không hợp lệ.');
       return false;
     }
-    updateBalance(amount, 'Nạp tiền');
-    addFlash('success', 'Nạp tiền thành công (demo).');
-    return true;
+
+    const token = authToken || sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
+    if (!token) {
+      addFlash('danger', 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      return false;
+    }
+
+    try {
+      const response = await depositApi(token, amount);
+      
+      if (response?.success && response?.data) {
+        const newBalance = response.data.newBalance || user.balance + amount;
+        // Cập nhật balance trong user state
+        setUser((prev) => ({
+          ...prev,
+          balance: newBalance,
+        }));
+        
+        // Thêm transaction vào lịch sử
+        updateBalance(amount, 'Nạp tiền');
+        
+        addFlash('success', `Nạp tiền thành công. Số dư mới: ${newBalance.toLocaleString('vi-VN')} VND`);
+        return true;
+      } else {
+        addFlash('danger', 'Nạp tiền thất bại. Vui lòng thử lại.');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error depositing:', error);
+      let errorMessage = 'Nạp tiền thất bại.';
+      
+      if (error.message) {
+        if (error.message.includes('ACCOUNT_FROZEN')) {
+          errorMessage = 'Tài khoản đang bị khóa. Không thể thực hiện giao dịch.';
+        } else if (error.message.includes('INSUFFICIENT_BALANCE')) {
+          errorMessage = 'Số dư không đủ.';
+        } else if (error.message.includes('INVALID_AMOUNT')) {
+          errorMessage = 'Số tiền không hợp lệ.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      addFlash('danger', errorMessage);
+      return false;
+    }
   };
 
   const handleWithdraw = (amount) => {
@@ -227,6 +408,8 @@ function App() {
             path="/"
             element={
               isAuthenticated ? (
+                isAdmin ? <Navigate to="/admin/dashboard" replace /> :
+                isStaff ? <Navigate to="/staff/dashboard" replace /> :
                 <Navigate to="/dashboard" replace />
               ) : (
                 <Home />
@@ -236,12 +419,14 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              isAuthenticated ? (
+              isAuthenticated && isCustomer ? (
                 <Dashboard
                   user={user}
                   transactions={transactions}
                   onFreezeToggle={handleFreezeToggle}
                 />
+              ) : isAuthenticated ? (
+                <Forbidden />
               ) : (
                 <Navigate to="/" replace />
               )
@@ -250,8 +435,10 @@ function App() {
           <Route
             path="/transactions"
             element={
-              isAuthenticated ? (
+              isAuthenticated && isCustomer ? (
                 <Transactions transactions={transactions} />
+              ) : isAuthenticated ? (
+                <Forbidden />
               ) : (
                 <Navigate to="/" replace />
               )
@@ -266,19 +453,37 @@ function App() {
           <Route
             path="/deposit"
             element={
-              <Deposit balance={user.balance} onSubmit={handleDeposit} isFrozen={user.isFrozen} />
+              isAuthenticated && isCustomer ? (
+                <Deposit balance={user.balance} onSubmit={handleDeposit} isFrozen={user.isFrozen} />
+              ) : isAuthenticated ? (
+                <Forbidden />
+              ) : (
+                <Navigate to="/login" replace />
+              )
             }
           />
           <Route
             path="/withdraw"
             element={
-              <Withdraw balance={user.balance} onSubmit={handleWithdraw} isFrozen={user.isFrozen} />
+              isAuthenticated && isCustomer ? (
+                <Withdraw balance={user.balance} onSubmit={handleWithdraw} isFrozen={user.isFrozen} />
+              ) : isAuthenticated ? (
+                <Forbidden />
+              ) : (
+                <Navigate to="/login" replace />
+              )
             }
           />
           <Route
             path="/transfer"
             element={
-              <Transfer balance={user.balance} onSubmit={handleTransfer} isFrozen={user.isFrozen} />
+              isAuthenticated && isCustomer ? (
+                <Transfer balance={user.balance} onSubmit={handleTransfer} isFrozen={user.isFrozen} />
+              ) : isAuthenticated ? (
+                <Forbidden />
+              ) : (
+                <Navigate to="/login" replace />
+              )
             }
           />
           <Route path="/settings" element={<Settings user={user} onUpdate={handleUpdateProfile} />} />
@@ -289,10 +494,24 @@ function App() {
           <Route
             path="/notifications"
             element={
-              isAuthenticated ? (
+              isAuthenticated && isCustomer ? (
                 <Notifications user={user} />
+              ) : isAuthenticated ? (
+                <Forbidden />
               ) : (
                 <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/admin/notifications"
+            element={
+              isAuthenticated && isAdmin ? (
+                <AdminNotifications />
+              ) : isAuthenticated ? (
+                <Forbidden />
+              ) : (
+                <Navigate to="/admin/login" replace />
               )
             }
           />
@@ -309,10 +528,12 @@ function App() {
           <Route
             path="/staff/dashboard"
             element={
-              isAuthenticated ? (
+              isAuthenticated && (isStaff || isAdmin) ? (
                 <StaffDashboard user={user} />
+              ) : isAuthenticated ? (
+                <Forbidden />
               ) : (
-                <Navigate to="/" replace />
+                <Navigate to="/staff/login" replace />
               )
             }
           />

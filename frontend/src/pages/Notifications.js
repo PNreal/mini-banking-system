@@ -117,17 +117,20 @@ const Notifications = ({ user }) => {
             <span className="badge bg-danger ms-2">{unreadCount} chưa đọc</span>
           )}
         </div>
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 align-items-center">
           {unreadCount > 0 && (
             <button
-              className="btn btn-outline-primary btn-sm"
+              className="btn btn-outline-primary btn-sm notification-action-btn"
               onClick={handleMarkAllAsRead}
             >
               <i className="fas fa-check-double me-1"></i>
               Đánh dấu tất cả đã đọc
             </button>
           )}
-          <Link to="/dashboard" className="btn btn-outline-secondary btn-sm">
+          <Link 
+            to="/dashboard" 
+            className="btn btn-outline-secondary btn-sm notification-action-btn"
+          >
             <i className="fas fa-arrow-left me-1"></i>
             Về Dashboard
           </Link>

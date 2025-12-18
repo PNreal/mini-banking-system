@@ -47,6 +47,13 @@ public class User {
     private String refreshToken;
     private Instant refreshTokenExpiry;
 
+    // Đếm số lần đăng nhập sai liên tiếp
+    @Column(nullable = false)
+    private int failedLoginAttempts = 0;
+
+    // Thời điểm bị khóa đăng nhập tạm thời (ví dụ sau khi sai quá nhiều lần)
+    private Instant loginLockedUntil;
+
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -153,5 +160,21 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(int failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public Instant getLoginLockedUntil() {
+        return loginLockedUntil;
+    }
+
+    public void setLoginLockedUntil(Instant loginLockedUntil) {
+        this.loginLockedUntil = loginLockedUntil;
     }
 }

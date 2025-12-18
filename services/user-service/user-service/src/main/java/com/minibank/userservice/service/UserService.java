@@ -76,7 +76,23 @@ public class UserService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
+        // Kiểm tra tài khoản có đang bị khóa tạm thời do nhập sai nhiều lần không
+        if (user.getLoginLockedUntil() != null && user.getLoginLockedUntil().isAfter(Instant.now())) {
+            throw new BadRequestException("Tài khoản đã bị tạm khóa 10 phút do nhập sai mật khẩu quá nhiều lần.");
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            // Xử lý tăng số lần đăng nhập sai
+            int attempts = user.getFailedLoginAttempts() + 1;
+            user.setFailedLoginAttempts(attempts);
+
+            // Nếu sai từ 5 lần trở lên -> khóa 10 phút
+            if (attempts >= 5) {
+                user.setLoginLockedUntil(Instant.now().plus(10, ChronoUnit.MINUTES));
+                user.setFailedLoginAttempts(0); // reset lại bộ đếm sau khi khóa
+            }
+
+            userRepository.save(user);
             throw new BadRequestException("Invalid email or password");
         }
         if (user.getStatus() == UserStatus.FROZEN) {
@@ -99,6 +115,11 @@ public class UserService {
         userRepository.save(user);
 
         publishEvent("USER_LOGIN", user.getId());
+
+        // Đăng nhập thành công: reset lại bộ đếm và trạng thái khóa tạm thời
+        user.setFailedLoginAttempts(0);
+        user.setLoginLockedUntil(null);
+        userRepository.save(user);
 
         AuthResponse response = new AuthResponse();
         response.setAccessToken(accessToken);

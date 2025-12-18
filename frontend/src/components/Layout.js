@@ -1,7 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, NavLink } from 'react-router-dom';
+import Footer from './Footer';
 
 const FlashMessages = ({ messages, onDismiss }) => {
+  // Tự động ẩn message sau 5 giây
+  useEffect(() => {
+    if (!messages.length || !onDismiss) return;
+
+    const timers = messages.map((msg) => {
+      return setTimeout(() => {
+        onDismiss(msg.id);
+      }, 5000); // 5 giây
+    });
+
+    // Cleanup timers khi component unmount hoặc messages thay đổi
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+    };
+  }, [messages, onDismiss]);
+
   if (!messages.length) return null;
   return (
     <div className="mt-3">
@@ -37,8 +54,11 @@ const Layout = ({
   flashMessages,
   onDismissFlash,
 }) => {
+  const userRole = user?.role;
+  const isStaff = userRole === 'STAFF';
+  const isCustomer = userRole === 'CUSTOMER' || (!userRole && isAuthenticated);
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <header className="site-header">
         <nav className="navbar navbar-expand-md navbar-dark bg-steel fixed-top">
           <div className="container">
@@ -79,31 +99,58 @@ const Layout = ({
               <div className="navbar-nav">
                 {isAuthenticated ? (
                   <>
-                    <NavLink
-                      className={({ isActive }) =>
-                        `nav-item nav-link${isActive ? ' active' : ''}`
-                      }
-                      to="/dashboard"
-                    >
-                      Dashboard
-                    </NavLink>
-                    <NavLink
-                      className={({ isActive }) =>
-                        `nav-item nav-link${isActive ? ' active' : ''}`
-                      }
-                      to="/notifications"
-                    >
-                      Thông báo
-                    </NavLink>
-                    {isAdmin && (
+                    {/* Customer menu - không hiển thị khi là Admin hoặc Staff */}
+                    {isCustomer && !isAdmin && !isStaff && (
+                      <>
+                        <NavLink
+                          className={({ isActive }) =>
+                            `nav-item nav-link${isActive ? ' active' : ''}`
+                          }
+                          to="/dashboard"
+                        >
+                          Dashboard
+                        </NavLink>
+                        <NavLink
+                          className={({ isActive }) =>
+                            `nav-item nav-link${isActive ? ' active' : ''}`
+                          }
+                          to="/notifications"
+                        >
+                          Thông báo
+                        </NavLink>
+                      </>
+                    )}
+                    {/* Staff menu */}
+                    {isStaff && (
                       <NavLink
                         className={({ isActive }) =>
                           `nav-item nav-link${isActive ? ' active' : ''}`
                         }
-                        to="/admin/dashboard"
+                        to="/staff/dashboard"
                       >
-                        Admin
+                        Staff Dashboard
                       </NavLink>
+                    )}
+                    {/* Admin menu */}
+                    {isAdmin && (
+                      <>
+                        <NavLink
+                          className={({ isActive }) =>
+                            `nav-item nav-link${isActive ? ' active' : ''}`
+                          }
+                          to="/admin/dashboard"
+                        >
+                          Admin Dashboard
+                        </NavLink>
+                        <NavLink
+                          className={({ isActive }) =>
+                            `nav-item nav-link${isActive ? ' active' : ''}`
+                          }
+                          to="/admin/notifications"
+                        >
+                          Thông báo duyệt nạp
+                        </NavLink>
+                      </>
                     )}
                     <NavLink
                       className={({ isActive }) =>
@@ -146,11 +193,13 @@ const Layout = ({
         </nav>
       </header>
 
-      <main role="main" className="container" style={{ paddingTop: '5rem' }}>
+      <main role="main" className="container" style={{ paddingTop: '3rem', flex: 1 }}>
         <FlashMessages messages={flashMessages} onDismiss={onDismissFlash} />
         {children}
       </main>
-    </>
+      
+      <Footer />
+    </div>
   );
 };
 

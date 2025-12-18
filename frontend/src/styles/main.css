@@ -12,7 +12,7 @@
 body {
   background: var(--bg-body);
   color: var(--text-body);
-  margin-top: 5rem;
+  margin-top: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
 }
@@ -230,21 +230,50 @@ body {
 .btn-transfer:hover .icon-wrapper { background-color: #d1ecf1; color: #17a2b8; }
 
 /* --- TRANSACTION HISTORY --- */
+.transaction-list-container {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Custom scrollbar cho transaction list */
+.transaction-list-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.transaction-list-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.transaction-list-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.transaction-list-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
 .transaction-list .list-group-item {
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.15s ease;
     border: none;
     border-bottom: 1px solid #f0f0f0;
+    background-color: #fdfdfd;
 }
 .transaction-list .list-group-item:hover {
-    background-color: #b7b8b9;
+    background-color: #f3f4f6;
+    transform: translateY(-1px);
+}
+
+/* Thông báo "còn nhiều giao dịch" */
+.transaction-list .list-group-item.bg-light {
+    background-color: #f8f9fa !important;
+    border-top: 2px solid #e9ecef;
 }
 .trans-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    /* Ẩn hoàn toàn icon giao dịch (logo nhỏ bên trái mỗi dòng) theo yêu cầu */
+    display: none;
 }
 .bg-soft-success { background-color: #dfda98; color: #28a745; }
 .bg-soft-danger { background-color: #f8d7da; color: #dc3545; }
@@ -262,18 +291,43 @@ body {
 
 /* Wrapper bao quanh để căn giữa dọc màn hình */
 .dashboard-wrapper {
-    min-height: 85vh; /* Chiều cao gần bằng màn hình */
-    display: flex;
-    align-items: center; /* Căn giữa theo chiều dọc */
-    justify-content: center; /* Căn giữa theo chiều ngang */
-    padding: 20px 0;
+  min-height: 85vh;
+  padding: 0 0 40px;
+  display: flex;
+  justify-content: center;
 }
 
-/* Giới hạn độ rộng của Dashboard để không bị bè ra quá to trên màn hình lớn */
+/* Đảm bảo Profile và Balance card có chiều cao bằng nhau */
+.row.align-items-stretch > [class*="col-"] {
+  display: flex;
+}
+
+.row.align-items-stretch > [class*="col-"] > .card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.row.align-items-stretch > [class*="col-"] > .card > .card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .dashboard-container {
-    width: 100%;
-    max-width: 1200px; /* Độ rộng tối đa chuẩn */
-    margin: 0 auto;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-page-header .page-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.dashboard-page-header .page-subtitle {
+  font-size: 0.95rem;
 }
 
 
@@ -283,7 +337,17 @@ body {
     color: #4a5568;
     font-family: 'Poppins', sans-serif;
     /* Reset margin top nếu layout cũ đẩy xuống quá nhiều */
-    margin-top: 60px; 
+    margin-top: 60px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    flex: 1;
 }
 
 /* Làm đẹp nút bấm */
@@ -291,6 +355,24 @@ body {
     font-weight: 500;
     font-size: 0.9rem;
     height: 100%; /* Để các nút cao bằng nhau */
+}
+
+/* Balance amount responsive */
+.balance-amount {
+    font-size: 2.5rem;
+    line-height: 1.2;
+}
+
+@media (min-width: 768px) {
+    .balance-amount {
+        font-size: 3rem;
+    }
+}
+
+@media (min-width: 992px) {
+    .balance-amount {
+        font-size: 3.5rem;
+    }
 }
 
 /* Cân chỉnh lại thẻ Balance */
@@ -309,4 +391,549 @@ body {
 .btn-freeze:hover .icon-wrapper { 
     background-color: #f8d7da; 
     color: #dc3545; /* Màu đỏ cảnh báo */
+}
+
+/* --- CẢI THIỆN LAYOUT MOBILE --- */
+@media (max-width: 767px) {
+  /* Container và wrapper */
+  .dashboard-wrapper {
+    min-height: auto;
+    padding: 0 0 24px;
+  }
+  
+  .dashboard-container {
+    padding: 0 12px;
+  }
+  
+  /* Header */
+  .dashboard-page-header {
+    margin-bottom: 1rem !important;
+  }
+  
+  .dashboard-page-header .page-title {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .dashboard-page-header .page-subtitle {
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+  
+  /* Profile card - mobile */
+  .profile-card .card-body {
+    padding: 0.75rem 0.5rem !important;
+  }
+  
+  .profile-img {
+    width: 60px !important;
+    height: 60px !important;
+    border: 2px solid #fff !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .user-name {
+    font-size: 0.85rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+  
+  .profile-card .text-muted {
+    font-size: 0.7rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+  
+  .profile-card .badge {
+    font-size: 0.65rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Balance card - mobile */
+  .balance-card .card-body {
+    padding: 0.75rem 0.5rem !important;
+    min-height: auto !important;
+  }
+  
+  /* Đảm bảo Profile và Balance card có chiều cao bằng nhau trên mobile */
+  .row.align-items-stretch > [class*="col-"] {
+    display: flex;
+  }
+  
+  .row.align-items-stretch > [class*="col-"] > .card {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .balance-card h3 {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+  
+  .balance-amount {
+    font-size: 1.2rem !important;
+    line-height: 1.1 !important;
+    margin-bottom: 0.25rem !important;
+  }
+  
+  .balance-card .currency {
+    font-size: 0.5rem !important;
+  }
+  
+  .balance-card .opacity-75 {
+    font-size: 0.65rem !important;
+  }
+  
+  .balance-card .fa-wallet {
+    font-size: 1rem !important;
+  }
+  
+  /* Quick action buttons - mobile */
+  .quick-action-btn {
+    padding: 12px 8px !important;
+    min-height: auto !important;
+    gap: 6px;
+  }
+  
+  .icon-wrapper {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 1rem !important;
+  }
+  
+  .quick-action-text {
+    font-size: 0.75rem;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+  
+  /* Transaction list - mobile */
+  .transaction-list-container {
+    max-height: 400px;
+  }
+  
+  .transaction-list .list-group-item {
+    padding: 0.75rem 1rem !important;
+  }
+  
+  /* Cards spacing */
+  .dashboard-card {
+    margin-bottom: 1rem;
+  }
+  
+  /* Alert */
+  .alert {
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* Card headers */
+  .card-header {
+    padding: 0.75rem 1rem !important;
+  }
+  
+  .card-header h5 {
+    font-size: 0.95rem;
+  }
+  
+  /* Badge */
+  .badge {
+    font-size: 0.7rem;
+  }
+  
+  /* Body margin top cho mobile */
+  body {
+    margin-top: 56px !important;
+  }
+  
+  /* Main container padding */
+  main.container {
+    padding-top: 1rem !important;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    max-width: 100%;
+  }
+  
+  /* Navbar mobile */
+  .navbar-brand {
+    font-size: 1.1rem;
+  }
+  
+  .navbar-nav .nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Card body padding mobile */
+  .card-body {
+    padding: 1rem;
+  }
+  
+  /* Row gutters mobile */
+  .row.g-3,
+  .row.g-4 {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+  }
+  
+  .row.g-3 > *,
+  .row.g-4 > * {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* --- CẢI THIỆN LAYOUT DESKTOP --- */
+@media (min-width: 768px) {
+  .dashboard-container {
+    padding: 0 20px;
+  }
+  
+  /* Đảm bảo Profile và Balance card có chiều cao bằng nhau */
+  .row.align-items-stretch > [class*="col-"] {
+    display: flex;
+  }
+  
+  .row.align-items-stretch > [class*="col-"] > .card {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .row.align-items-stretch > [class*="col-"] > .card > .card-body {
+    flex: 1;
+  }
+  
+  /* Cải thiện spacing giữa các phần */
+  .dashboard-card {
+    margin-bottom: 0;
+  }
+  
+  /* Quick actions buttons - căn chỉnh tốt hơn trên desktop */
+  .quick-action-btn {
+    min-height: 120px;
+  }
+  
+  /* Balance card - cải thiện padding và spacing */
+  .balance-card .card-body {
+    min-height: 200px;
+  }
+  
+  /* Profile card - cải thiện spacing */
+  .profile-card .card-body {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/* Desktop lớn - tối ưu hóa layout */
+@media (min-width: 992px) {
+  .dashboard-container {
+    max-width: 1400px;
+    padding: 0 30px;
+  }
+  
+  .balance-card .card-body {
+    padding: 2.5rem;
+  }
+  
+  .balance-card .balance-amount {
+    font-size: 3.5rem !important;
+  }
+  
+  .quick-action-btn {
+    min-height: 130px;
+    padding: 25px 15px;
+  }
+  
+  .icon-wrapper {
+    width: 60px;
+    height: 60px;
+    font-size: 1.4rem;
+  }
+  
+  /* Transaction list - tối ưu cho desktop */
+  .transaction-list-container {
+    max-height: 600px;
+  }
+}
+
+/* --- FOOTER STYLES --- */
+.site-footer {
+  background: linear-gradient(135deg, var(--primary-color) 0%, #6b4637 100%);
+  color: #eaddcf;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  padding-bottom: 0.75rem;
+}
+
+.site-footer .footer-brand {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.2rem;
+  font-family: 'Merriweather', serif;
+}
+
+.site-footer .footer-heading {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.site-footer .footer-links {
+  line-height: 1.8;
+}
+
+.site-footer .footer-links a {
+  color: #eaddcf;
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.3s ease, padding-left 0.3s ease;
+  display: inline-block;
+}
+
+.site-footer .footer-links a:hover {
+  color: #ffffff;
+  padding-left: 5px;
+}
+
+.site-footer .footer-contact {
+  line-height: 1.8;
+}
+
+.site-footer .footer-contact i {
+  color: var(--accent-color);
+  width: 18px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.site-footer .footer-contact a {
+  color: #eaddcf;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  font-size: 0.85rem;
+}
+
+.site-footer .footer-contact a:hover {
+  color: #ffffff;
+}
+
+.site-footer .social-links {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.site-footer .social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #eaddcf;
+  border-radius: 50%;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-size: 0.85rem;
+}
+
+.site-footer .social-link:hover {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.site-footer .footer-divider {
+  border-color: rgba(255, 255, 255, 0.2);
+  margin: 1rem 0 0.75rem;
+}
+
+.site-footer .list-inline-item a {
+  color: #eaddcf;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.site-footer .list-inline-item a:hover {
+  color: #ffffff;
+}
+
+/* Responsive Footer */
+@media (max-width: 768px) {
+  .site-footer {
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+  }
+  
+  .site-footer .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .site-footer .footer-brand {
+    font-size: 1.15rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .site-footer .text-muted.small {
+    font-size: 0.9rem !important;
+    line-height: 1.5;
+  }
+  
+  .site-footer .col-6,
+  .site-footer .col-12 {
+    margin-bottom: 1.5rem;
+  }
+  
+  .site-footer .footer-heading {
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+  }
+  
+  .site-footer .footer-links {
+    line-height: 1.8;
+  }
+  
+  .site-footer .footer-links li {
+    margin-bottom: 0.4rem;
+  }
+  
+  .site-footer .footer-links a {
+    font-size: 0.9rem;
+    display: inline-block;
+    padding: 0.15rem 0;
+  }
+  
+  .site-footer .footer-contact {
+    line-height: 1.8;
+  }
+  
+  .site-footer .footer-contact li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .site-footer .footer-contact a,
+  .site-footer .footer-contact span {
+    font-size: 0.9rem;
+  }
+  
+  .site-footer .footer-contact i {
+    width: 20px;
+    font-size: 0.9rem;
+  }
+  
+  .site-footer .social-links {
+    margin-top: 0.75rem;
+  }
+  
+  .site-footer .social-link {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+  
+  .site-footer .footer-divider {
+    margin: 1.5rem 0 1rem;
+  }
+  
+  .site-footer .list-inline-item {
+    margin: 0 0.5rem;
+  }
+  
+  .site-footer .list-inline-item a {
+    font-size: 0.85rem;
+  }
+}
+
+/* Footer trên màn hình rất nhỏ */
+@media (max-width: 576px) {
+  .site-footer {
+    padding-top: 1.25rem;
+    padding-bottom: 0.75rem;
+  }
+  
+  .site-footer .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  .site-footer .row {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+  }
+  
+  .site-footer .row > [class*="col-"] {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  .site-footer .footer-brand {
+    font-size: 1.1rem;
+  }
+  
+  .site-footer .footer-heading {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .site-footer .footer-links {
+    line-height: 1.7;
+  }
+  
+  .site-footer .footer-links li {
+    margin-bottom: 0.35rem;
+  }
+  
+  .site-footer .footer-links a {
+    font-size: 0.85rem;
+  }
+  
+  .site-footer .footer-contact {
+    line-height: 1.7;
+  }
+  
+  .site-footer .footer-contact li {
+    margin-bottom: 0.4rem;
+  }
+  
+  .site-footer .footer-contact a,
+  .site-footer .footer-contact span {
+    font-size: 0.85rem;
+  }
+  
+  .site-footer .social-link {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+  }
+}
+
+/* --- NOTIFICATIONS PAGE STYLES --- */
+.notification-action-btn {
+  min-width: 150px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-action-btn i {
+  flex-shrink: 0;
+}
+
+/* Responsive cho notifications */
+@media (max-width: 576px) {
+  .notification-action-btn {
+    min-width: 120px;
+    font-size: 0.85rem;
+    padding: 0.375rem 0.75rem;
+  }
+  
+  .notification-action-btn i {
+    font-size: 0.8rem;
+  }
 }

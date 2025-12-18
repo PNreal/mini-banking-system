@@ -3,13 +3,17 @@ import React from 'react';
 const formatAmount = (value) =>
   Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
 
-const formatDate = (date) =>
-  new Date(date).toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: 'short',
+const formatDate = (date) => {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const time = d.toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
   });
+  // Ví dụ: 16:00 · 05/01
+  return `${time} · ${day}/${month}`;
+};
 
 const Transactions = ({ transactions }) => {
   return (
@@ -27,27 +31,14 @@ const Transactions = ({ transactions }) => {
           {transactions.map((trans) => (
             <li
               key={trans.id}
-              className="list-group-item d-flex justify-content-between align-items-start px-2 px-md-4 py-3 border-light"
+              className="list-group-item d-flex justify-content-between align-items-center px-2 px-md-4 py-3 border-light"
             >
-              <div className="d-flex align-items-center">
-                <div
-                  className={`trans-icon ${
-                    trans.amount > 0 ? 'bg-soft-success' : 'bg-soft-danger'
-                  } me-3`}
-                >
-                  <i
-                    className={`fas ${
-                      trans.amount > 0 ? 'fa-arrow-up' : 'fa-arrow-down'
-                    }`}
-                  ></i>
-                </div>
-                <div>
-                  <strong className="d-block text-dark mb-1">{trans.type}</strong>
-                  <small className="text-muted d-flex align-items-center">
-                    <i className="far fa-clock mr-1 me-1"></i>
-                    {formatDate(trans.date)}
-                  </small>
-                </div>
+              <div>
+                <strong className="d-block text-dark mb-1">{trans.type}</strong>
+                <small className="text-muted d-flex align-items-center">
+                  <i className="far fa-clock mr-1 me-1"></i>
+                  {formatDate(trans.date)}
+                </small>
               </div>
               <div className="text-end">
                 <span

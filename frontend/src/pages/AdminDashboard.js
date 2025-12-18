@@ -149,10 +149,6 @@ const AdminDashboard = ({ user }) => {
     <div className="container admin-dashboard-container fade-in">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="h3 mb-0">Bảng điều khiển Admin</h1>
-        <Link to="/dashboard" className="btn btn-outline-secondary">
-          <i className="fas fa-arrow-left me-2"></i>
-          Về Dashboard
-        </Link>
       </div>
 
       {/* Summary Cards */}
