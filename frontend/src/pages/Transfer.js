@@ -523,7 +523,7 @@ const Transfer = ({ balance, onSubmit, isFrozen }) => {
       setValidatingAccount(true);
       validationTimeoutRef.current = setTimeout(async () => {
         try {
-          const token = localStorage.getItem('token');
+          const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
           const response = await validateAccountNumberApi(token, receiverDigits);
           if (response && response.data) {
             setReceiverInfo({

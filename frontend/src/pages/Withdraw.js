@@ -447,7 +447,7 @@ const Withdraw = ({ balance, onSubmit, isFrozen }) => {
   const loadCounters = async () => {
     setLoadingCounters(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await getCountersApi(token);
       if (response && response.data) {
         setCounters(response.data);

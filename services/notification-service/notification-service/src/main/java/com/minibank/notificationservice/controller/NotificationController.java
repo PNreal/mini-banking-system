@@ -52,6 +52,58 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(notification));
     }
     
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications(
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<List<NotificationResponse>>builder()
+                            .success(false)
+                            .data(null)
+                            .build());
+        }
+        log.info("Getting notifications for current user: {}", userId);
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<NotificationResponse> notifications = notificationService.getNotificationsByUserId(userId, pageable);
+        return ResponseEntity.ok(ApiResponse.success(notifications.getContent()));
+    }
+    
+    @PatchMapping("/me/read-all")
+    public ResponseEntity<ApiResponse<String>> markAllMyNotificationsAsRead(
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<String>builder()
+                            .success(false)
+                            .data(null)
+                            .build());
+        }
+        log.info("Marking all notifications as read for current user: {}", userId);
+        
+        notificationService.markAllAsRead(userId);
+        return ResponseEntity.ok(ApiResponse.success("All notifications marked as read"));
+    }
+    
+    @PatchMapping("/me/{notificationId}/read")
+    public ResponseEntity<ApiResponse<NotificationResponse>> markMyNotificationAsRead(
+            @PathVariable UUID notificationId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<NotificationResponse>builder()
+                            .success(false)
+                            .data(null)
+                            .build());
+        }
+        log.info("Marking notification as read: {} for user: {}", notificationId, userId);
+        
+        NotificationResponse notification = notificationService.markAsRead(notificationId);
+        return ResponseEntity.ok(ApiResponse.success(notification));
+    }
+    
     @GetMapping("/user/{userId}")
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotificationsByUserId(
             @PathVariable UUID userId,

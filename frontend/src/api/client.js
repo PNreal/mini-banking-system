@@ -213,6 +213,25 @@ export async function transferApi(token, toAccountId, amount, note) {
   });
 }
 
+export async function getTransactionsHistoryApi(token, params = {}) {
+  // Lấy lịch sử giao dịch
+  // GET /transactions/history?page=0&size=10&type=...
+  const queryParams = new URLSearchParams();
+  if (params.page !== undefined) queryParams.append('page', params.page);
+  if (params.size !== undefined) queryParams.append('size', params.size);
+  if (params.type) queryParams.append('type', params.type);
+  if (params.from) queryParams.append('from', params.from);
+  if (params.to) queryParams.append('to', params.to);
+  
+  const queryString = queryParams.toString();
+  const url = `/transactions/history${queryString ? '?' + queryString : ''}`;
+  
+  return request(GATEWAY_API_BASE, url, {
+    method: 'GET',
+    token,
+  });
+}
+
 // ========== Admin Counter Management APIs ==========
 
 export async function createCounterApi(token, payload) {
@@ -422,6 +441,40 @@ export async function getCounterStatsApi(token, counterId) {
   // GET /counter/admin/{counterId}/stats
   return request(GATEWAY_API_BASE, `/counter/admin/${counterId}/stats`, {
     method: 'GET',
+    token,
+  });
+}
+
+export async function getNotificationsApi(token, params = {}) {
+  // Lấy danh sách thông báo của user hiện tại
+  // GET /notifications/me?page=0&size=50
+  const queryParams = new URLSearchParams();
+  if (params.page !== undefined) queryParams.append('page', params.page);
+  if (params.size !== undefined) queryParams.append('size', params.size);
+  
+  const queryString = queryParams.toString();
+  const url = `/notifications/me${queryString ? '?' + queryString : ''}`;
+  
+  return request(GATEWAY_API_BASE, url, {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function markNotificationAsReadApi(token, notificationId) {
+  // Đánh dấu thông báo đã đọc
+  // PATCH /notifications/me/{notificationId}/read
+  return request(GATEWAY_API_BASE, `/notifications/me/${notificationId}/read`, {
+    method: 'PATCH',
+    token,
+  });
+}
+
+export async function markAllNotificationsAsReadApi(token) {
+  // Đánh dấu tất cả thông báo đã đọc
+  // PATCH /notifications/me/read-all
+  return request(GATEWAY_API_BASE, '/notifications/me/read-all', {
+    method: 'PATCH',
     token,
   });
 }

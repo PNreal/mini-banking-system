@@ -22,6 +22,106 @@ services:
       timeout: 5s
       retries: 5
 
+  # PostgreSQL Database for User Service
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: postgres-user-service
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: user_user
+      POSTGRES_PASSWORD: user_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+    networks:
+      - banking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_user -d user_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Account Service
+  postgres-account:
+    image: postgres:15-alpine
+    container_name: postgres-account-service
+    environment:
+      POSTGRES_DB: account_db
+      POSTGRES_USER: account_user
+      POSTGRES_PASSWORD: account_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-account-data:/var/lib/postgresql/data
+    networks:
+      - banking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U account_user -d account_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Admin Service
+  postgres-admin:
+    image: postgres:15-alpine
+    container_name: postgres-admin-service
+    environment:
+      POSTGRES_DB: admin_db
+      POSTGRES_USER: admin_user
+      POSTGRES_PASSWORD: admin_password
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-admin-data:/var/lib/postgresql/data
+    networks:
+      - banking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d admin_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Transaction Service
+  postgres-transaction:
+    image: postgres:15-alpine
+    container_name: postgres-transaction-service
+    environment:
+      POSTGRES_DB: transaction_db
+      POSTGRES_USER: transaction_user
+      POSTGRES_PASSWORD: transaction_password
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres-transaction-data:/var/lib/postgresql/data
+    networks:
+      - banking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U transaction_user -d transaction_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Notification Service
+  postgres-notification:
+    image: postgres:15-alpine
+    container_name: postgres-notification-service
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: notification_user
+      POSTGRES_PASSWORD: notification_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres-notification-data:/var/lib/postgresql/data
+    networks:
+      - banking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_user -d notification_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Zookeeper for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -65,39 +165,14 @@ services:
       timeout: 5s
       retries: 5
 
-  api-gateway:
-    build:
-      context: ./api-gateway/api-gateway
-      dockerfile: Dockerfile
-    container_name: api-gateway
-    depends_on:
-      kafka:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    networks:
-      - banking-network
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: frontend
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-      - WDS_SOCKET_PORT=0
-    ports:
-      - "3000:3000"
-    networks:
-      - banking-network
-    depends_on:
-      - api-gateway
-
 volumes:
   postgres-log-data:
+  postgres-user-data:
+  postgres-account-data:
+  postgres-admin-data:
+  postgres-transaction-data:
+  postgres-notification-data:
 
 networks:
   banking-network:
     driver: bridge
-

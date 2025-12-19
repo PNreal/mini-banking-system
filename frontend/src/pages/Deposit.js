@@ -61,7 +61,7 @@ const Deposit = ({ balance, onSubmit, isFrozen }) => {
   const loadCounters = async () => {
     setLoadingCounters(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await getCountersApi(token);
       if (response && response.data) {
         setCounters(response.data);
@@ -109,7 +109,7 @@ const Deposit = ({ balance, onSubmit, isFrozen }) => {
     // Nếu là nạp tiền ở quầy, gọi API riêng
     if (depositMethod === 'bank' && selectedCounter) {
       try {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
         const response = await depositAtCounterApi(token, parseFloat(amount), selectedCounter);
         if (response && response.data) {
           alert(`Yêu cầu nạp tiền đã được tạo. Mã giao dịch: ${response.data.transactionCode || 'N/A'}`);

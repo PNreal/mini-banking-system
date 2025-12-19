@@ -3,18 +3,32 @@ import { useNavigate, Link } from 'react-router-dom';
 
 const AdminLogin = ({ onLogin }) => {
   const [form, setForm] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setError(''); // Clear error when user types
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const ok = await onLogin(form);
-    if (ok) {
-      navigate('/admin/dashboard');
+    setError('');
+    setLoading(true);
+    
+    try {
+      const ok = await onLogin(form);
+      if (ok) {
+        navigate('/admin');
+      } else {
+        setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      }
+    } catch (err) {
+      setError(err.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -32,6 +46,12 @@ const AdminLogin = ({ onLogin }) => {
             </p>
           </div>
 
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <fieldset className="form-group mb-3">
               <div className="form-group mb-3">
@@ -44,6 +64,7 @@ const AdminLogin = ({ onLogin }) => {
                   className="form-control"
                   placeholder="admin@example.com"
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -57,14 +78,28 @@ const AdminLogin = ({ onLogin }) => {
                   className="form-control"
                   placeholder="Nhập mật khẩu quản trị"
                   required
+                  disabled={loading}
                 />
               </div>
             </fieldset>
 
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <button type="submit" className="btn btn-danger px-4">
-                <i className="fas fa-sign-in-alt me-2"></i>
-                Đăng nhập Admin
+              <button 
+                type="submit" 
+                className="btn btn-danger px-4"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-sign-in-alt me-2"></i>
+                    Đăng nhập Admin
+                  </>
+                )}
               </button>
               <small className="text-muted">
                 <Link to="/login">Đăng nhập người dùng</Link>

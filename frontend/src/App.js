@@ -17,6 +17,14 @@ import About from './pages/About';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminCounters from './pages/AdminCounters';
 import AdminEmployees from './pages/AdminEmployees';
+import { AdminLayout } from './layouts/AdminLayout';
+import AdminDashboardNew from './pages/admin/Dashboard';
+import AdminUsers from './pages/admin/Users';
+import AdminCountersNew from './pages/admin/Counters';
+import AdminEmployeesNew from './pages/admin/Employees';
+import AdminTransactions from './pages/admin/Transactions';
+import AdminStatistics from './pages/admin/Statistics';
+import AdminSettings from './pages/admin/Settings';
 import StaffDashboard from './pages/StaffDashboard';
 import CounterAdminDashboard from './pages/CounterAdminDashboard';
 import AdminLogin from './pages/AdminLogin';
@@ -27,13 +35,13 @@ import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import ServerError from './pages/ServerError';
 import './App.css';
-import { loginApi, loginAdminApi, loginStaffApi, registerApi, getAccountInfoApi, getUserInfoApi, depositApi, transferApi } from './api/client';
+import { loginApi, loginAdminApi, loginStaffApi, registerApi, getAccountInfoApi, getUserInfoApi, depositApi, transferApi, getTransactionsHistoryApi } from './api/client';
 
 const initialUser = {
-  username: 'BK88 User',
+  username: 'User', // Tên mặc định, sẽ được thay thế bằng tên từ backend
   email: 'user@bk88.vn',
   userId: '000123456789',
-  balance: 25000000,
+  balance: 0, // Số dư mặc định là 0 khi chưa fetch được từ backend
   imageFile: `${process.env.PUBLIC_URL}/assets/default.jpg`,
   isFrozen: false,
 };
@@ -44,26 +52,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null); // 'ADMIN', 'STAFF', 'CUSTOMER'
   const [flashMessages, setFlashMessages] = useState([]);
-  const [transactions, setTransactions] = useState(() => [
-    {
-      id: 1,
-      type: 'Nạp tiền',
-      amount: 1500000,
-      date: '2025-01-05T09:00:00Z',
-    },
-    {
-      id: 2,
-      type: 'Rút tiền',
-      amount: -500000,
-      date: '2025-01-06T11:15:00Z',
-    },
-    {
-      id: 3,
-      type: 'Chuyển khoản',
-      amount: -700000,
-      date: '2025-01-07T14:30:00Z',
-    },
-  ]);
+  const [transactions, setTransactions] = useState([]);
 
   const addFlash = (type, text) => {
     setFlashMessages((prev) => [...prev, { id: Date.now() + Math.random(), type, text }]);
@@ -102,6 +91,85 @@ function App() {
       console.error('Error fetching user data:', error);
       // Trả về null để dùng fallback
       return null;
+    }
+  };
+
+  // Hàm fetch lịch sử giao dịch từ backend
+  const fetchTransactions = async (token) => {
+    try {
+      const response = await getTransactionsHistoryApi(token, {
+        page: 0,
+        size: 50, // Lấy 50 giao dịch gần nhất
+      });
+
+      if (response?.success && response?.data?.content) {
+        // Lấy accountId của user hiện tại để xác định giao dịch gửi/nhận
+        const currentAccountId = user?.userId || user?.accountId;
+        
+        // Map dữ liệu từ backend sang format mà Dashboard component expect
+        const mappedTransactions = response.data.content.map((tx) => {
+          // Map transaction type sang tiếng Việt
+          let typeLabel = '';
+          let amount = Number(tx.amount);
+          
+          switch (tx.type) {
+            case 'DEPOSIT':
+              typeLabel = 'Nạp tiền';
+              amount = Math.abs(amount); // Dương
+              break;
+            case 'WITHDRAW':
+              typeLabel = 'Rút tiền';
+              amount = -Math.abs(amount); // Âm
+              break;
+            case 'TRANSFER':
+              // Xác định xem user là người gửi hay người nhận
+              const isSender = currentAccountId && tx.fromAccountId && 
+                               String(tx.fromAccountId) === String(currentAccountId);
+              const isReceiver = currentAccountId && tx.toAccountId && 
+                                 String(tx.toAccountId) === String(currentAccountId);
+              
+              if (isSender) {
+                typeLabel = 'Chuyển khoản';
+                amount = -Math.abs(amount); // Âm (gửi đi)
+              } else if (isReceiver) {
+                typeLabel = 'Nhận chuyển khoản';
+                amount = Math.abs(amount); // Dương (nhận về)
+              } else {
+                typeLabel = 'Chuyển khoản';
+                amount = -Math.abs(amount); // Mặc định coi như gửi đi
+              }
+              break;
+            case 'COUNTER_DEPOSIT':
+              typeLabel = 'Nạp tiền tại quầy';
+              amount = Math.abs(amount); // Dương
+              break;
+            default:
+              typeLabel = tx.type || 'Giao dịch';
+          }
+
+          return {
+            id: tx.transactionId || tx.id || Date.now() + Math.random(),
+            type: typeLabel,
+            amount: amount,
+            date: tx.timestamp || tx.date || new Date().toISOString(),
+          };
+        });
+
+        // Sắp xếp theo thời gian mới nhất trước
+        mappedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        setTransactions(mappedTransactions);
+        return mappedTransactions;
+      } else {
+        // Nếu không có dữ liệu, set mảng rỗng
+        setTransactions([]);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      // Nếu có lỗi, giữ nguyên transactions hiện tại hoặc set mảng rỗng
+      setTransactions([]);
+      return [];
     }
   };
 
@@ -144,6 +212,11 @@ function App() {
           role: role,
         });
 
+        // Fetch lịch sử giao dịch
+        if (role === 'CUSTOMER') {
+          await fetchTransactions(token);
+        }
+
         // Lưu thông tin phiên
         try {
           const storedUser = {
@@ -163,13 +236,22 @@ function App() {
           // Bỏ qua lỗi storage
         }
       } else {
-        // Fallback nếu không fetch được
-        setUser((prev) => ({
+        // Fallback nếu không fetch được - đảm bảo balance là 0 và username là "User"
+        setUser((prev) => {
+          // Loại bỏ "BK88 User" từ profile hoặc prev
+          const safeUsername = profile.fullName || 
+                              (profile.username && profile.username !== 'BK88 User' ? profile.username : null) ||
+                              (prev?.username && prev.username !== 'BK88 User' ? prev.username : null) ||
+                              'User';
+          return {
           ...prev,
           ...profile,
           email: profile.email || form.email,
           role: role,
-        }));
+            balance: 0, // Đảm bảo balance là 0 khi không fetch được
+            username: safeUsername, // Đảm bảo username là "User" nếu không có hoặc là "BK88 User"
+          };
+        });
       }
 
       addFlash('success', 'Đăng nhập thành công.');
@@ -245,12 +327,23 @@ function App() {
               email: userData.email || parsedUser.email,
               role: storedRole,
             });
+
+            // Fetch lịch sử giao dịch nếu là customer
+            if (storedRole === 'CUSTOMER') {
+              await fetchTransactions(storedToken);
+            }
           } else {
-            // Fallback nếu không fetch được
+            // Fallback nếu không fetch được - đảm bảo balance là 0 và username là "User"
             const parsedUser = JSON.parse(storedUser);
+            // Loại bỏ "BK88 User" từ stored data cũ
+            const safeUsername = parsedUser.fullName || 
+                                (parsedUser.username && parsedUser.username !== 'BK88 User' ? parsedUser.username : null) || 
+                                'User';
             setUser((prev) => ({
               ...prev,
               ...parsedUser,
+              balance: parsedUser.balance || 0, // Đảm bảo balance là 0 nếu không có trong stored data
+              username: safeUsername, // Đảm bảo username là "User" nếu không có hoặc là "BK88 User"
             }));
           }
         }
@@ -313,6 +406,9 @@ function App() {
         // Thêm transaction vào lịch sử
         updateBalance(amount, 'Nạp tiền');
         
+        // Refresh transactions từ backend
+        await fetchTransactions(token);
+        
         addFlash('success', `Nạp tiền thành công. Số dư mới: ${newBalance.toLocaleString('vi-VN')} VND`);
         return true;
       } else {
@@ -369,12 +465,16 @@ function App() {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const token = authToken || sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await transferApi(token, toAccountId, amount, note);
       if (response && response.data) {
         // Cập nhật số dư từ response
         const newBalance = response.data.newBalance;
         setUser((prev) => ({ ...prev, balance: newBalance }));
+        
+        // Refresh transactions từ backend
+        await fetchTransactions(token);
+        
         addFlash('success', 'Chuyển khoản thành công.');
         return true;
       }
@@ -424,7 +524,7 @@ function App() {
             path="/"
             element={
               isAuthenticated ? (
-                isAdmin ? <Navigate to="/admin/dashboard" replace /> :
+                isAdmin ? <Navigate to="/admin" replace /> :
                 isStaff ? <Navigate to="/staff/dashboard" replace /> :
                 <Navigate to="/dashboard" replace />
               ) : (
@@ -474,7 +574,6 @@ function App() {
           />
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           <Route path="/admin/login" element={<AdminLogin onLogin={handleAdminLogin} />} />
-          <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="/staff/login" element={<StaffLogin onLogin={handleStaffLogin} />} />
           <Route path="/staff" element={<Navigate to="/staff/login" replace />} />
           <Route path="/register" element={<Register onRegister={handleRegister} />} />
@@ -543,8 +642,32 @@ function App() {
               )
             }
           />
+          {/* Admin routes với AdminLayout mới */}
           <Route
-            path="/admin/dashboard"
+            path="/admin"
+            element={
+              isAuthenticated && isAdmin ? (
+                <AdminLayout user={user} onLogout={handleLogout} />
+              ) : isAuthenticated ? (
+                <Forbidden />
+              ) : (
+                <Navigate to="/admin/login" replace />
+              )
+            }
+          >
+            <Route index element={<AdminDashboardNew />} />
+            <Route path="dashboard" element={<AdminDashboardNew />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="counters" element={<AdminCountersNew />} />
+            <Route path="employees" element={<AdminEmployeesNew />} />
+            <Route path="transactions" element={<AdminTransactions />} />
+            <Route path="statistics" element={<AdminStatistics />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
+          
+          {/* Giữ lại các route admin cũ để tương thích */}
+          <Route
+            path="/admin/old/dashboard"
             element={
               isAuthenticated && isAdmin ? (
                 <AdminDashboard user={user} />
@@ -554,7 +677,7 @@ function App() {
             }
           />
           <Route
-            path="/admin/counters"
+            path="/admin/old/counters"
             element={
               isAuthenticated && isAdmin ? (
                 <AdminCounters user={user} />
@@ -564,7 +687,7 @@ function App() {
             }
           />
           <Route
-            path="/admin/employees"
+            path="/admin/old/employees"
             element={
               isAuthenticated && isAdmin ? (
                 <AdminEmployees user={user} />

@@ -1,16 +1,20 @@
 package com.minibank.userservice.controller;
 
+import com.minibank.userservice.dto.ApiResponse;
 import com.minibank.userservice.dto.AuthResponse;
 import com.minibank.userservice.dto.PasswordResetConfirmRequest;
 import com.minibank.userservice.dto.PasswordResetRequest;
 import com.minibank.userservice.dto.TokenRefreshRequest;
 import com.minibank.userservice.dto.UserLoginRequest;
 import com.minibank.userservice.dto.UserRegistrationRequest;
+import com.minibank.userservice.dto.UserResponse;
+import com.minibank.userservice.service.JwtService;
 import com.minibank.userservice.service.UserService;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/users")
 public class UserController {
     private final UserService userService;
+    private final JwtService jwtService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, JwtService jwtService) {
         this.userService = userService;
+        this.jwtService = jwtService;
     }
 
     // --- FR-01: Đăng ký người dùng ---
@@ -88,5 +94,23 @@ public class UserController {
     public ResponseEntity<Void> selfFreezeAccount(@RequestHeader("Authorization") String token) {
         userService.freezeCurrentUser(token);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    // --- Lấy thông tin user hiện tại ---
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Extract email từ JWT token
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            
+            // Tìm user bằng email
+            UserResponse userResponse = userService.getUserByEmail(email);
+            return ResponseEntity.ok(new ApiResponse<>("User info retrieved successfully", userResponse));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>("User not found: " + e.getMessage(), null));
+        }
     }
 }

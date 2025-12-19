@@ -26,7 +26,7 @@ const Transactions = ({ transactions, onTransactionUpdate }) => {
 
     setCancellingIds(prev => new Set(prev).add(transactionId));
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       await cancelCounterDepositApi(token, transactionId);
       alert('Đã hủy giao dịch thành công');
       if (onTransactionUpdate) {

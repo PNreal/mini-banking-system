@@ -50,7 +50,7 @@ const AdminCounters = ({ user }) => {
   const loadCounters = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await getCountersApi(token);
       if (response && response.data) {
         setCounters(response.data);
@@ -65,7 +65,7 @@ const AdminCounters = ({ user }) => {
 
   const loadCounterDetails = async (counterId) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await getCounterDetailsApi(token, counterId);
       if (response && response.data) {
         setStaffList(response.data.staff || []);
@@ -100,7 +100,7 @@ const AdminCounters = ({ user }) => {
 
     setActionLoading(`delete-${counterId}`);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       await deleteCounterApi(token, counterId);
       alert('Xóa quầy giao dịch thành công');
       await loadCounters();
@@ -119,7 +119,7 @@ const AdminCounters = ({ user }) => {
     e.preventDefault();
     setActionLoading('save-counter');
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       if (editingCounter) {
         await updateCounterApi(token, editingCounter.counterId, counterForm);
         alert('Cập nhật quầy giao dịch thành công');
@@ -162,7 +162,7 @@ const AdminCounters = ({ user }) => {
 
     setActionLoading(`delete-staff-${staffId}`);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       await removeStaffFromCounterApi(token, selectedCounter, staffId);
       alert('Xóa nhân viên thành công');
       await loadCounterDetails(selectedCounter);
@@ -179,7 +179,7 @@ const AdminCounters = ({ user }) => {
 
     setActionLoading('save-staff');
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       if (editingStaff) {
         await updateStaffInCounterApi(token, selectedCounter, editingStaff.staffId, staffForm);
         alert('Cập nhật nhân viên thành công');

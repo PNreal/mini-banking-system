@@ -222,6 +222,12 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+    public UserResponse getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found with email: " + email));
+        return UserResponse.from(user);
+    }
+
     @Transactional
     public void lockUser(UUID userId) {
         updateStatus(userId, UserStatus.LOCKED);
