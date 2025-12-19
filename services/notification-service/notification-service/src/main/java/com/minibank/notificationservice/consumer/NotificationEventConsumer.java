@@ -105,16 +105,16 @@ public class NotificationEventConsumer {
             
             UUID userId = UUID.fromString((String) event.get("targetUserId"));
             String action = (String) event.getOrDefault("action", "Unknown action");
-            String message = String.format("Admin action performed on your account: %s", action);
+            String notificationMessage = String.format("Admin action performed on your account: %s", action);
             
             // Push WebSocket security alert immediately
-            webSocketService.pushSecurityAlert(userId, message);
+            webSocketService.pushSecurityAlert(userId, notificationMessage);
             
             NotificationRequest request = NotificationRequest.builder()
                     .userId(userId)
                     .type(Notification.NotificationType.SECURITY_ALERT)
                     .title("Account Activity Alert")
-                    .message(message)
+                    .message(notificationMessage)
                     .channel(Notification.NotificationChannel.EMAIL)
                     .recipientEmail((String) event.get("userEmail"))
                     .build();

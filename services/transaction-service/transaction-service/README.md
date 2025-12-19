@@ -2,7 +2,7 @@
 
 Transaction Service chịu trách nhiệm xử lý **giao dịch tài chính** cho hệ thống Mini Banking.
 
-## 🌟 Chức năng chính
+## Chức năng chính
 
 - Nạp tiền vào tài khoản.
 - Rút tiền khỏi tài khoản.
@@ -10,7 +10,7 @@ Transaction Service chịu trách nhiệm xử lý **giao dịch tài chính** c
 - Lưu lịch sử giao dịch và trả về cho frontend.
 - Phát sự kiện `TRANSACTION_COMPLETED` qua Kafka để các service khác (Log, Notification, ...) sử dụng.
 
-## 🔌 API Endpoints
+## API Endpoints
 
 `Base path: /api/v1/transactions`
 
@@ -29,7 +29,7 @@ X-User-Id: <UUID của user>
 
 Xem chi tiết trong `TransactionController`.
 
-## ⚙️ Cấu hình mặc định
+## Cấu hình mặc định
 
 `src/main/resources/application.properties`:
 

@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 
@@ -111,13 +112,14 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         return null;
     }
 
-    public static class StompPrincipal {
+    public static class StompPrincipal implements Principal {
         private final String name;
 
         public StompPrincipal(String name) {
             this.name = name;
         }
 
+        @Override
         public String getName() {
             return name;
         }

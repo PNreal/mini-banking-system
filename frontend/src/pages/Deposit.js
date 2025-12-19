@@ -15,15 +15,15 @@ const Deposit = ({ balance, onSubmit, isFrozen }) => {
 
   // Mock data
   const linkedBanks = [
-    { id: 1, name: 'Vietcombank', accountNumber: '****1234', icon: '🏦' },
-    { id: 2, name: 'Techcombank', accountNumber: '****5678', icon: '🏦' },
-    { id: 3, name: 'VPBank', accountNumber: '****9012', icon: '🏦' },
+    { id: 1, name: 'Vietcombank', accountNumber: '****1234' },
+    { id: 2, name: 'Techcombank', accountNumber: '****5678' },
+    { id: 3, name: 'VPBank', accountNumber: '****9012' },
   ];
 
   const eWallets = [
-    { id: 1, name: 'MoMo', accountNumber: '0901234567', icon: '💰' },
-    { id: 2, name: 'ZaloPay', accountNumber: '0909876543', icon: '💳' },
-    { id: 3, name: 'VNPay', accountNumber: '0912345678', icon: '💵' },
+    { id: 1, name: 'MoMo', accountNumber: '0901234567' },
+    { id: 2, name: 'ZaloPay', accountNumber: '0909876543' },
+    { id: 3, name: 'VNPay', accountNumber: '0912345678' },
   ];
 
 
@@ -899,7 +899,6 @@ const Deposit = ({ balance, onSubmit, isFrozen }) => {
                       disabled={isFrozen}
                     >
                       <div className="source-icon" style={{ background: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)' }}>
-                        🏦
                       </div>
                       <div className="source-info">
                         <p className="source-name">{counter.name}</p>
@@ -964,7 +963,6 @@ const Deposit = ({ balance, onSubmit, isFrozen }) => {
                     disabled={isFrozen}
                   >
                     <div className="source-icon" style={{ background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 100%)' }}>
-                      {wallet.icon}
                     </div>
                     <div className="source-info">
                       <p className="source-name">{wallet.name}</p>

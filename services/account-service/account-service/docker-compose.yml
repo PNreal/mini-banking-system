@@ -1,77 +1,48 @@
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
+
 version: '3.8'
 
 services:
-  postgres-account:
-    image: postgres:15-alpine
-    container_name: postgres-account-service
-    environment:
-      POSTGRES_DB: account_db
-      POSTGRES_USER: account_user
-      POSTGRES_PASSWORD: account_password
-    ports:
-      - "5435:5432"
-    volumes:
-      - postgres_account_data:/var/lib/postgresql/data
-    networks:
-      - banking-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U account_user -d account_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # Database và Kafka đã được di chuyển vào docker-compose.yml ở root
+  # Không cần chạy file này - sử dụng docker-compose.yml ở root thay thế
+  # postgres-account:
+  #   ...
+  # zookeeper:
+  #   ...
+  # kafka:
+  #   ...
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: account-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    networks:
-      - banking-network
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
 
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: account-kafka
-    depends_on:
-      zookeeper:
-        condition: service_started
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    networks:
-      - banking-network
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  account-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: account-service
-    depends_on:
-      postgres-account:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-account:5432/account_db
-      SPRING_DATASOURCE_USERNAME: account_user
-      SPRING_DATASOURCE_PASSWORD: account_password
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      SPRING_PROFILES_ACTIVE: docker
-      INTERNAL_SECRET: internal-secret
-    ports:
-      - "8082:8082"
-    networks:
-      - banking-network
-    restart: unless-stopped
+  # Java service đã được comment - KHÔNG chạy bằng Docker
+  # account-service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: account-service
+  #   depends_on:
+  #     postgres-account:
+  #       condition: service_healthy
+  #     kafka:
+  #       condition: service_healthy
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-account:5432/account_db
+  #     SPRING_DATASOURCE_USERNAME: account_user
+  #     SPRING_DATASOURCE_PASSWORD: account_password
+  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     INTERNAL_SECRET: internal-secret
+  #   ports:
+  #     - "8082:8082"
+  #   networks:
+  #     - banking-network
+  #   restart: unless-stopped
 
 volumes:
   postgres_account_data:

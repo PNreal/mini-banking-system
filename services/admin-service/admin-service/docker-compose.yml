@@ -1,5 +1,12 @@
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
+
 services:
-  postgres:
+  # Database và Kafka đã được di chuyển vào docker-compose.yml ở root
+  # Không cần chạy file này - sử dụng docker-compose.yml ở root thay thế
+  # postgres:
     image: postgres:15-alpine
     container_name: admin-postgres
     environment:
@@ -46,25 +53,31 @@ services:
       timeout: 5s
       retries: 5
 
-  admin-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: admin-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    ports:
-      - "8084:8084"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/admin_db
-      SPRING_DATASOURCE_USERNAME: admin_user
-      SPRING_DATASOURCE_PASSWORD: admin_password
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      SPRING_PROFILES_ACTIVE: docker
-    restart: unless-stopped
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
+
+  # Java service đã được comment - KHÔNG chạy bằng Docker
+  # admin-service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: admin-service
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     kafka:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8084:8084"
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/admin_db
+  #     SPRING_DATASOURCE_USERNAME: admin_user
+  #     SPRING_DATASOURCE_PASSWORD: admin_password
+  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  #     SPRING_PROFILES_ACTIVE: docker
+  #   restart: unless-stopped
 
 volumes:
   postgres_data:

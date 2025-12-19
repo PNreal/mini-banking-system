@@ -1,6 +1,4 @@
-# mini-banking
-Mini Banking System - Java Spring Boot Microservices + React + PostgreSQL
-# 🏦 Mini Banking System
+# Mini Banking System
 > Java Spring Boot Microservices + React + PostgreSQL + Docker  
 > Team 6 members — 2025
 
@@ -19,7 +17,39 @@ doc/
 - Java Spring Boot 3
 - ReactJS
 - PostgreSQL
-- Docker & Docker Compose
+- Docker & Docker Compose (chỉ cho database và infrastructure)
+
+## Cách chạy dự án
+
+> **Lưu ý:** Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker.  
+> Tất cả Java services và Frontend chạy trực tiếp (không dùng Docker).
+
+### 1. Khởi động Databases và Infrastructure (Docker)
+
+```powershell
+docker-compose up -d
+```
+
+### 2. Khởi động các Java Services (Maven)
+
+```powershell
+# Cách 1: Dùng script tự động
+.\start-services.ps1
+
+# Cách 2: Khởi động thủ công từng service
+cd services\user-service\user-service
+.\mvnw.cmd spring-boot:run
+# ... tương tự cho các service khác
+```
+
+### 3. Khởi động Frontend
+
+```powershell
+cd frontend
+npm start
+```
+
+Xem chi tiết trong [START_SERVICES.md](./START_SERVICES.md)
 
 ## Features
 

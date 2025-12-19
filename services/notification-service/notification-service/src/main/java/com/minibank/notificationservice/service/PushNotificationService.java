@@ -55,37 +55,16 @@ public class PushNotificationService {
     }
 
     private boolean sendViaFcm(String deviceToken, String title, String message) {
-        // TODO: Implement FCM integration
-        // Example:
-        // FirebaseMessaging.getInstance().send(
-        //     Message.builder()
-        //         .setToken(deviceToken)
-        //         .setNotification(Notification.builder().setTitle(title).setBody(message).build())
-        //         .build()
-        // );
         log.warn("FCM push provider not implemented yet");
         return sendViaMock(null, deviceToken, title, message);
     }
 
     private boolean sendViaApns(String deviceToken, String title, String message) {
-        // TODO: Implement APNS integration
-        // Example:
-        // ApnsClient apnsClient = new ApnsClientBuilder()
-        //     .setApnsServer(ApnsClientBuilder.PRODUCTION_APNS_HOST)
-        //     .setClientCredentials(new File("path/to/certificate.p12"), "password")
-        //     .build();
-        // apnsClient.sendNotification(deviceToken, payload);
         log.warn("APNS push provider not implemented yet");
         return sendViaMock(null, deviceToken, title, message);
     }
 
     private boolean sendViaAwsSns(String deviceToken, String title, String message, String platform) {
-        // TODO: Implement AWS SNS for push notifications
-        // Example:
-        // AmazonSNSClient snsClient = new AmazonSNSClient();
-        // CreatePlatformEndpointRequest request = new CreatePlatformEndpointRequest()
-        //     .withPlatformApplicationArn(platformArn)
-        //     .withToken(deviceToken);
         log.warn("AWS SNS push provider not implemented yet");
         return sendViaMock(null, deviceToken, title, message);
     }

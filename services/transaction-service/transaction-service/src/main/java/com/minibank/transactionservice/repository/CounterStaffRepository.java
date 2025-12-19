@@ -16,8 +16,7 @@ public interface CounterStaffRepository extends JpaRepository<CounterStaff, UUID
     
     @Query("SELECT cs.userId, COUNT(t.id) as pendingCount " +
            "FROM CounterStaff cs " +
-           "LEFT JOIN Transaction t ON t.toAccountId IN " +
-           "(SELECT a.accountId FROM Account a WHERE a.userId = cs.userId) " +
+           "LEFT JOIN Transaction t ON t.staffId = cs.userId " +
            "AND t.type = 'COUNTER_DEPOSIT' AND t.status = 'PENDING' " +
            "WHERE cs.counterId = :counterId AND cs.isActive = true " +
            "GROUP BY cs.userId")

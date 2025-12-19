@@ -1,5 +1,12 @@
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
+
 services:
-  postgres:
+  # Database và Kafka đã được di chuyển vào docker-compose.yml ở root
+  # Không cần chạy file này - sử dụng docker-compose.yml ở root thay thế
+  # postgres:
     image: postgres:15-alpine
     container_name: notification-postgres
     environment:
@@ -52,27 +59,33 @@ services:
       timeout: 5s
       retries: 5
 
-  notification-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: notification-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    ports:
-      - "8086:8086"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
-      SPRING_DATASOURCE_USERNAME: notification_user
-      SPRING_DATASOURCE_PASSWORD: notification_password
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29093
-      SPRING_PROFILES_ACTIVE: docker
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-    restart: unless-stopped
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
+
+  # Java service đã được comment - KHÔNG chạy bằng Docker
+  # notification-service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: notification-service
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     kafka:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8086:8086"
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
+  #     SPRING_DATASOURCE_USERNAME: notification_user
+  #     SPRING_DATASOURCE_PASSWORD: notification_password
+  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29093
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     MAIL_USERNAME: ${MAIL_USERNAME:-}
+  #     MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+  #   restart: unless-stopped
 
 volumes:
   postgres_notification_data:

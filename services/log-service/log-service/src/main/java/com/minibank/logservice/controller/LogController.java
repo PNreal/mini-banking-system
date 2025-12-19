@@ -65,8 +65,6 @@ public class LogController {
             @RequestParam(defaultValue = "time") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir
     ) {
-        // TODO: Extract userId from JWT token when authentication is implemented
-        // For now, using header as temporary solution
         if (userIdHeader == null || userIdHeader.trim().isEmpty()) {
             log.warn("X-User-Id header not found");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

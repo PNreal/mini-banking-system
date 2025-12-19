@@ -2,13 +2,13 @@
 
 User Service là dịch vụ cốt lõi của hệ thống Mini Banking System, chịu trách nhiệm quản lý định danh, xác thực và thông tin người dùng.
 
-## 🌟 Tính năng
+## Tính năng
 
 - **Authentication**: Đăng ký (Register), Đăng nhập (Login), cấp phát JWT Access Token & Refresh Token.
 - **Security**: Đổi mật khẩu, Quên mật khẩu (gửi email thật qua SMTP), Tự khóa tài khoản (Self-freeze).
 - **Validation**: Kiểm tra dữ liệu đầu vào (Email, Password) chặt chẽ.
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Ngôn ngữ:** Java 17
 - **Framework:** Spring Boot 3.x / 4.x
@@ -17,7 +17,7 @@ User Service là dịch vụ cốt lõi của hệ thống Mini Banking System, 
 - **Mail:** JavaMailSender (Gmail SMTP)
 - **Build Tool:** Maven
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Public Endpoints (Ai cũng gọi được)
 
@@ -33,7 +33,7 @@ User Service là dịch vụ cốt lõi của hệ thống Mini Banking System, 
 |--------|----------|-------------|-----------------|
 | PUT | `/api/users/self-freeze` | Tự khóa tài khoản | `Authorization: Bearer <token>` |
 
-## ⚙️ Cấu hình (Cần thiết để chạy)
+## Cấu hình (Cần thiết để chạy)
 
 Trước khi chạy, hãy đảm bảo file `src/main/resources/application.properties` đã được điền đúng thông tin:
 

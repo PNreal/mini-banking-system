@@ -19,24 +19,27 @@ module.exports = {
         '@': srcPath,
       };
       
-      // Cấu hình extensions
+      // Cấu hình extensions - đảm bảo thứ tự đúng
       if (!webpackConfig.resolve.extensions) {
         webpackConfig.resolve.extensions = [];
       }
-      // Đảm bảo .tsx và .ts được ưu tiên
+      // Đảm bảo .tsx và .ts được ưu tiên trước .jsx và .js
       const extensions = ['.tsx', '.ts', '.jsx', '.js', '.json'];
       webpackConfig.resolve.extensions = [
         ...extensions,
         ...webpackConfig.resolve.extensions.filter(ext => !extensions.includes(ext))
       ];
       
-      // Cấu hình modules
+      // Cấu hình modules để hỗ trợ resolve từ src
       if (!webpackConfig.resolve.modules) {
-        webpackConfig.resolve.modules = [];
+        webpackConfig.resolve.modules = ['node_modules'];
       }
       if (!webpackConfig.resolve.modules.includes(srcPath)) {
         webpackConfig.resolve.modules = [srcPath, ...webpackConfig.resolve.modules];
       }
+      
+      // Đảm bảo symlinks được resolve
+      webpackConfig.resolve.symlinks = false;
       
       return webpackConfig;
     },

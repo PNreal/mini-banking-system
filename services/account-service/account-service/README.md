@@ -2,7 +2,7 @@
 
 Account Service quản lý **tài khoản ngân hàng** cho mỗi user trong hệ thống Mini Banking.
 
-## 🌟 Chức năng chính
+## Chức năng chính
 
 - Tạo tài khoản mới khi user đăng ký.
 - Lấy thông tin tài khoản theo `userId` hoặc `accountId`.
@@ -12,7 +12,7 @@ Account Service quản lý **tài khoản ngân hàng** cho mỗi user trong h�
 
 Tất cả API đều là **internal APIs** (prefix `/internal/accounts`), chỉ gọi từ các service khác qua `internal.secret`.
 
-## 🔌 API Endpoints (Internal)
+## API Endpoints (Internal)
 
 `Base path: /internal/accounts`
 
@@ -27,7 +27,7 @@ Tất cả API đều là **internal APIs** (prefix `/internal/accounts`), chỉ
 
 > Xem chi tiết trong `InternalAccountController`.
 
-## ⚙️ Cấu hình mặc định
+## Cấu hình mặc định
 
 `src/main/resources/application.properties`:
 
@@ -46,7 +46,7 @@ account.kafka.account-event-topic=ACCOUNT_EVENT
 internal.secret=internal-secret
 ```
 
-## 🐳 Chạy bằng Docker (service riêng lẻ)
+## Chạy bằng Docker (service riêng lẻ)
 
 Trong thư mục `services/account-service/account-service`:
 

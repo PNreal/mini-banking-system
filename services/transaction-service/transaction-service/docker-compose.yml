@@ -1,83 +1,49 @@
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
+
 version: '3.8'
 
 services:
-  postgres-transaction:
-    image: postgres:15-alpine
-    container_name: postgres-transaction-service
-    environment:
-      POSTGRES_DB: transaction_db
-      POSTGRES_USER: transaction_user
-      POSTGRES_PASSWORD: transaction_password
-    ports:
-      - "5436:5432"
-    volumes:
-      - postgres_transaction_data:/var/lib/postgresql/data
-    networks:
-      - banking-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U transaction_user -d transaction_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # Database và Kafka đã được di chuyển vào docker-compose.yml ở root
+  # Không cần chạy file này - sử dụng docker-compose.yml ở root thay thế
+  # postgres-transaction:
+  #   ...
+  # zookeeper-transaction:
+  #   ...
+  # kafka-transaction:
+  #   ...
 
-  zookeeper-transaction:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: transaction-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2182
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2182:2182"
-    networks:
-      - banking-network
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
 
-  kafka-transaction:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: transaction-kafka
-    depends_on:
-      zookeeper-transaction:
-        condition: service_started
-    ports:
-      - "9094:9094"
-      - "29094:29094"
-    environment:
-      KAFKA_BROKER_ID: 4
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-transaction:2182
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9094,PLAINTEXT_INTERNAL://transaction-kafka:29094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    networks:
-      - banking-network
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9094"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  transaction-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: transaction-service
-    depends_on:
-      postgres-transaction:
-        condition: service_healthy
-      kafka-transaction:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-transaction:5432/transaction_db
-      SPRING_DATASOURCE_USERNAME: transaction_user
-      SPRING_DATASOURCE_PASSWORD: transaction_password
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-transaction:29094
-      SPRING_PROFILES_ACTIVE: docker
-      SERVICES_ACCOUNT-SERVICE_URL: http://account-service:8082
-      SERVICES_INTERNAL-SECRET: internal-secret
-    ports:
-      - "8083:8083"
-    networks:
-      - banking-network
-    restart: unless-stopped
+  # Java service đã được comment - KHÔNG chạy bằng Docker
+  # transaction-service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: transaction-service
+  #   depends_on:
+  #     postgres-transaction:
+  #       condition: service_healthy
+  #     kafka-transaction:
+  #       condition: service_healthy
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-transaction:5432/transaction_db
+  #     SPRING_DATASOURCE_USERNAME: transaction_user
+  #     SPRING_DATASOURCE_PASSWORD: transaction_password
+  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-transaction:29094
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     SERVICES_ACCOUNT-SERVICE_URL: http://account-service:8082
+  #     SERVICES_INTERNAL-SECRET: internal-secret
+  #   ports:
+  #     - "8083:8083"
+  #   networks:
+  #     - banking-network
+  #   restart: unless-stopped
 
 volumes:
   postgres_transaction_data:

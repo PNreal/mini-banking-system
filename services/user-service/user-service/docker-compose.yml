@@ -1,7 +1,13 @@
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
+
 version: '3.8'
 
 services:
-  postgres-user:
+  # Database đã được di chuyển vào docker-compose.yml ở root
+  # postgres-user:
     image: postgres:15-alpine
     container_name: user-postgres
     environment:
@@ -20,27 +26,32 @@ services:
       timeout: 5s
       retries: 5
 
-  user-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: user-service
-    depends_on:
-      postgres-user:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-user:5432/user_db
-      SPRING_DATASOURCE_USERNAME: user_user
-      SPRING_DATASOURCE_PASSWORD: user_password
-      # Sử dụng Kafka chung được định nghĩa trong docker-compose gốc (service tên 'kafka')
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      SPRING_PROFILES_ACTIVE: docker
-      INTERNAL_SECRET: internal-secret
-    ports:
-      - "8081:8081"
-    networks:
-      - banking-network
-    restart: unless-stopped
+# LƯU Ý: File này KHÔNG được sử dụng để chạy Java service
+# Java service phải chạy trực tiếp bằng Maven: .\mvnw.cmd spring-boot:run
+# Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker
+# Sử dụng docker-compose.yml ở root để khởi động databases và Kafka
+
+  # Java service đã được comment - KHÔNG chạy bằng Docker
+  # user-service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: user-service
+  #   depends_on:
+  #     postgres-user:
+  #       condition: service_healthy
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-user:5432/user_db
+  #     SPRING_DATASOURCE_USERNAME: user_user
+  #     SPRING_DATASOURCE_PASSWORD: user_password
+  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     INTERNAL_SECRET: internal-secret
+  #   ports:
+  #     - "8081:8081"
+  #   networks:
+  #     - banking-network
+  #   restart: unless-stopped
 
 volumes:
   postgres_user_data:

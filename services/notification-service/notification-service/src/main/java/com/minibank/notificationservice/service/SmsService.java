@@ -47,20 +47,11 @@ public class SmsService {
     }
 
     private boolean sendViaTwilio(String phoneNumber, String message) {
-        // TODO: Implement Twilio integration
-        // Example:
-        // Twilio.init(accountSid, authToken);
-        // Message.creator(new PhoneNumber(phoneNumber), new PhoneNumber(fromNumber), message).create();
         log.warn("Twilio SMS provider not implemented yet");
         return sendViaMock(phoneNumber, message);
     }
 
     private boolean sendViaAwsSns(String phoneNumber, String message) {
-        // TODO: Implement AWS SNS integration
-        // Example:
-        // AmazonSNSClient snsClient = new AmazonSNSClient();
-        // PublishRequest request = new PublishRequest().withPhoneNumber(phoneNumber).withMessage(message);
-        // snsClient.publish(request);
         log.warn("AWS SNS SMS provider not implemented yet");
         return sendViaMock(phoneNumber, message);
     }
