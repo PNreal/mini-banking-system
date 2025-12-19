@@ -21,6 +21,8 @@ doc/
 
 ## Cách chạy dự án
 
+> **⚡ Muốn khởi động nhanh?** Xem [QUICK_START.md](./QUICK_START.md) - Hướng dẫn nhanh để khởi động và dừng ứng dụng
+
 > **Lưu ý:** Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker.  
 > Tất cả Java services và Frontend chạy trực tiếp (không dùng Docker).
 
@@ -49,7 +51,19 @@ cd frontend
 npm start
 ```
 
-Xem chi tiết trong [START_SERVICES.md](./START_SERVICES.md)
+### Dừng ứng dụng
+
+```powershell
+# Dừng tất cả Java Services
+.\stop-services.ps1
+
+# Dừng Databases và Infrastructure
+docker-compose down
+```
+
+Xem chi tiết trong:
+- [QUICK_START.md](./QUICK_START.md) - Hướng dẫn nhanh (khuyến nghị)
+- [START_SERVICES.md](./START_SERVICES.md) - Hướng dẫn chi tiết
 
 ## Features
 
