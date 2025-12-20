@@ -13,6 +13,8 @@ import java.util.UUID;
 public interface CounterStaffRepository extends JpaRepository<CounterStaff, UUID> {
     List<CounterStaff> findByCounterIdAndIsActiveTrue(UUID counterId);
     CounterStaff findByCounterIdAndUserIdAndIsActiveTrue(UUID counterId, UUID userId);
+    List<CounterStaff> findByCounterId(UUID counterId);
+    CounterStaff findByCounterIdAndUserId(UUID counterId, UUID userId);
     
     @Query("SELECT cs.userId, COUNT(t.id) as pendingCount " +
            "FROM CounterStaff cs " +

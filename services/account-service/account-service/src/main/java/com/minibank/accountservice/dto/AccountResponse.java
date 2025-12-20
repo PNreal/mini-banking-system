@@ -13,6 +13,7 @@ import java.util.UUID;
 @Builder
 public class AccountResponse {
     UUID accountId;
+    String accountNumber;
     UUID userId;
     BigDecimal balance;
     AccountStatus status;
@@ -21,6 +22,7 @@ public class AccountResponse {
     public static AccountResponse from(Account account) {
         return AccountResponse.builder()
                 .accountId(account.getId())
+                .accountNumber(account.getAccountNumber())
                 .userId(account.getUserId())
                 .balance(account.getBalance())
                 .status(account.getStatus())

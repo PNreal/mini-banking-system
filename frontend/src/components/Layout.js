@@ -3,14 +3,15 @@ import { Link, NavLink } from 'react-router-dom';
 import Footer from './Footer';
 
 const FlashMessages = ({ messages, onDismiss }) => {
-  // Tự động ẩn message sau 5 giây
+  // Tự động ẩn message (success: 1s, loại khác: 5s)
   useEffect(() => {
     if (!messages.length || !onDismiss) return;
 
     const timers = messages.map((msg) => {
+      const timeoutMs = msg.type === 'success' ? 1000 : 5000;
       return setTimeout(() => {
         onDismiss(msg.id);
-      }, 5000); // 5 giây
+      }, timeoutMs);
     });
 
     // Cleanup timers khi component unmount hoặc messages thay đổi
@@ -54,6 +55,9 @@ const Layout = ({
   flashMessages,
   onDismissFlash,
 }) => {
+  const ADMIN_UI_URL =
+    process.env.REACT_APP_ADMIN_UI_URL || 'http://localhost:3001/admin';
+
   const userRole = user?.role;
   const isStaff = userRole === 'STAFF';
   const isCustomer = userRole === 'CUSTOMER' || (!userRole && isAuthenticated);
@@ -131,25 +135,12 @@ const Layout = ({
                         Staff Dashboard
                       </NavLink>
                     )}
-                    {/* Admin menu */}
+                    {/* Admin menu (admin UI đã tách sang app riêng) */}
                     {isAdmin && (
                       <>
-                        <NavLink
-                          className={({ isActive }) =>
-                            `nav-item nav-link${isActive ? ' active' : ''}`
-                          }
-                          to="/admin/dashboard"
-                        >
+                        <a className="nav-item nav-link" href={ADMIN_UI_URL}>
                           Admin Dashboard
-                        </NavLink>
-                        <NavLink
-                          className={({ isActive }) =>
-                            `nav-item nav-link${isActive ? ' active' : ''}`
-                          }
-                          to="/admin/notifications"
-                        >
-                          Thông báo duyệt nạp
-                        </NavLink>
+                        </a>
                       </>
                     )}
                     <NavLink

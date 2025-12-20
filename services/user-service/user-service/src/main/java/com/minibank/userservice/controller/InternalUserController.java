@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,6 +29,11 @@ public class InternalUserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUser(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(userService.getUser(id));
+    }
+
+    @GetMapping("/by-email")
+    public ResponseEntity<UserResponse> getUserByEmail(@RequestParam("email") String email) {
+        return ResponseEntity.ok(userService.getUserByEmail(email));
     }
 
     @PatchMapping("/{id}/lock")

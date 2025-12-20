@@ -17,9 +17,20 @@ docker-compose up -d
 ```
 
 **Bước 3: Khởi động Frontend (mở terminal mới)**
+
+Hệ thống có 2 UI:
+- **Customer/Staff UI**: thư mục `frontend` (port 3000)
+- **Admin UI (mới)**: thư mục `banking-admin-hub-main/banking-admin-hub-main` (port 3001)
+
 ```powershell
+# Customer/Staff UI
 cd frontend
 npm start
+
+# Admin UI (mới)
+cd ..\banking-admin-hub-main\banking-admin-hub-main
+npm i
+npm run dev
 ```
 
 ### Cách 2: Khởi động thủ công
@@ -82,7 +93,7 @@ docker ps
 
 ### Kiểm tra các port đang được sử dụng
 ```powershell
-Get-NetTCPConnection | Where-Object {$_.LocalPort -in @(8080,8081,8082,8083,8084,8085,8086,3000)} | Select-Object LocalPort, State
+Get-NetTCPConnection | Where-Object {$_.LocalPort -in @(8080,8081,8082,8083,8084,8085,8086,3000,3001)} | Select-Object LocalPort, State
 ```
 
 ---
@@ -127,7 +138,8 @@ Sau khi khởi động, các service sẽ chạy trên các port sau:
 
 | Service | URL | Port |
 |---------|-----|------|
-| **Frontend** | http://localhost:3000 | 3000 |
+| **Customer/Staff UI** | http://localhost:3000 | 3000 |
+| **Admin UI (mới)** | http://localhost:3001/admin | 3001 |
 | **API Gateway** | http://localhost:8080 | 8080 |
 | **User Service** | http://localhost:8081 | 8081 |
 | **Account Service** | http://localhost:8082 | 8082 |
@@ -150,6 +162,9 @@ docker-compose up -d
 
 # Terminal 2: Frontend
 cd frontend && npm start
+
+# Terminal 3: Admin UI (mới)
+cd banking-admin-hub-main\banking-admin-hub-main && npm i && npm run dev
 ```
 
 ### Dừng (2 lệnh)
@@ -190,10 +205,11 @@ docker-compose down
 - [ ] Java 17+ đã cài đặt
 - [ ] Node.js và npm đã cài đặt
 - [ ] Không có process Java cũ đang chạy
-- [ ] Các port 8080-8086 và 3000 không bị chiếm dụng
+- [ ] Các port 8080-8086 và 3000-3001 không bị chiếm dụng
 - [ ] Đã chạy `docker-compose up -d`
 - [ ] Đã chạy `.\start-services.ps1`
-- [ ] Đã chạy `npm start` trong thư mục frontend
+- [ ] Đã chạy `npm start` trong thư mục `frontend`
+- [ ] Đã chạy `npm run dev` trong thư mục `banking-admin-hub-main/banking-admin-hub-main`
 
 ---
 

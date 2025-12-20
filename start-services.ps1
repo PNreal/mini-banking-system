@@ -172,7 +172,8 @@ Write-Host "  - Admin Service: http://localhost:8084" -ForegroundColor White
 Write-Host "  - Log Service: http://localhost:8085" -ForegroundColor White
 Write-Host "  - Notification Service: http://localhost:8086" -ForegroundColor White
 Write-Host "  - API Gateway: http://localhost:8080" -ForegroundColor White
-Write-Host "  - Frontend: http://localhost:3000" -ForegroundColor White
+Write-Host "  - Customer/Staff UI: http://localhost:3000" -ForegroundColor White
+Write-Host "  - Admin UI (mới): http://localhost:3001/admin" -ForegroundColor White
 Write-Host ""
 Write-Host "De dung cac service, dong cua so nay hoac dung Task Manager de kill cac process Java" -ForegroundColor Yellow
 Write-Host "Để dừng databases: docker-compose down" -ForegroundColor Yellow

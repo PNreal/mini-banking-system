@@ -25,6 +25,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiResponse<String>> handleForbidden(ForbiddenException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("FORBIDDEN", ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiResponse<String>> handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<String>> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         String msg = ex.getBindingResult().getFieldErrors().stream()

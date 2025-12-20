@@ -47,8 +47,14 @@ cd services\user-service\user-service
 ### 3. Khởi động Frontend
 
 ```powershell
+# Customer/Staff UI
 cd frontend
 npm start
+
+# Admin UI (mới)
+cd ..\banking-admin-hub-main\banking-admin-hub-main
+npm i
+npm run dev
 ```
 
 ### Dừng ứng dụng

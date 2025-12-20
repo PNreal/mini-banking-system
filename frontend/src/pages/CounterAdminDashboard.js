@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  addCounterStaffApi,
+  getCounterByAdminApi,
+  getCounterStaffApi,
+  removeCounterStaffApi,
+  updateCounterStaffApi,
+} from '../api/client';
 
 const formatAmount = (value) =>
   Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
@@ -17,23 +24,15 @@ const CounterAdminDashboard = ({ user }) => {
   const navigate = useNavigate();
   const [counter, setCounter] = useState(null);
   const [staffList, setStaffList] = useState([]);
-  const [stats, setStats] = useState({
-    totalStaff: 0,
-    activeStaff: 0,
-    todayTransactions: 0,
-    todayAmount: 0,
-    pendingTransactions: 0,
-  });
-  const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [error, setError] = useState(null);
   
   // Modal states
   const [showStaffModal, setShowStaffModal] = useState(false);
-  const [editingStaff, setEditingStaff] = useState(null);
+  const [editingStaff, setEditingStaff] = useState(null); // chứa staff record hiện tại
   const [staffForm, setStaffForm] = useState({
-    staffCode: '',
-    staffName: '',
+    email: '',
   });
 
   useEffect(() => {
@@ -42,91 +41,47 @@ const CounterAdminDashboard = ({ user }) => {
 
   const loadCounterData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Demo data - sẽ thay bằng API call thực tế
-      // Giả sử user có counterId trong thông tin
-      setTimeout(() => {
-        const mockCounter = {
-          counterId: 'counter-1',
-          counterCode: 'Q001',
-          name: 'Quầy giao dịch số 1',
-          address: '123 Đường ABC, Quận 1, TP.HCM',
-          maxStaff: 10,
-          adminUserId: user?.userId || 'admin-1',
-          isActive: true,
-        };
-        setCounter(mockCounter);
-
-        setStaffList([
-          {
-            staffId: 'staff-1',
-            staffCode: 'NV001',
-            staffName: 'Nguyễn Văn A',
-            status: 'ACTIVE',
-          },
-          {
-            staffId: 'staff-2',
-            staffCode: 'NV002',
-            staffName: 'Trần Thị B',
-            status: 'ACTIVE',
-          },
-          {
-            staffId: 'staff-3',
-            staffCode: 'NV003',
-            staffName: 'Lê Văn C',
-            status: 'INACTIVE',
-          },
-        ]);
-
-        setStats({
-          totalStaff: 3,
-          activeStaff: 2,
-          todayTransactions: 45,
-          todayAmount: 125000000,
-          pendingTransactions: 5,
-        });
-
-        setRecentTransactions([
-          {
-            id: 'tx-1',
-            transactionCode: 'NV00112340108',
-            customerName: 'Nguyễn Văn Khách',
-            amount: 5000000,
-            type: 'COUNTER_DEPOSIT',
-            status: 'COMPLETED',
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: 'tx-2',
-            transactionCode: 'NV00256780108',
-            customerName: 'Trần Thị Khách',
-            amount: 10000000,
-            type: 'COUNTER_DEPOSIT',
-            status: 'PENDING',
-            createdAt: new Date(Date.now() - 3600000).toISOString(),
-          },
-        ]);
-
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      if (!token) {
+        setError('Bạn chưa đăng nhập.');
         setLoading(false);
-      }, 500);
+        return;
+      }
+
+      const counterRes = await getCounterByAdminApi(token);
+      const counterData = counterRes?.data || null;
+      setCounter(counterData);
+
+      if (!counterData?.counterId) {
+        setStaffList([]);
+        setLoading(false);
+        return;
+      }
+
+      const staffRes = await getCounterStaffApi(token, counterData.counterId);
+      const staffData = Array.isArray(staffRes?.data) ? staffRes.data : [];
+      setStaffList(staffData);
+
+      setLoading(false);
     } catch (error) {
       console.error('Failed to load counter data:', error);
-      alert('Lỗi khi tải dữ liệu quầy: ' + error.message);
+      setError('Lỗi khi tải dữ liệu quầy: ' + (error?.message || 'unknown'));
       setLoading(false);
     }
   };
 
   const handleAddStaff = () => {
     setEditingStaff(null);
-    setStaffForm({ staffCode: '', staffName: '' });
+    setStaffForm({ email: '' });
     setShowStaffModal(true);
   };
 
   const handleEditStaff = (staff) => {
     setEditingStaff(staff);
     setStaffForm({
-      staffCode: staff.staffCode || '',
-      staffName: staff.staffName || '',
+      email: staff.email || '',
     });
     setShowStaffModal(true);
   };
@@ -138,13 +93,12 @@ const CounterAdminDashboard = ({ user }) => {
 
     setActionLoading(`delete-${staffId}`);
     try {
-      // Demo - sẽ thay bằng API call thực tế
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      setStaffList((prev) => prev.filter((s) => s.staffId !== staffId));
-      alert('Xóa nhân viên thành công');
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      if (!token) throw new Error('Bạn chưa đăng nhập.');
+      await removeCounterStaffApi(token, counter?.counterId, staffId);
+      await loadCounterData();
     } catch (error) {
-      alert('Lỗi khi xóa nhân viên: ' + error.message);
+      alert('Lỗi khi xóa nhân viên: ' + (error?.message || 'unknown'));
     } finally {
       setActionLoading(null);
     }
@@ -154,27 +108,20 @@ const CounterAdminDashboard = ({ user }) => {
     e.preventDefault();
     setActionLoading('save-staff');
     try {
-      // Demo - sẽ thay bằng API call thực tế
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      if (editingStaff) {
-        setStaffList((prev) =>
-          prev.map((s) =>
-            s.staffId === editingStaff.staffId
-              ? { ...s, ...staffForm }
-              : s
-          )
-        );
-        alert('Cập nhật nhân viên thành công');
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      if (!token) throw new Error('Bạn chưa đăng nhập.');
+
+      if (editingStaff?.userId) {
+        // Hiện tại admin quầy chỉ được bật/tắt nhân viên trong quầy (không sửa hồ sơ user)
+        // Nếu cần sửa email/họ tên/mã NV, cần nghiệp vụ khác (admin tổng/user-service).
+        await updateCounterStaffApi(token, counter?.counterId, editingStaff.userId, {
+          isActive: true,
+        });
       } else {
-        const newStaff = {
-          staffId: `staff-${Date.now()}`,
-          ...staffForm,
-          status: 'ACTIVE',
-        };
-        setStaffList((prev) => [...prev, newStaff]);
-        alert('Thêm nhân viên thành công');
+        await addCounterStaffApi(token, counter?.counterId, { email: staffForm.email });
       }
+
+      await loadCounterData();
       setShowStaffModal(false);
     } catch (error) {
       alert('Lỗi: ' + error.message);
@@ -184,26 +131,19 @@ const CounterAdminDashboard = ({ user }) => {
   };
 
   const handleToggleStaffStatus = async (staff) => {
-    const newStatus = staff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    const action = newStatus === 'ACTIVE' ? 'kích hoạt' : 'vô hiệu hóa';
+    const newActive = !staff.isActive;
+    const action = newActive ? 'kích hoạt' : 'vô hiệu hóa';
     
     if (!window.confirm(`Xác nhận ${action} nhân viên này?`)) {
       return;
     }
 
-    setActionLoading(`toggle-${staff.staffId}`);
+    setActionLoading(`toggle-${staff.userId}`);
     try {
-      // Demo - sẽ thay bằng API call thực tế
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      setStaffList((prev) =>
-        prev.map((s) =>
-          s.staffId === staff.staffId
-            ? { ...s, status: newStatus }
-            : s
-        )
-      );
-      alert(`Đã ${action} nhân viên thành công`);
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      if (!token) throw new Error('Bạn chưa đăng nhập.');
+      await updateCounterStaffApi(token, counter?.counterId, staff.userId, { isActive: newActive });
+      await loadCounterData();
     } catch (error) {
       alert('Lỗi: ' + error.message);
     } finally {
@@ -215,8 +155,6 @@ const CounterAdminDashboard = ({ user }) => {
     const badges = {
       ACTIVE: 'bg-success',
       INACTIVE: 'bg-secondary',
-      PENDING: 'bg-warning',
-      COMPLETED: 'bg-success',
     };
     return badges[status] || 'bg-secondary';
   };
@@ -225,8 +163,6 @@ const CounterAdminDashboard = ({ user }) => {
     const labels = {
       ACTIVE: 'Hoạt động',
       INACTIVE: 'Ngừng hoạt động',
-      PENDING: 'Chờ xử lý',
-      COMPLETED: 'Hoàn thành',
     };
     return labels[status] || status;
   };
@@ -259,7 +195,7 @@ const CounterAdminDashboard = ({ user }) => {
     <div className="container counter-admin-dashboard-container fade-in">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 className="h3 mb-1">Quản lý quầy giao dịch</h1>
+          <h1 className="h3 mb-1">Quản lý nhân viên trong quầy</h1>
           <p className="text-muted mb-0">
             <span className="badge bg-primary me-2">{counter.counterCode}</span>
             {counter.name}
@@ -272,6 +208,12 @@ const CounterAdminDashboard = ({ user }) => {
           </Link>
         </div>
       </div>
+
+      {error && (
+        <div className="alert alert-danger">
+          {error}
+        </div>
+      )}
 
       {/* Counter Info Card */}
       <div className="card border-0 shadow-sm mb-4">
@@ -290,76 +232,9 @@ const CounterAdminDashboard = ({ user }) => {
               </p>
             </div>
             <div className="col-md-6">
-              <h5 className="mb-3">Thống kê</h5>
-              <div className="row">
-                <div className="col-6 mb-2">
-                  <small className="text-muted">Số nhân viên tối đa:</small>
-                  <div className="fw-bold">{counter.maxStaff}</div>
-                </div>
-                <div className="col-6 mb-2">
-                  <small className="text-muted">Nhân viên hiện tại:</small>
-                  <div className="fw-bold text-success">{stats.activeStaff}/{stats.totalStaff}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="row mb-4">
-        <div className="col-md-3 mb-3">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Tổng nhân viên</h6>
-                  <h3 className="mb-0">{stats.totalStaff}</h3>
-                </div>
-                <i className="fas fa-users fa-2x text-primary opacity-50"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-3 mb-3">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Giao dịch hôm nay</h6>
-                  <h3 className="mb-0">{formatAmount(stats.todayTransactions)}</h3>
-                </div>
-                <i className="fas fa-exchange-alt fa-2x text-success opacity-50"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-3 mb-3">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Tổng số tiền</h6>
-                  <h3 className="mb-0">{formatAmount(stats.todayAmount)} đ</h3>
-                </div>
-                <i className="fas fa-money-bill-wave fa-2x text-info opacity-50"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-3 mb-3">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Chờ xử lý</h6>
-                  <h3 className="mb-0 text-warning">{formatAmount(stats.pendingTransactions)}</h3>
-                </div>
-                <i className="fas fa-hourglass-half fa-2x text-warning opacity-50"></i>
-              </div>
+              <h5 className="mb-3">Giới hạn nhân sự</h5>
+              <small className="text-muted">Số nhân viên tối đa:</small>
+              <div className="fw-bold">{counter.maxStaff}</div>
             </div>
           </div>
         </div>
@@ -367,7 +242,7 @@ const CounterAdminDashboard = ({ user }) => {
 
       <div className="row">
         {/* Staff Management */}
-        <div className="col-lg-6 mb-4">
+        <div className="col-12 mb-4">
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
               <h5 className="mb-0 fw-bold text-secondary">Quản lý nhân viên</h5>
@@ -392,21 +267,23 @@ const CounterAdminDashboard = ({ user }) => {
                     <thead className="table-light">
                       <tr>
                         <th>Mã NV</th>
-                        <th>Tên nhân viên</th>
+                        <th>Email</th>
+                        <th>Tên</th>
                         <th>Trạng thái</th>
                         <th>Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
                       {staffList.map((staff) => (
-                        <tr key={staff.staffId}>
+                        <tr key={staff.userId}>
                           <td>
-                            <strong className="text-primary">{staff.staffCode}</strong>
+                            <strong className="text-primary">{staff.employeeCode || '-'}</strong>
                           </td>
-                          <td>{staff.staffName}</td>
+                          <td className="text-truncate" style={{ maxWidth: 260 }}>{staff.email || '-'}</td>
+                          <td>{staff.fullName || '-'}</td>
                           <td>
-                            <span className={`badge ${getStatusBadge(staff.status)}`}>
-                              {getStatusLabel(staff.status)}
+                            <span className={`badge ${getStatusBadge(staff.isActive ? 'ACTIVE' : 'INACTIVE')}`}>
+                              {getStatusLabel(staff.isActive ? 'ACTIVE' : 'INACTIVE')}
                             </span>
                           </td>
                           <td>
@@ -415,85 +292,35 @@ const CounterAdminDashboard = ({ user }) => {
                                 className="btn btn-outline-primary"
                                 onClick={() => handleEditStaff(staff)}
                                 disabled={actionLoading}
-                                title="Sửa"
+                                title="Xem"
                               >
                                 <i className="fas fa-edit"></i>
                               </button>
                               <button
-                                className={`btn btn-outline-${staff.status === 'ACTIVE' ? 'warning' : 'success'}`}
+                                className={`btn btn-outline-${staff.isActive ? 'warning' : 'success'}`}
                                 onClick={() => handleToggleStaffStatus(staff)}
-                                disabled={actionLoading === `toggle-${staff.staffId}`}
-                                title={staff.status === 'ACTIVE' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                                disabled={actionLoading === `toggle-${staff.userId}`}
+                                title={staff.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
                               >
-                                {actionLoading === `toggle-${staff.staffId}` ? (
+                                {actionLoading === `toggle-${staff.userId}` ? (
                                   <span className="spinner-border spinner-border-sm" />
                                 ) : (
-                                  <i className={`fas fa-${staff.status === 'ACTIVE' ? 'ban' : 'check'}`}></i>
+                                  <i className={`fas fa-${staff.isActive ? 'ban' : 'check'}`}></i>
                                 )}
                               </button>
                               <button
                                 className="btn btn-outline-danger"
-                                onClick={() => handleDeleteStaff(staff.staffId)}
-                                disabled={actionLoading === `delete-${staff.staffId}`}
+                                onClick={() => handleDeleteStaff(staff.userId)}
+                                disabled={actionLoading === `delete-${staff.userId}`}
                                 title="Xóa"
                               >
-                                {actionLoading === `delete-${staff.staffId}` ? (
+                                {actionLoading === `delete-${staff.userId}` ? (
                                   <span className="spinner-border spinner-border-sm" />
                                 ) : (
                                   <i className="fas fa-trash"></i>
                                 )}
                               </button>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Transactions */}
-        <div className="col-lg-6 mb-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-header bg-white border-0 py-3">
-              <h5 className="mb-0 fw-bold text-secondary">Giao dịch gần đây</h5>
-            </div>
-            <div className="card-body p-0">
-              {recentTransactions.length === 0 ? (
-                <div className="text-center py-5 text-muted">
-                  <i className="fas fa-receipt fa-3x mb-3 opacity-50"></i>
-                  <p>Chưa có giao dịch nào</p>
-                </div>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table table-hover mb-0">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Mã GD</th>
-                        <th>Khách hàng</th>
-                        <th>Số tiền</th>
-                        <th>Trạng thái</th>
-                        <th>Thời gian</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentTransactions.map((tx) => (
-                        <tr key={tx.id}>
-                          <td>
-                            <small className="text-muted">{tx.transactionCode}</small>
-                          </td>
-                          <td>{tx.customerName}</td>
-                          <td>{formatAmount(tx.amount)} đ</td>
-                          <td>
-                            <span className={`badge ${getStatusBadge(tx.status)}`}>
-                              {getStatusLabel(tx.status)}
-                            </span>
-                          </td>
-                          <td>
-                            <small>{formatDate(tx.createdAt)}</small>
                           </td>
                         </tr>
                       ))}
@@ -524,30 +351,23 @@ const CounterAdminDashboard = ({ user }) => {
               <form onSubmit={handleSubmitStaff}>
                 <div className="modal-body">
                   <div className="mb-3">
-                    <label htmlFor="staffCode" className="form-label">
-                      Mã nhân viên <span className="text-danger">*</span>
+                    <label htmlFor="staffEmail" className="form-label">
+                      Email nhân viên <span className="text-danger">*</span>
                     </label>
                     <input
-                      type="text"
+                      type="email"
                       className="form-control"
-                      id="staffCode"
+                      id="staffEmail"
                       required
-                      value={staffForm.staffCode}
-                      onChange={(e) => setStaffForm({ ...staffForm, staffCode: e.target.value })}
+                      value={staffForm.email}
+                      disabled={!!editingStaff}
+                      onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
                     />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="staffName" className="form-label">
-                      Tên nhân viên <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="staffName"
-                      required
-                      value={staffForm.staffName}
-                      onChange={(e) => setStaffForm({ ...staffForm, staffName: e.target.value })}
-                    />
+                    {editingStaff && (
+                      <small className="text-muted">
+                        Hiện tại admin quầy chỉ bật/tắt hoặc gỡ nhân viên khỏi quầy (không chỉnh sửa hồ sơ user).
+                      </small>
+                    )}
                   </div>
                 </div>
                 <div className="modal-footer">

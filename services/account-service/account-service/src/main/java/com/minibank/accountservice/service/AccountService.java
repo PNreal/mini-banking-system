@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +34,8 @@ public class AccountService {
     @Value("${account.kafka.account-event-topic:ACCOUNT_EVENT}")
     private String accountEventTopic;
 
+    private static final SecureRandom RNG = new SecureRandom();
+
     @Transactional
     public Account createAccount(CreateAccountRequest request) {
         Optional<Account> existing = accountRepository.findByUserId(request.getUserId());
@@ -40,11 +44,32 @@ public class AccountService {
         }
         Account account = new Account();
         account.setUserId(request.getUserId());
+        account.setAccountNumber(generateUniqueAccountNumber());
         account.setBalance(defaultIfNull(request.getInitialBalance()));
         account.setStatus(AccountStatus.ACTIVE);
         Account saved = accountRepository.save(account);
         publishEvent("ACCOUNT_CREATED", saved.getId(), saved.getUserId());
         return saved;
+    }
+
+    /**
+     * Backfill accountNumber for existing rows (when the column is newly added).
+     * Safe to run on every startup; only updates rows where accountNumber is null/blank.
+     */
+    @Transactional
+    public int backfillMissingAccountNumbers() {
+        List<Account> all = accountRepository.findAll();
+        int updated = 0;
+        for (Account a : all) {
+            if (a.getAccountNumber() == null || a.getAccountNumber().isBlank()) {
+                a.setAccountNumber(generateUniqueAccountNumber());
+                updated++;
+            }
+        }
+        if (updated > 0) {
+            accountRepository.saveAll(all);
+        }
+        return updated;
     }
 
     @Transactional(readOnly = true)
@@ -171,6 +196,19 @@ public class AccountService {
 
     private BigDecimal defaultIfNull(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private String generateUniqueAccountNumber() {
+        // 12-digit numeric string (like STK), retry on collision
+        for (int i = 0; i < 20; i++) {
+            long n = Math.abs(RNG.nextLong()) % 1_000_000_000_000L; // 0..999,999,999,999
+            String candidate = String.format("%012d", n);
+            if (!accountRepository.existsByAccountNumber(candidate)) {
+                return candidate;
+            }
+        }
+        // Extremely unlikely fallback
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
     private void publishEvent(String action, UUID accountId, UUID userId) {

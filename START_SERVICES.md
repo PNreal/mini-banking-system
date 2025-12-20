@@ -87,11 +87,19 @@ cd api-gateway\api-gateway
 
 ## Bước 3: Khởi động Frontend (Không dùng Docker)
 
-Frontend chạy trực tiếp bằng npm:
+Hệ thống tách **2 UI**:
+- **Customer/Staff UI**: `frontend` (port 3000)
+- **Admin UI (mới)**: `banking-admin-hub-main/banking-admin-hub-main` (port 3001)
 
 ```powershell
+# Customer/Staff UI
 cd frontend
 npm start
+
+# Admin UI (mới)
+cd ..\banking-admin-hub-main\banking-admin-hub-main
+npm i
+npm run dev
 ```
 
 ## Kiểm tra các Service
@@ -105,7 +113,8 @@ Sau khi khởi động, các service sẽ chạy trên các port sau:
 - **Log Service**: http://localhost:8085
 - **Notification Service**: http://localhost:8086
 - **API Gateway**: http://localhost:8080
-- **Frontend**: http://localhost:3000
+- **Customer/Staff UI**: http://localhost:3000
+- **Admin UI (mới)**: http://localhost:3001/admin
 
 ## Dừng các Service
 

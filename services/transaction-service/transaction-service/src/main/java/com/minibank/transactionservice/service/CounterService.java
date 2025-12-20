@@ -1,12 +1,15 @@
 package com.minibank.transactionservice.service;
 
 import com.minibank.transactionservice.client.UserServiceClient;
+import com.minibank.transactionservice.dto.CounterAdminStaffResponse;
+import com.minibank.transactionservice.dto.CounterAdminStaffUpdateRequest;
 import com.minibank.transactionservice.dto.UserResponse;
 import com.minibank.transactionservice.entity.Counter;
 import com.minibank.transactionservice.entity.CounterStaff;
 import com.minibank.transactionservice.entity.TransactionStatus;
 import com.minibank.transactionservice.entity.TransactionType;
 import com.minibank.transactionservice.exception.BadRequestException;
+import com.minibank.transactionservice.exception.ForbiddenException;
 import com.minibank.transactionservice.exception.NotFoundException;
 import com.minibank.transactionservice.repository.CounterRepository;
 import com.minibank.transactionservice.repository.CounterStaffRepository;
@@ -37,6 +40,17 @@ public class CounterService {
         Counter counter = counterRepository.findByIdAndIsActiveTrue(counterId);
         if (counter == null) {
             throw new NotFoundException("Counter not found or inactive");
+        }
+        return counter;
+    }
+
+    /**
+     * Yêu cầu user hiện tại phải là admin của chính quầy này.
+     */
+    public Counter requireCounterAdmin(UUID counterId, UUID adminUserId) {
+        Counter counter = getCounterById(counterId);
+        if (counter.getAdminUserId() == null || !counter.getAdminUserId().equals(adminUserId)) {
+            throw new ForbiddenException("Bạn không có quyền quản lý nhân viên của quầy này.");
         }
         return counter;
     }
@@ -108,6 +122,132 @@ public class CounterService {
     }
 
     /**
+     * Danh sách nhân viên trong quầy (bao gồm active/inactive) dành cho admin quầy.
+     */
+    public List<CounterAdminStaffResponse> getCounterStaffForAdmin(UUID counterId, UUID adminUserId) {
+        requireCounterAdmin(counterId, adminUserId);
+
+        List<CounterStaff> staffRows = counterStaffRepository.findByCounterId(counterId);
+        return staffRows.stream().map(cs -> {
+            UserResponse u = null;
+            try {
+                u = userServiceClient.getUser(cs.getUserId());
+            } catch (Exception ignored) {
+                // Nếu user-service lỗi/không tìm thấy, vẫn trả tối thiểu userId + trạng thái mapping
+            }
+            return CounterAdminStaffResponse.builder()
+                    .userId(cs.getUserId())
+                    .email(u != null ? u.getEmail() : null)
+                    .fullName(u != null ? u.getFullName() : null)
+                    .employeeCode(u != null ? u.getEmployeeCode() : null)
+                    .isActive(Boolean.TRUE.equals(cs.getIsActive()))
+                    .build();
+        }).toList();
+    }
+
+    /**
+     * Thêm nhân viên vào quầy (hoặc kích hoạt lại nếu đã tồn tại nhưng bị inactive).
+     */
+    @Transactional
+    public CounterAdminStaffResponse addOrReactivateStaff(UUID counterId, UUID adminUserId, UUID staffUserId) {
+        Counter counter = requireCounterAdmin(counterId, adminUserId);
+
+        // Validate user tồn tại
+        UserResponse user = userServiceClient.getUser(staffUserId);
+
+        long activeCount = counterStaffRepository.findByCounterIdAndIsActiveTrue(counterId).size();
+        if (activeCount >= counter.getMaxStaff()) {
+            throw new BadRequestException("Quầy đã đạt số nhân viên tối đa: " + counter.getMaxStaff());
+        }
+
+        CounterStaff existing = counterStaffRepository.findByCounterIdAndUserId(counterId, staffUserId);
+        if (existing != null) {
+            existing.setIsActive(true);
+            CounterStaff saved = counterStaffRepository.save(existing);
+            return CounterAdminStaffResponse.builder()
+                    .userId(saved.getUserId())
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .employeeCode(user.getEmployeeCode())
+                    .isActive(true)
+                    .build();
+        }
+
+        CounterStaff cs = new CounterStaff();
+        cs.setCounterId(counterId);
+        cs.setUserId(staffUserId);
+        cs.setIsActive(true);
+        CounterStaff saved = counterStaffRepository.save(cs);
+
+        return CounterAdminStaffResponse.builder()
+                .userId(saved.getUserId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .employeeCode(user.getEmployeeCode())
+                .isActive(true)
+                .build();
+    }
+
+    /**
+     * Resolve userId từ email (dùng internal endpoint user-service).
+     */
+    public UUID resolveUserIdByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            throw new BadRequestException("Email không hợp lệ.");
+        }
+        UserResponse user = userServiceClient.getUserByEmail(email.trim().toLowerCase());
+        if (user == null || user.getUserId() == null) {
+            throw new NotFoundException("User not found with email: " + email);
+        }
+        return user.getUserId();
+    }
+
+    /**
+     * Cập nhật trạng thái active của nhân viên trong quầy.
+     */
+    @Transactional
+    public CounterAdminStaffResponse updateStaffInCounter(UUID counterId, UUID adminUserId, UUID staffUserId, CounterAdminStaffUpdateRequest request) {
+        requireCounterAdmin(counterId, adminUserId);
+
+        CounterStaff cs = counterStaffRepository.findByCounterIdAndUserId(counterId, staffUserId);
+        if (cs == null) {
+            throw new NotFoundException("Nhân viên không thuộc quầy này.");
+        }
+
+        if (request != null && request.getIsActive() != null) {
+            cs.setIsActive(request.getIsActive());
+        }
+
+        CounterStaff saved = counterStaffRepository.save(cs);
+        UserResponse user = null;
+        try {
+            user = userServiceClient.getUser(staffUserId);
+        } catch (Exception ignored) {}
+
+        return CounterAdminStaffResponse.builder()
+                .userId(saved.getUserId())
+                .email(user != null ? user.getEmail() : null)
+                .fullName(user != null ? user.getFullName() : null)
+                .employeeCode(user != null ? user.getEmployeeCode() : null)
+                .isActive(Boolean.TRUE.equals(saved.getIsActive()))
+                .build();
+    }
+
+    /**
+     * Gỡ nhân viên khỏi quầy (soft delete bằng isActive=false).
+     */
+    @Transactional
+    public void removeStaffFromCounter(UUID counterId, UUID adminUserId, UUID staffUserId) {
+        requireCounterAdmin(counterId, adminUserId);
+        CounterStaff cs = counterStaffRepository.findByCounterIdAndUserId(counterId, staffUserId);
+        if (cs == null) {
+            throw new NotFoundException("Nhân viên không thuộc quầy này.");
+        }
+        cs.setIsActive(false);
+        counterStaffRepository.save(cs);
+    }
+
+    /**
      * Kiểm tra xem user có phải là admin quầy không
      */
     public boolean isCounterAdmin(UUID userId) {
@@ -123,6 +263,46 @@ public class CounterService {
             throw new NotFoundException("Counter not found for admin user: " + adminUserId);
         }
         return counter;
+    }
+
+    /**
+     * Admin tổng: chỉ định adminUserId cho quầy.
+     * - Validate user tồn tại (qua user-service)
+     * - (Tuỳ tiện demo) đảm bảo user đó cũng có trong counter_staff để quản lý quầy thuận tiện.
+     */
+    @Transactional
+    public Counter assignCounterAdmin(UUID counterId, UUID adminUserIdToAssign) {
+        Counter counter = getCounterById(counterId);
+
+        // Validate user tồn tại
+        userServiceClient.getUser(adminUserIdToAssign);
+
+        // Ensure the assigned admin is also a staff member of this counter (active)
+        CounterStaff existing = counterStaffRepository.findByCounterIdAndUserId(counterId, adminUserIdToAssign);
+        if (existing == null) {
+            long activeCount = counterStaffRepository.findByCounterIdAndIsActiveTrue(counterId).size();
+            if (activeCount >= counter.getMaxStaff()) {
+                throw new BadRequestException("Không thể gán admin quầy vì quầy đã đạt số nhân viên tối đa: " + counter.getMaxStaff());
+            }
+            CounterStaff cs = new CounterStaff();
+            cs.setCounterId(counterId);
+            cs.setUserId(adminUserIdToAssign);
+            cs.setIsActive(true);
+            counterStaffRepository.save(cs);
+        } else if (!Boolean.TRUE.equals(existing.getIsActive())) {
+            existing.setIsActive(true);
+            counterStaffRepository.save(existing);
+        }
+
+        counter.setAdminUserId(adminUserIdToAssign);
+        return counterRepository.save(counter);
+    }
+
+    @Transactional
+    public Counter clearCounterAdmin(UUID counterId) {
+        Counter counter = getCounterById(counterId);
+        counter.setAdminUserId(null);
+        return counterRepository.save(counter);
     }
 }
 

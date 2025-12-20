@@ -287,6 +287,83 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* --- STAFF DASHBOARD FIXES --- */
+.staff-dashboard .card {
+  border-radius: 12px;
+}
+
+.staff-profile-card .card-body,
+.staff-profile-body {
+  padding: 1.1rem 1.25rem;
+}
+
+.staff-profile-card .staff-meta .text-truncate {
+  max-width: 100%;
+}
+
+.staff-stat-card .card-body {
+  padding: 0.9rem 1.05rem;
+}
+
+.staff-stat-title {
+  font-size: 0.78rem;
+  line-height: 1.25;
+  margin-bottom: 0.35rem;
+  /* Keep stat titles vertically aligned across cards even when some wrap to 2 lines */
+  min-height: 2.5em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.staff-stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: #212529;
+}
+
+.staff-stat-icon {
+  opacity: 0.45;
+  font-size: 1.6rem;
+  margin-left: 0.75rem;
+}
+
+.staff-panel-card .card-header {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.staff-panel-card .badge {
+  font-weight: 600;
+}
+
+@media (max-width: 991px) {
+  .staff-stat-card .card-body {
+    padding: 0.8rem 0.95rem;
+  }
+
+  .staff-stat-value {
+    font-size: 1.25rem;
+  }
+}
+
+@media (min-width: 992px) {
+  .staff-stat-card {
+    min-height: 110px;
+  }
+
+  .staff-stat-card .card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .staff-stat-card .card-body > div {
+    min-width: 0;
+  }
+}
+
 /* --- CẤU TRÚC TRANG DASHBOARD --- */
 
 /* Wrapper bao quanh để căn giữa dọc màn hình */

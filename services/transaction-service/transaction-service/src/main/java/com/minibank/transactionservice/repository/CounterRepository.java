@@ -13,5 +13,6 @@ public interface CounterRepository extends JpaRepository<Counter, UUID> {
     Counter findByIdAndIsActiveTrue(UUID id);
     Counter findByAdminUserIdAndIsActiveTrue(UUID adminUserId);
     boolean existsByAdminUserIdAndIsActiveTrue(UUID adminUserId);
+    boolean existsByCounterCode(String counterCode);
 }
 

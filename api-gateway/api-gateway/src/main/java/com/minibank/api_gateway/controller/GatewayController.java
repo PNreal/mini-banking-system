@@ -34,6 +34,14 @@ public class GatewayController {
         return gatewayService.forwardRequest(request, response, "/transactions");
     }
 
+    // Counter routes (Transaction Service)
+    // transaction-service đang expose `/api/v1/counters/**` và `/api/v1/counter/**` (counter admin APIs)
+    @RequestMapping(value = {"/counters/**", "/counter/**"}, method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE})
+    public ResponseEntity<?> routeToCounterApis(HttpServletRequest request, HttpServletResponse response) {
+        // Dùng servicePath "/transactions" để GatewayService route sang transaction-service base URL
+        return gatewayService.forwardRequest(request, response, "/transactions");
+    }
+
     // Admin Service Routes
     @RequestMapping(value = "/admin/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE})
     public ResponseEntity<?> routeToAdminService(HttpServletRequest request, HttpServletResponse response) {

@@ -6,6 +6,10 @@ import com.minibank.transactionservice.service.CounterService;
 import com.minibank.transactionservice.dto.AccountResponse;
 import com.minibank.transactionservice.dto.AccountTransferRequest;
 import com.minibank.transactionservice.dto.PagedResponse;
+import com.minibank.transactionservice.dto.RecentCustomerResponse;
+import com.minibank.transactionservice.dto.StaffDashboardResponse;
+import com.minibank.transactionservice.dto.StaffPendingTransactionResponse;
+import com.minibank.transactionservice.dto.StaffStatsResponse;
 import com.minibank.transactionservice.dto.TransactionResponse;
 import com.minibank.transactionservice.dto.UpdateBalanceRequest;
 import com.minibank.transactionservice.dto.UserResponse;
@@ -25,11 +29,17 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigInteger;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -168,6 +178,137 @@ public class TransactionService {
         return TransactionResponse.from(tx);
     }
 
+    @Transactional(readOnly = true)
+    public List<RecentCustomerResponse> getRecentCustomersForStaff(UUID staffId, int limit) {
+        if (staffId == null) {
+            throw new BadRequestException("X-User-Id header is required");
+        }
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+
+        List<Transaction> recent = transactionRepository.findRecentCounterDepositsByStaffId(
+                staffId,
+                PageRequest.of(0, safeLimit)
+        );
+
+        // Deduplicate by account (customer) but keep order by timestamp desc
+        Set<UUID> seenAccountIds = new HashSet<>();
+        List<RecentCustomerResponse> result = new ArrayList<>();
+
+        for (Transaction tx : recent) {
+            UUID accountId = tx.getToAccountId();
+            if (accountId == null || !seenAccountIds.add(accountId)) {
+                continue;
+            }
+
+            AccountResponse account = null;
+            UserResponse user = null;
+            try {
+                account = accountServiceClient.getAccount(accountId);
+                if (account != null && account.getUserId() != null) {
+                    user = userServiceClient.getUser(account.getUserId());
+                }
+            } catch (Exception ex) {
+                // If downstream internal calls fail for one record, skip it to avoid breaking dashboard UX
+                log.warn("Failed to resolve recent customer info for account {}: {}", accountId, ex.getMessage());
+                continue;
+            }
+
+            String customerName = (user != null && user.getFullName() != null && !user.getFullName().isBlank())
+                    ? user.getFullName()
+                    : "Khách hàng";
+
+            result.add(RecentCustomerResponse.builder()
+                    .id(tx.getId() != null ? tx.getId().toString() : accountId.toString())
+                    .name(customerName)
+                    .accountNumber(formatPseudoAccountNumber(accountId))
+                    .product("Tài khoản thanh toán")
+                    .lastAction(buildLastActionLabel(tx))
+                    .lastActionAt(tx.getTimestamp())
+                    .build());
+
+            if (result.size() >= safeLimit) {
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public StaffDashboardResponse getStaffDashboard(UUID staffId, int pendingLimit, int recentCustomersLimit) {
+        if (staffId == null) {
+            throw new BadRequestException("X-User-Id header is required");
+        }
+
+        int safePendingLimit = Math.max(1, Math.min(pendingLimit, 50));
+        int safeRecentLimit = Math.max(1, Math.min(recentCustomersLimit, 20));
+
+        OffsetDateTime from = LocalDate.now(ZoneOffset.UTC).atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime to = from.plusDays(1);
+
+        long todayTransactions = transactionRepository.countSuccessfulCounterDepositsByStaffIdBetween(staffId, from, to);
+        BigDecimal todayAmount = transactionRepository.sumSuccessfulCounterDepositsAmountByStaffIdBetween(staffId, from, to);
+        long pendingApprovalsCount = transactionRepository.countPendingCounterDepositsByStaffId(staffId);
+        long customersServed = transactionRepository.countDistinctCustomersServedByStaffIdBetween(staffId, from, to);
+
+        StaffStatsResponse stats = StaffStatsResponse.builder()
+                .todayTransactions(todayTransactions)
+                .todayAmount(todayAmount != null ? todayAmount : BigDecimal.ZERO)
+                .pendingApprovals(pendingApprovalsCount)
+                .customersServed(customersServed)
+                .build();
+
+        List<Transaction> pending = transactionRepository.findPendingCounterDepositsByStaffId(
+                staffId,
+                PageRequest.of(0, safePendingLimit)
+        );
+
+        List<StaffPendingTransactionResponse> pendingResponses = new ArrayList<>();
+        for (Transaction tx : pending) {
+            UUID accountId = tx.getToAccountId();
+            AccountResponse account = null;
+            UserResponse user = null;
+            try {
+                if (accountId != null) {
+                    account = accountServiceClient.getAccount(accountId);
+                    if (account != null && account.getUserId() != null) {
+                        user = userServiceClient.getUser(account.getUserId());
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to resolve pending customer info for account {}: {}", accountId, ex.getMessage());
+            }
+
+            String customerName = (user != null && user.getFullName() != null && !user.getFullName().isBlank())
+                    ? user.getFullName()
+                    : "Khách hàng";
+
+            String accountNumber = (account != null && account.getAccountNumber() != null && !account.getAccountNumber().isBlank())
+                    ? account.getAccountNumber()
+                    : formatPseudoAccountNumber(accountId);
+
+            pendingResponses.add(StaffPendingTransactionResponse.builder()
+                    .transactionId(tx.getId())
+                    .type(tx.getType() != null ? tx.getType().name() : null)
+                    .status(tx.getStatus() != null ? tx.getStatus().name() : null)
+                    .customerName(customerName)
+                    .accountNumber(accountNumber)
+                    .amount(tx.getAmount())
+                    .createdAt(tx.getTimestamp())
+                    .transactionCode(tx.getTransactionCode())
+                    .build());
+        }
+
+        List<RecentCustomerResponse> recentCustomers = getRecentCustomersForStaff(staffId, safeRecentLimit);
+
+        return StaffDashboardResponse.builder()
+                .stats(stats)
+                .pendingApprovals(pendingResponses)
+                .kycRequestsCount(0)
+                .recentCustomers(recentCustomers)
+                .build();
+    }
+
     private UUID resolveAccountId(UUID userId) {
         if (userId == null) {
             throw new BadRequestException("X-User-Id header is required");
@@ -183,6 +324,35 @@ public class TransactionService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Amount must be greater than 0");
         }
+    }
+
+    /**
+     * Hệ thống hiện chưa có trường "accountNumber" riêng trong DB.
+     * Tạo "STK" dạng số (12 chữ số) ổn định theo UUID accountId để UI hiển thị.
+     */
+    private String formatPseudoAccountNumber(UUID accountId) {
+        if (accountId == null) {
+            return "N/A";
+        }
+        BigInteger bi = BigInteger.valueOf(accountId.getMostSignificantBits())
+                .shiftLeft(64)
+                .add(BigInteger.valueOf(accountId.getLeastSignificantBits()))
+                .abs();
+        BigInteger mod = bi.mod(BigInteger.TEN.pow(12));
+        String raw = mod.toString();
+        return "0".repeat(Math.max(0, 12 - raw.length())) + raw;
+    }
+
+    private String buildLastActionLabel(Transaction tx) {
+        if (tx == null) return "-";
+        BigDecimal amount = tx.getAmount() != null ? tx.getAmount() : BigDecimal.ZERO;
+        String amountStr = amount.toBigInteger().toString();
+        return switch (tx.getType()) {
+            case COUNTER_DEPOSIT -> "Nạp tiền " + amountStr + "đ";
+            case DEPOSIT -> "Nạp tiền " + amountStr + "đ";
+            case WITHDRAW -> "Rút tiền " + amountStr + "đ";
+            case TRANSFER -> "Chuyển khoản " + amountStr + "đ";
+        };
     }
 
     private String generateTransactionCode(String employeeCode, String citizenId) {

@@ -67,11 +67,14 @@
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "concurrently": "^9.2.1",
     "react-app-rewired": "^2.2.1",
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "start": "craco start",
+    "start:web": "set PORT=3002&& craco start",
+    "start:admin": "npm --prefix ..\\banking-admin-hub-main\\banking-admin-hub-main run dev",
+    "start": "concurrently -n web,admin -c blue,magenta \"npm run start:web\" \"npm run start:admin\"",
     "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject"

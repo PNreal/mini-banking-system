@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+﻿import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { checkIsCounterAdminApi } from '../api/client';
 
 const StaffLogin = ({ onLogin }) => {
@@ -84,7 +84,7 @@ const StaffLogin = ({ onLogin }) => {
               </div>
             </fieldset>
 
-            <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="d-flex justify-content-center align-items-center mb-3">
               <button type="submit" className="btn btn-primary px-4" disabled={loading}>
                 {loading ? (
                   <>
@@ -93,14 +93,10 @@ const StaffLogin = ({ onLogin }) => {
                   </>
                 ) : (
                   <>
-                    <i className="fas fa-sign-in-alt me-2"></i>
                     Đăng nhập Nhân viên
                   </>
                 )}
               </button>
-              <small className="text-muted">
-                <Link to="/login">Đăng nhập khách hàng</Link>
-              </small>
             </div>
 
             <div className="border-top pt-2 mt-2 text-center">
@@ -116,5 +112,3 @@ const StaffLogin = ({ onLogin }) => {
 };
 
 export default StaffLogin;
-
-

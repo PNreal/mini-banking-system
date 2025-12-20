@@ -43,11 +43,14 @@ public class UserService {
 
     @Transactional
     public User registerUser(UserRegistrationRequest request) {
-        userRepository.findByEmail(request.getEmail())
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        String normalizedFullName = request.getFullName().trim();
+
+        userRepository.findByEmail(normalizedEmail)
                 .ifPresent(u -> { throw new BadRequestException("Email already in use"); });
 
         String hashedPassword = passwordEncoder.encode(request.getPassword());
-        User newUser = new User(request.getEmail(), hashedPassword, request.getFullName());
+        User newUser = new User(normalizedEmail, hashedPassword, normalizedFullName);
         User saved = userRepository.save(newUser);
 
         publishEvent("USER_REGISTERED", saved.getId());
@@ -61,7 +64,7 @@ public class UserService {
     }
 
     public AuthResponse loginUser(UserLoginRequest request) {
-        return loginWithRole(request, null);
+        return loginWithRole(request, "CUSTOMER");
     }
 
     public AuthResponse loginAdmin(UserLoginRequest request) {
@@ -73,7 +76,8 @@ public class UserService {
     }
 
     private AuthResponse loginWithRole(UserLoginRequest request, String requiredRole) {
-        User user = userRepository.findByEmail(request.getEmail())
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         // Kiểm tra tài khoản có đang bị khóa tạm thời do nhập sai nhiều lần không

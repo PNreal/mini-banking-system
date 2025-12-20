@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Component
@@ -31,6 +33,12 @@ public class UserServiceClient {
 
     public UserResponse getUser(UUID userId) {
         String url = userServiceUrl + "/internal/users/" + userId;
+        return exchange(url, HttpMethod.GET, null, UserResponse.class);
+    }
+
+    public UserResponse getUserByEmail(String email) {
+        String encoded = URLEncoder.encode(email, StandardCharsets.UTF_8);
+        String url = userServiceUrl + "/internal/users/by-email?email=" + encoded;
         return exchange(url, HttpMethod.GET, null, UserResponse.class);
     }
 

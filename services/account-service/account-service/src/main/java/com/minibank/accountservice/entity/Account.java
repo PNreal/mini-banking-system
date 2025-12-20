@@ -26,6 +26,9 @@ public class Account {
     @Id
     private UUID id;
 
+    @Column(name = "account_number", unique = true, length = 20)
+    private String accountNumber;
+
     @Column(nullable = false, unique = true)
     private UUID userId;
 

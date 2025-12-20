@@ -4,6 +4,8 @@ import com.minibank.transactionservice.dto.AmountRequest;
 import com.minibank.transactionservice.dto.ApiResponse;
 import com.minibank.transactionservice.dto.CounterDepositRequest;
 import com.minibank.transactionservice.dto.PagedResponse;
+import com.minibank.transactionservice.dto.RecentCustomerResponse;
+import com.minibank.transactionservice.dto.StaffDashboardResponse;
 import com.minibank.transactionservice.dto.TransactionResponse;
 import com.minibank.transactionservice.dto.TransferRequest;
 import com.minibank.transactionservice.entity.TransactionType;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -101,6 +104,23 @@ public class TransactionController {
             @PathVariable UUID transactionId) {
         log.info("Get transaction {} for user {}", transactionId, userId);
         TransactionResponse response = transactionService.getTransaction(userId, transactionId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/staff/recent-customers")
+    public ResponseEntity<ApiResponse<List<RecentCustomerResponse>>> getRecentCustomersForStaff(
+            @RequestHeader(value = "X-User-Id", required = false) UUID staffId,
+            @RequestParam(defaultValue = "5") int limit) {
+        List<RecentCustomerResponse> response = transactionService.getRecentCustomersForStaff(staffId, limit);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/staff/dashboard")
+    public ResponseEntity<ApiResponse<StaffDashboardResponse>> getStaffDashboard(
+            @RequestHeader(value = "X-User-Id", required = false) UUID staffId,
+            @RequestParam(defaultValue = "10") int pendingLimit,
+            @RequestParam(defaultValue = "5") int recentCustomersLimit) {
+        StaffDashboardResponse response = transactionService.getStaffDashboard(staffId, pendingLimit, recentCustomersLimit);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

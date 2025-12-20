@@ -1,9 +1,14 @@
 const GATEWAY_API_BASE =
   process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api/v1';
 
-async function request(baseUrl, path, { method = 'GET', body, token } = {}) {
+async function request(
+  baseUrl,
+  path,
+  { method = 'GET', body, token, headers: extraHeaders } = {}
+) {
   const headers = {
     'Content-Type': 'application/json',
+    ...(extraHeaders || {}),
   };
 
   if (token) {
@@ -175,6 +180,16 @@ export async function getCountersApi(token) {
   });
 }
 
+export async function assignCounterAdminApi(token, counterId, payload) {
+  // Admin tổng chỉ định admin quầy
+  // PATCH /counters/{counterId}/admin-user
+  return request(GATEWAY_API_BASE, `/counters/${counterId}/admin-user`, {
+    method: 'PATCH',
+    body: payload,
+    token,
+  });
+}
+
 export async function depositAtCounterApi(token, amount, counterId) {
   // Nạp tiền ở quầy
   // POST /transactions/deposit-counter
@@ -189,6 +204,15 @@ export async function cancelCounterDepositApi(token, transactionId) {
   // Hủy giao dịch nạp tiền ở quầy
   // POST /transactions/deposit-counter/{transactionId}/cancel
   return request(GATEWAY_API_BASE, `/transactions/deposit-counter/${transactionId}/cancel`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function confirmCounterDepositApi(token, transactionId) {
+  // Nhân viên xác nhận nạp tiền ở quầy
+  // POST /transactions/deposit-counter/{transactionId}/confirm
+  return request(GATEWAY_API_BASE, `/transactions/deposit-counter/${transactionId}/confirm`, {
     method: 'POST',
     token,
   });
@@ -232,6 +256,20 @@ export async function getTransactionsHistoryApi(token, params = {}) {
   });
 }
 
+export async function getStaffDashboardApi(token, params = {}) {
+  // Dashboard dành cho STAFF (counter deposit stats + pending approvals + recent customers)
+  // GET /transactions/staff/dashboard?pendingLimit=...&recentCustomersLimit=...
+  const queryParams = new URLSearchParams();
+  if (params.pendingLimit !== undefined) queryParams.append('pendingLimit', params.pendingLimit);
+  if (params.recentCustomersLimit !== undefined) queryParams.append('recentCustomersLimit', params.recentCustomersLimit);
+  const queryString = queryParams.toString();
+
+  return request(GATEWAY_API_BASE, `/transactions/staff/dashboard${queryString ? '?' + queryString : ''}`, {
+    method: 'GET',
+    token,
+  });
+}
+
 // ========== Admin Counter Management APIs ==========
 
 export async function createCounterApi(token, payload) {
@@ -267,6 +305,13 @@ export async function getCounterDetailsApi(token, counterId) {
   // Lấy chi tiết quầy giao dịch (bao gồm danh sách nhân viên)
   // GET /admin/counters/{counterId}
   return request(GATEWAY_API_BASE, `/admin/counters/${counterId}`, {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function getCounterStaffIdsApi(token, counterId) {
+  return request(GATEWAY_API_BASE, `/counters/${counterId}/staff`, {
     method: 'GET',
     token,
   });
@@ -362,6 +407,62 @@ export async function toggleEmployeeStatusApi(token, employeeId, status) {
   });
 }
 
+// ========== Admin User Management APIs ==========
+
+export async function getAdminUsersApi(token) {
+  return request(GATEWAY_API_BASE, '/admin/users', {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function lockUserApi(token, adminId, userId) {
+  return request(GATEWAY_API_BASE, `/admin/lock/${userId}`, {
+    method: 'PATCH',
+    token,
+    headers: {
+      'X-User-Id': adminId,
+    },
+  });
+}
+
+export async function unlockUserApi(token, adminId, userId) {
+  return request(GATEWAY_API_BASE, `/admin/unlock/${userId}`, {
+    method: 'PATCH',
+    token,
+    headers: {
+      'X-User-Id': adminId,
+    },
+  });
+}
+
+export async function freezeUserApi(token, adminId, userId) {
+  return request(GATEWAY_API_BASE, `/admin/freeze/${userId}`, {
+    method: 'PATCH',
+    token,
+    headers: {
+      'X-User-Id': adminId,
+    },
+  });
+}
+
+export async function unfreezeUserApi(token, adminId, userId) {
+  return request(GATEWAY_API_BASE, `/admin/unfreeze/${userId}`, {
+    method: 'PATCH',
+    token,
+    headers: {
+      'X-User-Id': adminId,
+    },
+  });
+}
+
+export async function getAdminReportApi(token) {
+  return request(GATEWAY_API_BASE, '/admin/report', {
+    method: 'GET',
+    token,
+  });
+}
+
 // ========== Counter Admin APIs ==========
 
 export async function getCounterByAdminApi(token) {
@@ -381,7 +482,13 @@ export async function checkIsCounterAdminApi(token) {
       method: 'GET',
       token,
     });
-    return response?.data || false;
+    // Backend thường trả ApiResponse với data dạng:
+    // - boolean (true/false), hoặc
+    // - object { isCounterAdmin: true/false }
+    const data = response?.data;
+    if (typeof data === 'boolean') return data;
+    if (data && typeof data === 'object') return data.isCounterAdmin === true;
+    return false;
   } catch (error) {
     // Nếu API không tồn tại hoặc lỗi, trả về false
     return false;
@@ -478,5 +585,4 @@ export async function markAllNotificationsAsReadApi(token) {
     token,
   });
 }
-
 

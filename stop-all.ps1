@@ -63,7 +63,7 @@ Write-Host ""
 Write-Host "Buoc 4: Kiem tra cac cong..." -ForegroundColor Yellow
 Write-Host ""
 
-$allPorts = @(8080,8081,8082,8083,8084,8085,8086,3000,5432,5433,5434,5435,5436,5437,9092,9093,2181)
+$allPorts = @(8080,8081,8082,8083,8084,8085,8086,3000,3001,5432,5433,5434,5435,5436,5437,9092,9093,2181)
 $stillOccupied = @()
 
 foreach ($port in $allPorts) {
@@ -96,5 +96,6 @@ Write-Host ""
 Write-Host "De khoi dong lai ung dung:" -ForegroundColor Cyan
 Write-Host "  1. docker-compose up -d" -ForegroundColor White
 Write-Host "  2. .\start-services.ps1" -ForegroundColor White
-Write-Host "  3. cd frontend roi chay npm start" -ForegroundColor White
+Write-Host "  3. cd frontend roi chay npm start (Customer/Staff UI)" -ForegroundColor White
+Write-Host "  4. cd banking-admin-hub-main\\banking-admin-hub-main roi chay npm run dev (Admin UI)" -ForegroundColor White
 Write-Host ""

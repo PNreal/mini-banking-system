@@ -8,8 +8,12 @@ In the project directory, you can run:
 
 ### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Chạy **đồng thời**:
+- Customer/Staff UI (CRA) ở `http://localhost:3000`
+- Admin UI (mới, Vite) ở `http://localhost:3001/admin`
+
+> Lần đầu chạy, bạn cần cài dependency cho Admin UI:
+> - `cd ..\banking-admin-hub-main\banking-admin-hub-main && npm i`
 
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
