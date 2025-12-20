@@ -47,6 +47,12 @@ public class User {
     @Column(length = 20)
     private String employeeCode; // Mã nhân viên (cho STAFF/ADMIN)
 
+    @Column(length = 20)
+    private String phoneNumber;
+
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
     private String resetToken;
     private Instant resetTokenExpiry;
 
@@ -198,5 +204,21 @@ public class User {
 
     public void setEmployeeCode(String employeeCode) {
         this.employeeCode = employeeCode;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 }

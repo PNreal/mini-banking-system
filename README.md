@@ -2,42 +2,92 @@
 
 Hệ thống ngân hàng mini với kiến trúc microservices, bao gồm frontend cho khách hàng và admin panel.
 
-## 🚀 Khởi Động Nhanh
+## Khởi Động Nhanh
 
-### Cách 1: Sử dụng Script Tự Động (Khuyến nghị)
+> ** Quick Reference**: Xem [QUICK_REFERENCE.md](QUICK_REFERENCE.md) để khởi động nhanh
 
+### Phương Pháp Đã Kiểm Chứng (Khuyến nghị)
+
+**Bước 1: Khởi động Docker**
 ```powershell
-# Khởi động toàn bộ hệ thống
-.\start-system.ps1
-
-# Sau khi backend services đã khởi động (2-3 phút), khởi động frontend
-.\start-frontend.ps1
-
-# Kiểm tra trạng thái
-.\check-status.ps1
-
-# Dừng toàn bộ hệ thống
-.\stop-system.ps1
+docker-compose up -d
+Start-Sleep -Seconds 15
 ```
 
-### Cách 2: Khởi Động Thủ Công
+**Bước 2: Sửa API Gateway (chỉ 1 lần)**
 
-Xem hướng dẫn chi tiết trong [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)
+File: `api-gateway/api-gateway/pom.xml` (dòng ~46)
 
-## 📋 Yêu Cầu Hệ Thống
+Thay `spring-cloud-starter-gateway-server-webmvc` → `spring-cloud-starter-gateway-mvc`
+
+**Bước 3: Khởi động Backend (7 terminals)**
+
+Mở 7 terminals riêng biệt và chạy từng service:
+
+```powershell
+# Terminal 1: User Service
+cd services\user-service\user-service
+.\mvnw.cmd spring-boot:run
+
+# Terminal 2: Account Service
+cd services\account-service\account-service
+.\mvnw.cmd spring-boot:run
+
+# Terminal 3: Transaction Service
+cd services\transaction-service\transaction-service
+.\mvnw.cmd spring-boot:run
+
+# Terminal 4: Admin Service
+cd services\admin-service\admin-service
+.\mvnw.cmd spring-boot:run
+
+# Terminal 5: Log Service
+cd services\log-service\log-service
+.\mvnw.cmd spring-boot:run
+
+# Terminal 6: Notification Service
+cd services\notification-service\notification-service
+.\mvnw.cmd spring-boot:run
+
+# Terminal 7: API Gateway
+cd api-gateway\api-gateway
+.\mvnw.cmd spring-boot:run
+```
+
+**Xem hướng dẫn chi tiết:** 
+- [HUONG_DAN_MO_7_TERMINALS.md](HUONG_DAN_MO_7_TERMINALS.md)  (Trực quan từng bước)
+- [documentation/HUONG_DAN_KHOI_DONG_BACKEND.md](documentation/HUONG_DAN_KHOI_DONG_BACKEND.md)  (Chi tiết đầy đủ)
+
+---
+
+## Dừng Ứng Dụng
+
+### Dừng Toàn Bộ (Nhanh)
+
+```powershell
+.\scripts\stop-all.ps1
+```
+
+Script này sẽ dừng:
+-  Tất cả Java processes
+-  Node.js processes (Frontend)
+-  Docker containers
+-  Giải phóng tất cả ports
+
+## Yêu Cầu Hệ Thống
 
 - Java 17+
 - Node.js 16+
 - Docker Desktop
 - Maven (hoặc dùng mvnw có sẵn)
 
-## 🌐 Truy Cập Ứng Dụng
+## Truy Cập Ứng Dụng
 
 - **Customer Web:** http://localhost:3002
 - **Admin Panel:** http://localhost:3001
 - **API Gateway:** http://localhost:8080
 
-## 👤 Tài Khoản Test
+## Tài Khoản Test
 
 | Loại | Email | Password |
 |------|-------|----------|
@@ -46,13 +96,26 @@ Xem hướng dẫn chi tiết trong [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)
 | Staff | staff@minibank.com | Staff@123 |
 | Counter Admin | counter.admin@minibank.com | CounterAdmin@123 |
 
-## 📚 Tài Liệu
+## Tài Liệu
 
-- [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md) - Hướng dẫn khởi động chi tiết
-- [START_SERVICES.md](START_SERVICES.md) - Hướng dẫn khởi động services
-- [README_DOCKER.md](README_DOCKER.md) - Hướng dẫn Docker
+### Hướng Dẫn Chính
+- [HUONG_DAN_MO_7_TERMINALS.md](HUONG_DAN_MO_7_TERMINALS.md)  **TRỰC QUAN** - Hướng dẫn mở 7 terminals từng bước
+- [documentation/HUONG_DAN_KHOI_DONG_BACKEND.md](documentation/HUONG_DAN_KHOI_DONG_BACKEND.md)  - Khởi động backend (đã kiểm chứng)
+- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Tra cứu nhanh
+- [documentation/HUONG_DAN_CHAY_TUNG_BUOC.md](documentation/HUONG_DAN_CHAY_TUNG_BUOC.md) - Hướng dẫn chi tiết từng bước
+- [documentation/README_DOCKER.md](documentation/README_DOCKER.md) - Hướng dẫn Docker và Port Allocation
 
-## 🏗️ Kiến Trúc
+### Tài Liệu Kỹ Thuật
+- [documentation/DATABASE_OVERVIEW.md](documentation/DATABASE_OVERVIEW.md) - Tổng quan database
+- [documentation/LOGIC_LUONG_HOAT_DONG.md](documentation/LOGIC_LUONG_HOAT_DONG.md) - Logic luồng hoạt động
+- [documentation/COUNTER_IMPLEMENTATION_SUMMARY.md](documentation/COUNTER_IMPLEMENTATION_SUMMARY.md) - Quản lý quầy giao dịch
+- [documentation/USER_MANAGEMENT_IMPLEMENTATION.md](documentation/USER_MANAGEMENT_IMPLEMENTATION.md) - Quản lý người dùng
+- [documentation/NOTIFICATION_SYSTEM_OVERVIEW.md](documentation/NOTIFICATION_SYSTEM_OVERVIEW.md) - Hệ thống thông báo
+
+### Scripts
+- [scripts/README.md](scripts/README.md) - Hướng dẫn sử dụng scripts
+
+## Kiến Trúc
 
 ### Backend Services (Microservices)
 - **API Gateway** (8080) - Điểm vào chính, xử lý routing và CORS
@@ -71,40 +134,67 @@ Xem hướng dẫn chi tiết trong [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)
 - PostgreSQL (6 databases riêng cho mỗi service)
 - Kafka + Zookeeper (Message queue)
 
-## 🛠️ Scripts Hữu Ích
+## Scripts Hữu Ích
 
 | Script | Mô tả |
 |--------|-------|
-| `start-system.ps1` | Khởi động toàn bộ hệ thống |
-| `start-frontend.ps1` | Khởi động frontend (web + admin) |
-| `check-status.ps1` | Kiểm tra trạng thái services |
-| `stop-system.ps1` | Dừng toàn bộ hệ thống |
+| `scripts/stop-all.ps1` | Dừng toàn bộ hệ thống (Java + Node + Docker) |
+| `scripts/check-services.ps1` | Kiểm tra trạng thái services |
+| `scripts/run-tests.ps1` | Chạy unit tests cho services |
 
-## 🔧 Xử Lý Sự Cố
+**Lưu ý**: Backend services khởi động thủ công (7 terminals). Xem [HUONG_DAN_MO_7_TERMINALS.md](HUONG_DAN_MO_7_TERMINALS.md)
 
-### Kafka không kết nối
+Xem chi tiết: [scripts/README.md](scripts/README.md)
+
+## Xử Lý Sự Cố
+
+### Lỗi: Port đã được sử dụng
 ```powershell
-docker start kafka
+# Tìm process đang dùng port
+netstat -ano | findstr "8080"
+
+# Dừng process theo PID
+Stop-Process -Id <PID> -Force
+
+# Hoặc dừng tất cả
+.\scripts\stop-all.ps1
 ```
 
-### Port đã được sử dụng
+### Lỗi: Docker không chạy
 ```powershell
-# Tìm process
-netstat -ano | findstr ":8080"
-
-# Kill process
-taskkill /PID <PID> /F
+# Khởi động Docker Desktop
+# Sau đó chạy lại:
+docker-compose up -d
 ```
 
-### Reset toàn bộ
+### Lỗi: Database connection failed
 ```powershell
-.\stop-system.ps1
+# Khởi động lại databases
+docker-compose down
+docker-compose up -d
+Start-Sleep -Seconds 15
+.\start-services.ps1
+```
+
+### Lỗi: Service không khởi động
+```powershell
+# Khởi động thủ công để xem logs
+cd services\<service-name>\<service-name>
+mvnw.cmd spring-boot:run
+```
+
+### Reset toàn bộ hệ thống
+```powershell
+.\scripts\stop-all.ps1
 docker-compose down -v
 docker-compose up -d
-.\start-system.ps1
+Start-Sleep -Seconds 15
+.\scripts\start-services.ps1
 ```
 
-## 📊 Monitoring
+Xem thêm chi tiết trong [documentation/HUONG_DAN_CHAY_TUNG_BUOC.md](documentation/HUONG_DAN_CHAY_TUNG_BUOC.md)
+
+## Monitoring
 
 Kiểm tra logs của từng service trong terminal window tương ứng.
 
@@ -114,11 +204,11 @@ docker ps
 docker logs <container_name>
 ```
 
-## 🤝 Đóng Góp
+## Đóng Góp
 
 Xem [CHANGELOG.md](CHANGELOG.md) để biết lịch sử thay đổi.
 
-## 📝 License
+## License
 
 [LICENSE](LICENSE)
 
@@ -129,74 +219,33 @@ Xem [CHANGELOG.md](CHANGELOG.md) để biết lịch sử thay đổi.
 > Java Spring Boot Microservices + React + PostgreSQL + Docker  
 > Team 6 members — 2025
 
-## Structure
-doc/
-- backend/
-- /log-service
-- /user-service
-- /account-service
-- /transaction-service
-- /notification-service
-- /admin-service
-- frontend/
-- docs/
-## Tech Stack
-- Java Spring Boot 3
-- ReactJS
-- PostgreSQL
-- Docker & Docker Compose (chỉ cho database và infrastructure)
+## Cấu Trúc Project
 
-## Cách chạy dự án
-
-> **⚡ Muốn khởi động nhanh?** Xem [QUICK_START.md](./QUICK_START.md) - Hướng dẫn nhanh để khởi động và dừng ứng dụng
-
-> **Lưu ý:** Chỉ database và infrastructure (Kafka, Zookeeper) chạy bằng Docker.  
-> Tất cả Java services và Frontend chạy trực tiếp (không dùng Docker).
-
-### 1. Khởi động Databases và Infrastructure (Docker)
-
-```powershell
-docker-compose up -d
 ```
-
-### 2. Khởi động các Java Services (Maven)
-
-```powershell
-# Cách 1: Dùng script tự động
-.\start-services.ps1
-
-# Cách 2: Khởi động thủ công từng service
-cd services\user-service\user-service
-.\mvnw.cmd spring-boot:run
-# ... tương tự cho các service khác
+mini-banking-system/
+ api-gateway/              # API Gateway service
+ services/                 # Backend microservices
+    user-service/
+    account-service/
+    transaction-service/
+    admin-service/
+    log-service/
+    notification-service/
+ frontend/                 # Customer/Staff UI (React)
+ banking-admin-hub-main/   # Admin Panel (React + Vite)
+ docker/                   # Docker configs & init scripts
+ scripts/                  # PowerShell scripts
+    stop-all.ps1
+    check-services.ps1
+    run-tests.ps1
+ documentation/            # Tài liệu kỹ thuật
+    HUONG_DAN_KHOI_DONG_BACKEND.md
+    HUONG_DAN_CHAY_TUNG_BUOC.md
+    DATABASE_OVERVIEW.md
+    ...
+ docker-compose.yml        # Docker Compose config
+ README.md                 # File này
 ```
-
-### 3. Khởi động Frontend
-
-```powershell
-# Customer/Staff UI
-cd frontend
-npm start
-
-# Admin UI (mới)
-cd ..\banking-admin-hub-main\banking-admin-hub-main
-npm i
-npm run dev
-```
-
-### Dừng ứng dụng
-
-```powershell
-# Dừng tất cả Java Services
-.\stop-services.ps1
-
-# Dừng Databases và Infrastructure
-docker-compose down
-```
-
-Xem chi tiết trong:
-- [QUICK_START.md](./QUICK_START.md) - Hướng dẫn nhanh (khuyến nghị)
-- [START_SERVICES.md](./START_SERVICES.md) - Hướng dẫn chi tiết
 
 ## Features
 

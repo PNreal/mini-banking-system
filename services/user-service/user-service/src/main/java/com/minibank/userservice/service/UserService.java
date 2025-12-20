@@ -1,5 +1,7 @@
 package com.minibank.userservice.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minibank.userservice.dto.AuthResponse;
 import com.minibank.userservice.dto.CreateAccountRequest;
 import com.minibank.userservice.dto.CreateEmployeeRequest;
@@ -40,6 +42,7 @@ public class UserService {
     private final EmailService emailService;
     private final AccountServiceClient accountServiceClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${user.kafka.user-event-topic:USER_EVENT}")
     private String userEventTopic;
@@ -420,8 +423,11 @@ public class UserService {
                         "userId", String.valueOf(userId),
                         "timestamp", Instant.now().toString()
                 );
-                kafkaTemplate.send(userEventTopic, userId.toString(), payload);
+                String jsonPayload = objectMapper.writeValueAsString(payload);
+                kafkaTemplate.send(userEventTopic, userId.toString(), jsonPayload);
             }
+        } catch (JsonProcessingException ex) {
+            log.warn("Failed to serialize user event {} for {}", action, userId, ex);
         } catch (Exception ex) {
             log.warn("Failed to publish user event {} for {}", action, userId, ex);
         }

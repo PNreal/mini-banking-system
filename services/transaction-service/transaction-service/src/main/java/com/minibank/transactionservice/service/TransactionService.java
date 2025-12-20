@@ -1,5 +1,7 @@
 package com.minibank.transactionservice.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minibank.transactionservice.client.AccountServiceClient;
 import com.minibank.transactionservice.client.UserServiceClient;
 import com.minibank.transactionservice.service.CounterService;
@@ -52,6 +54,7 @@ public class TransactionService {
     private final CounterService counterService;
     private final TransactionRepository transactionRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${transaction.kafka.completed-topic:TRANSACTION_COMPLETED}")
     private String completedTopic;
@@ -469,8 +472,11 @@ public class TransactionService {
                         "userId", userId != null ? String.valueOf(userId) : null,
                         "transactionCode", tx.getTransactionCode() != null ? tx.getTransactionCode() : ""
                 );
-                kafkaTemplate.send(completedTopic, tx.getId().toString(), payload);
+                String jsonPayload = objectMapper.writeValueAsString(payload);
+                kafkaTemplate.send(completedTopic, tx.getId().toString(), jsonPayload);
             }
+        } catch (JsonProcessingException ex) {
+            log.warn("Failed to serialize transaction completed event for {}", tx.getId(), ex);
         } catch (Exception ex) {
             log.warn("Failed to publish transaction completed event for {}", tx.getId(), ex);
         }
@@ -493,9 +499,12 @@ public class TransactionService {
                 payload.put("notificationType", "COUNTER_DEPOSIT_REQUEST");
                 payload.put("message", String.format("Yêu cầu nạp tiền ở quầy với mã giao dịch: %s, số tiền: %s", transactionCode, tx.getAmount()));
                 // Gửi đến topic riêng cho thông báo nhân viên
-                kafkaTemplate.send("COUNTER_DEPOSIT_NOTIFICATION", transactionCode, payload);
+                String jsonPayload = objectMapper.writeValueAsString(payload);
+                kafkaTemplate.send("COUNTER_DEPOSIT_NOTIFICATION", transactionCode, jsonPayload);
                 log.info("Published counter deposit notification for transaction code: {}", transactionCode);
             }
+        } catch (JsonProcessingException ex) {
+            log.warn("Failed to serialize counter deposit notification for {}", transactionCode, ex);
         } catch (Exception ex) {
             log.warn("Failed to publish counter deposit notification for {}", transactionCode, ex);
         }
@@ -517,9 +526,12 @@ public class TransactionService {
                 payload.put("message", String.format("Nhân viên %s đã xác nhận nạp tiền ở quầy với mã giao dịch: %s, số tiền: %s", 
                         staffId, tx.getTransactionCode(), tx.getAmount()));
                 // Gửi log đến admin
-                kafkaTemplate.send("ADMIN_ACTION", tx.getId().toString(), payload);
+                String jsonPayload = objectMapper.writeValueAsString(payload);
+                kafkaTemplate.send("ADMIN_ACTION", tx.getId().toString(), jsonPayload);
                 log.info("Published counter deposit confirmed log for transaction: {}", tx.getId());
             }
+        } catch (JsonProcessingException ex) {
+            log.warn("Failed to serialize counter deposit confirmed log for {}", tx.getId(), ex);
         } catch (Exception ex) {
             log.warn("Failed to publish counter deposit confirmed log for {}", tx.getId(), ex);
         }
@@ -542,9 +554,12 @@ public class TransactionService {
                 payload.put("message", String.format("User đã hủy yêu cầu nạp tiền ở quầy với mã giao dịch: %s, số tiền: %s", 
                         tx.getTransactionCode(), tx.getAmount()));
                 // Gửi thông báo đến nhân viên
-                kafkaTemplate.send("COUNTER_DEPOSIT_NOTIFICATION", tx.getTransactionCode(), payload);
+                String jsonPayload = objectMapper.writeValueAsString(payload);
+                kafkaTemplate.send("COUNTER_DEPOSIT_NOTIFICATION", tx.getTransactionCode(), jsonPayload);
                 log.info("Published counter deposit cancelled notification for transaction: {}", tx.getId());
             }
+        } catch (JsonProcessingException ex) {
+            log.warn("Failed to serialize counter deposit cancelled notification for {}", tx.getId(), ex);
         } catch (Exception ex) {
             log.warn("Failed to publish counter deposit cancelled notification for {}", tx.getId(), ex);
         }

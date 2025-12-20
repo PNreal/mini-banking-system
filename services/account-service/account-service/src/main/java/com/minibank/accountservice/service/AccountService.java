@@ -1,5 +1,7 @@
 package com.minibank.accountservice.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minibank.accountservice.dto.CreateAccountRequest;
 import com.minibank.accountservice.dto.TransferRequest;
 import com.minibank.accountservice.dto.UpdateBalanceRequest;
@@ -30,6 +32,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${account.kafka.account-event-topic:ACCOUNT_EVENT}")
     private String accountEventTopic;
@@ -220,8 +223,11 @@ public class AccountService {
                         "userId", String.valueOf(userId),
                         "timestamp", OffsetDateTime.now().toString()
                 );
-                kafkaTemplate.send(accountEventTopic, accountId.toString(), payload);
+                String jsonPayload = objectMapper.writeValueAsString(payload);
+                kafkaTemplate.send(accountEventTopic, accountId.toString(), jsonPayload);
             }
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize kafka event {} for account {}", action, accountId, e);
         } catch (Exception e) {
             log.warn("Failed to publish kafka event {} for account {}", action, accountId, e);
         }

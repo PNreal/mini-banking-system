@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(20) NOT NULL DEFAULT 'CUSTOMER',
     citizen_id VARCHAR(20),
     employee_code VARCHAR(20),
+    phone_number VARCHAR(20),
+    email_verified BOOLEAN NOT NULL DEFAULT false,
     reset_token VARCHAR(255),
     reset_token_expiry TIMESTAMP,
     refresh_token VARCHAR(255),
