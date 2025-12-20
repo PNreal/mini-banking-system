@@ -1,4 +1,131 @@
 # Mini Banking System
+
+Hệ thống ngân hàng mini với kiến trúc microservices, bao gồm frontend cho khách hàng và admin panel.
+
+## 🚀 Khởi Động Nhanh
+
+### Cách 1: Sử dụng Script Tự Động (Khuyến nghị)
+
+```powershell
+# Khởi động toàn bộ hệ thống
+.\start-system.ps1
+
+# Sau khi backend services đã khởi động (2-3 phút), khởi động frontend
+.\start-frontend.ps1
+
+# Kiểm tra trạng thái
+.\check-status.ps1
+
+# Dừng toàn bộ hệ thống
+.\stop-system.ps1
+```
+
+### Cách 2: Khởi Động Thủ Công
+
+Xem hướng dẫn chi tiết trong [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)
+
+## 📋 Yêu Cầu Hệ Thống
+
+- Java 17+
+- Node.js 16+
+- Docker Desktop
+- Maven (hoặc dùng mvnw có sẵn)
+
+## 🌐 Truy Cập Ứng Dụng
+
+- **Customer Web:** http://localhost:3002
+- **Admin Panel:** http://localhost:3001
+- **API Gateway:** http://localhost:8080
+
+## 👤 Tài Khoản Test
+
+| Loại | Email | Password |
+|------|-------|----------|
+| Admin | admin@minibank.com | Admin@123 |
+| Customer | test.user@example.com | TestPassword#123 |
+| Staff | staff@minibank.com | Staff@123 |
+| Counter Admin | counter.admin@minibank.com | CounterAdmin@123 |
+
+## 📚 Tài Liệu
+
+- [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md) - Hướng dẫn khởi động chi tiết
+- [START_SERVICES.md](START_SERVICES.md) - Hướng dẫn khởi động services
+- [README_DOCKER.md](README_DOCKER.md) - Hướng dẫn Docker
+
+## 🏗️ Kiến Trúc
+
+### Backend Services (Microservices)
+- **API Gateway** (8080) - Điểm vào chính, xử lý routing và CORS
+- **User Service** (8081) - Quản lý người dùng và authentication
+- **Account Service** (8082) - Quản lý tài khoản ngân hàng
+- **Transaction Service** (8083) - Xử lý giao dịch
+- **Admin Service** (8084) - Quản lý admin
+- **Log Service** (8085) - Ghi log hệ thống
+- **Notification Service** (8086) - Gửi thông báo
+
+### Frontend Applications
+- **Customer Web** (3002) - Giao diện khách hàng (React)
+- **Admin Panel** (3001) - Giao diện quản trị (React + Vite)
+
+### Databases & Infrastructure
+- PostgreSQL (6 databases riêng cho mỗi service)
+- Kafka + Zookeeper (Message queue)
+
+## 🛠️ Scripts Hữu Ích
+
+| Script | Mô tả |
+|--------|-------|
+| `start-system.ps1` | Khởi động toàn bộ hệ thống |
+| `start-frontend.ps1` | Khởi động frontend (web + admin) |
+| `check-status.ps1` | Kiểm tra trạng thái services |
+| `stop-system.ps1` | Dừng toàn bộ hệ thống |
+
+## 🔧 Xử Lý Sự Cố
+
+### Kafka không kết nối
+```powershell
+docker start kafka
+```
+
+### Port đã được sử dụng
+```powershell
+# Tìm process
+netstat -ano | findstr ":8080"
+
+# Kill process
+taskkill /PID <PID> /F
+```
+
+### Reset toàn bộ
+```powershell
+.\stop-system.ps1
+docker-compose down -v
+docker-compose up -d
+.\start-system.ps1
+```
+
+## 📊 Monitoring
+
+Kiểm tra logs của từng service trong terminal window tương ứng.
+
+Kiểm tra Docker containers:
+```powershell
+docker ps
+docker logs <container_name>
+```
+
+## 🤝 Đóng Góp
+
+Xem [CHANGELOG.md](CHANGELOG.md) để biết lịch sử thay đổi.
+
+## 📝 License
+
+[LICENSE](LICENSE)
+
+---
+
+**Phiên bản:** 1.0  
+**Cập nhật:** 2025-12-20
 > Java Spring Boot Microservices + React + PostgreSQL + Docker  
 > Team 6 members — 2025
 

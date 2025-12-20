@@ -38,7 +38,8 @@ export default function AdminLogin() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Đăng nhập Admin</CardTitle>
-</CardHeader>
+          <CardDescription>Nhập thông tin để truy cập hệ thống quản trị</CardDescription>
+        </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="space-y-2">

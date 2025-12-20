@@ -55,4 +55,11 @@ export async function loginAdmin(payload: AdminLoginPayload) {
   });
 }
 
+export async function getAdminUsers(token: string) {
+  return apiRequest<{ data: any[] }>("/users/admin/users", {
+    method: "GET",
+    token,
+  });
+}
+
 

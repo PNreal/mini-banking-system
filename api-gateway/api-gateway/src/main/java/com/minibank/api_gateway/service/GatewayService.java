@@ -27,7 +27,9 @@ public class GatewayService {
             String targetUrl = getTargetUrl(servicePath);
             String requestPath = request.getRequestURI();
             String queryString = request.getQueryString();
-            String fullUrl = targetUrl + requestPath.replace("/api/v1", "") + (queryString != null ? "?" + queryString : "");
+            // Remove /api/v1 prefix and add /api for the service
+            String pathWithoutGatewayPrefix = requestPath.replace("/api/v1", "");
+            String fullUrl = targetUrl + "/api" + pathWithoutGatewayPrefix + (queryString != null ? "?" + queryString : "");
 
             log.debug("Forwarding request: {} {} -> {}", request.getMethod(), requestPath, fullUrl);
 
