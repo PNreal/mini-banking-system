@@ -18,33 +18,54 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   Filter,
   MoreHorizontal,
   Lock,
   Unlock,
   Snowflake,
-  Eye,
   UserPlus,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getAdminUsers } from "@/lib/api";
+import { 
+  getAdminUsers, 
+  deleteUser, 
+  lockUser, 
+  unlockUser, 
+  freezeUser, 
+  unfreezeUser 
+} from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
+import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
+import { EditUserDialog } from "@/components/admin/EditUserDialog";
 
 interface User {
   userId: string;
   fullName?: string | null;
   email?: string | null;
   status?: string | null;
+  role?: string | null;
   citizenId?: string | null;
   employeeCode?: string | null;
   createdAt?: string | null;
 }
 
 const statusConfig = {
-  active: { label: "Hoạt động", className: "bg-success/10 text-success border-success/20" },
-  locked: { label: "Bị khóa", className: "bg-destructive/10 text-destructive border-destructive/20" },
-  frozen: { label: "Đóng băng", className: "bg-warning/10 text-warning border-warning/20" },
+  ACTIVE: { label: "Hoạt động", className: "bg-success/10 text-success border-success/20" },
+  LOCKED: { label: "Bị khóa", className: "bg-destructive/10 text-destructive border-destructive/20" },
+  FROZEN: { label: "Đóng băng", className: "bg-warning/10 text-warning border-warning/20" },
 };
 
 export default function Users() {
@@ -53,41 +74,89 @@ export default function Users() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
+  const fetchUsers = async () => {
     if (!token) {
       setError("Missing auth token. Please log in again.");
       setLoading(false);
-      return () => {
-        isMounted = false;
-      };
+      return;
     }
 
-    const fetchUsers = async () => {
-      try {
-        const res = await getAdminUsers(token);
-        const data = Array.isArray(res?.data) ? res.data : [];
-        if (isMounted) {
-          setUsers(data);
-          setError(null);
-        }
-      } catch (err: any) {
-        if (isMounted) {
-          setError(err?.message || "Failed to load users.");
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
+    try {
+      const res = await getAdminUsers(token);
+      console.log("API Response:", res);
+      const data = Array.isArray(res?.data) ? res.data : [];
+      console.log("Users data:", data);
+      console.log("Total users:", data.length);
+      console.log("Roles breakdown:", data.reduce((acc: any, u: User) => {
+        acc[u.role || 'unknown'] = (acc[u.role || 'unknown'] || 0) + 1;
+        return acc;
+      }, {}));
+      setUsers(data);
+      setError(null);
+    } catch (err: any) {
+      console.error("Error fetching users:", err);
+      setError(err?.message || "Failed to load users.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchUsers();
-
-    return () => {
-      isMounted = false;
-    };
   }, [token]);
+
+  const handleEdit = (user: User) => {
+    setSelectedUser(user);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (user: User) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!token || !userToDelete) return;
+
+    try {
+      await deleteUser(token, userToDelete.userId);
+      await fetchUsers();
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (err: any) {
+      setError(err?.message || "Failed to delete user");
+    }
+  };
+
+  const handleStatusChange = async (userId: string, action: string) => {
+    if (!token) return;
+
+    try {
+      switch (action) {
+        case "lock":
+          await lockUser(token, userId);
+          break;
+        case "unlock":
+          await unlockUser(token, userId);
+          break;
+        case "freeze":
+          await freezeUser(token, userId);
+          break;
+        case "unfreeze":
+          await unfreezeUser(token, userId);
+          break;
+      }
+      await fetchUsers();
+    } catch (err: any) {
+      setError(err?.message || "Failed to update user status");
+    }
+  };
 
   const filteredUsers = users.filter(
     (user) =>
@@ -123,7 +192,7 @@ export default function Users() {
               <Filter className="mr-2 h-4 w-4" />
               Bộ lọc
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" />
               Thêm người dùng
             </Button>
@@ -138,24 +207,29 @@ export default function Users() {
         ) : null}
         {loading ? (
           <div className="mb-4 text-sm text-muted-foreground">Loading users...</div>
-        ) : null}
+        ) : (
+          <div className="mb-4 text-sm text-muted-foreground">
+            Tổng số: {filteredUsers.length} người dùng
+          </div>
+        )}
         <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead>M?</TableHead>
-                <TableHead>H? t?n</TableHead>
+                <TableHead>Mã</TableHead>
+                <TableHead>Họ tên</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Vai trò</TableHead>
                 <TableHead>CCCD</TableHead>
-                <TableHead>M? nh?n vi?n</TableHead>
-                <TableHead>Tr?ng th?i</TableHead>
-                <TableHead>Ng?y t?o</TableHead>
+                <TableHead>Mã nhân viên</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Ngày tạo</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user, index) => {
-                const statusKey = (user.status || "").toLowerCase();
+                const statusKey = (user.status || "").toUpperCase();
                 const status =
                   statusConfig[statusKey as keyof typeof statusConfig] || {
                     label: user.status || "Unknown",
@@ -168,17 +242,22 @@ export default function Users() {
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <TableCell className="font-mono text-sm text-muted-foreground">
-                      {user.userId}
+                      {user.userId?.substring(0, 8)}...
                     </TableCell>
                     <TableCell className="font-medium">{user.fullName || "-"}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {user.email}
                     </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="border">
+                        {user.role || "CUSTOMER"}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {user.citizenId || "-"}
                     </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {user.balance.toLocaleString("vi-VN")}đ
+                    <TableCell className="text-muted-foreground">
+                      {user.employeeCode || "-"}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -199,26 +278,40 @@ export default function Users() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Xem chi tiết
+                          <DropdownMenuItem onClick={() => handleEdit(user)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Chỉnh sửa
                           </DropdownMenuItem>
-                          {statusKey === "locked" ? (
-                            <DropdownMenuItem>
+                          {statusKey === "LOCKED" ? (
+                            <DropdownMenuItem onClick={() => handleStatusChange(user.userId, "unlock")}>
                               <Unlock className="mr-2 h-4 w-4" />
                               Mở khóa
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleStatusChange(user.userId, "lock")}
+                            >
                               <Lock className="mr-2 h-4 w-4" />
                               Khóa tài khoản
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem className="text-warning">
+                          <DropdownMenuItem 
+                            className="text-warning"
+                            onClick={() => handleStatusChange(
+                              user.userId, 
+                              statusKey === "FROZEN" ? "unfreeze" : "freeze"
+                            )}
+                          >
                             <Snowflake className="mr-2 h-4 w-4" />
-                            {statusKey === "frozen"
-                              ? "Mở đóng băng"
-                              : "Đóng băng"}
+                            {statusKey === "FROZEN" ? "Mở đóng băng" : "Đóng băng"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDeleteClick(user)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Xóa
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -230,6 +323,37 @@ export default function Users() {
           </Table>
         </div>
       </main>
+
+      <CreateUserDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={fetchUsers}
+      />
+
+      <EditUserDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={fetchUsers}
+        user={selectedUser}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa người dùng</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa người dùng <strong>{userToDelete?.fullName}</strong> ({userToDelete?.email})?
+              Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

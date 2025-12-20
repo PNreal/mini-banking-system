@@ -1,5 +1,6 @@
 {
     "java.compile.nullAnalysis.mode": "disabled",
     "java.configuration.updateBuildConfiguration": "disabled",
-    "chatgpt.openOnStartup": true
+    "chatgpt.openOnStartup": true,
+    "typescript.autoClosingTags": false
 }

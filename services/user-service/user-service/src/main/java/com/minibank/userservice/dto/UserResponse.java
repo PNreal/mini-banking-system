@@ -17,6 +17,7 @@ public class UserResponse {
     private String email;
     private String fullName;
     private UserStatus status;
+    private String role;
     private String citizenId;
     private String employeeCode;
     private LocalDateTime createdAt;
@@ -27,6 +28,7 @@ public class UserResponse {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .status(user.getStatus())
+                .role(user.getRole())
                 .citizenId(user.getCitizenId())
                 .employeeCode(user.getEmployeeCode())
                 .createdAt(toLocalDateTime(user.getCreatedAt()))

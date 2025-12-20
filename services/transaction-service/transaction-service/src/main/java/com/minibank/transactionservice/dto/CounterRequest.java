@@ -1,5 +1,6 @@
 package com.minibank.transactionservice.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -21,6 +22,12 @@ public class CounterRequest {
     @Positive(message = "Max staff must be greater than 0")
     private Integer maxStaff;
 
-    private UUID adminUserId; // ID của admin quầy (optional khi tạo)
+    // Thông tin admin quầy (nếu muốn tạo mới)
+    private String adminEmail;
+    private String adminFullName;
+    private String adminPhoneNumber;
+    
+    // Hoặc dùng adminUserId nếu đã có sẵn user
+    private UUID adminUserId;
 }
 

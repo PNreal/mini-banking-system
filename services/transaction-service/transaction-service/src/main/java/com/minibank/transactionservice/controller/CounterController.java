@@ -2,11 +2,14 @@ package com.minibank.transactionservice.controller;
 
 import com.minibank.transactionservice.dto.ApiResponse;
 import com.minibank.transactionservice.dto.AssignCounterAdminRequest;
+import com.minibank.transactionservice.dto.CounterCreationResponse;
+import com.minibank.transactionservice.dto.CounterRequest;
 import com.minibank.transactionservice.dto.CounterResponse;
 import com.minibank.transactionservice.entity.Counter;
 import com.minibank.transactionservice.entity.CounterStaff;
 import com.minibank.transactionservice.exception.ForbiddenException;
 import com.minibank.transactionservice.service.CounterService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -25,8 +28,18 @@ public class CounterController {
     private final CounterService counterService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CounterResponse>>> getAllCounters() {
-        List<Counter> counters = counterService.getAllActiveCounters();
+    public ResponseEntity<ApiResponse<List<CounterResponse>>> getAllCounters(
+            @RequestHeader(value = "X-User-Role", required = false) String role
+    ) {
+        List<Counter> counters;
+        // Nếu là ADMIN, trả về tất cả (bao gồm inactive)
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            counters = counterService.getAllCounters();
+        } else {
+            // Người dùng thường chỉ thấy active counters
+            counters = counterService.getAllActiveCounters();
+        }
+        
         List<CounterResponse> responses = counters.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -46,6 +59,73 @@ public class CounterController {
                 .map(CounterStaff::getUserId)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(staffIds));
+    }
+
+    /**
+     * POST /counters - Tạo quầy giao dịch mới (chỉ ADMIN)
+     * Tự động tạo tài khoản admin quầy nếu có thông tin adminEmail
+     */
+    @PostMapping
+    public ResponseEntity<ApiResponse<CounterCreationResponse>> createCounter(
+            @Valid @RequestBody CounterRequest request,
+            @RequestHeader(value = "X-User-Role", required = false) String role
+    ) {
+        if (role == null || !"ADMIN".equalsIgnoreCase(role.trim())) {
+            throw new ForbiddenException("Chỉ ADMIN mới có quyền tạo quầy giao dịch.");
+        }
+
+        CounterCreationResponse response = counterService.createCounterWithAdmin(
+                request.getCounterCode(),
+                request.getName(),
+                request.getAddress(),
+                request.getMaxStaff(),
+                request.getAdminUserId(),
+                request.getAdminEmail(),
+                request.getAdminFullName(),
+                request.getAdminPhoneNumber()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * PUT /counters/{counterId} - Cập nhật quầy giao dịch (chỉ ADMIN)
+     */
+    @PutMapping("/{counterId}")
+    public ResponseEntity<ApiResponse<CounterResponse>> updateCounter(
+            @PathVariable UUID counterId,
+            @Valid @RequestBody CounterRequest request,
+            @RequestHeader(value = "X-User-Role", required = false) String role
+    ) {
+        if (role == null || !"ADMIN".equalsIgnoreCase(role.trim())) {
+            throw new ForbiddenException("Chỉ ADMIN mới có quyền cập nhật quầy giao dịch.");
+        }
+
+        Counter counter = counterService.updateCounter(
+                counterId,
+                request.getCounterCode(),
+                request.getName(),
+                request.getAddress(),
+                request.getMaxStaff()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(toResponse(counter)));
+    }
+
+    /**
+     * DELETE /counters/{counterId} - Xóa quầy giao dịch (chỉ ADMIN)
+     */
+    @DeleteMapping("/{counterId}")
+    public ResponseEntity<ApiResponse<Void>> deleteCounter(
+            @PathVariable UUID counterId,
+            @RequestHeader(value = "X-User-Role", required = false) String role
+    ) {
+        if (role == null || !"ADMIN".equalsIgnoreCase(role.trim())) {
+            throw new ForbiddenException("Chỉ ADMIN mới có quyền xóa quầy giao dịch.");
+        }
+
+        counterService.deleteCounter(counterId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /**

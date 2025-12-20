@@ -1,5 +1,7 @@
 package com.minibank.transactionservice.client;
 
+import com.minibank.transactionservice.dto.CreateEmployeeRequest;
+import com.minibank.transactionservice.dto.CreateEmployeeResponse;
 import com.minibank.transactionservice.dto.UserResponse;
 import com.minibank.transactionservice.exception.BadRequestException;
 import com.minibank.transactionservice.exception.NotFoundException;
@@ -40,6 +42,11 @@ public class UserServiceClient {
         String encoded = URLEncoder.encode(email, StandardCharsets.UTF_8);
         String url = userServiceUrl + "/internal/users/by-email?email=" + encoded;
         return exchange(url, HttpMethod.GET, null, UserResponse.class);
+    }
+
+    public CreateEmployeeResponse createEmployee(CreateEmployeeRequest request) {
+        String url = userServiceUrl + "/internal/users/employees";
+        return exchange(url, HttpMethod.POST, request, CreateEmployeeResponse.class);
     }
 
     private <T> T exchange(String url, HttpMethod method, Object body, Class<T> clazz) {

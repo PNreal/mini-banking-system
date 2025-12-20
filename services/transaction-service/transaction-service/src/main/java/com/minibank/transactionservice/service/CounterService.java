@@ -304,5 +304,128 @@ public class CounterService {
         counter.setAdminUserId(null);
         return counterRepository.save(counter);
     }
+
+    /**
+     * Tạo quầy giao dịch mới (chỉ ADMIN)
+     * Nếu có thông tin adminEmail, sẽ tự động tạo tài khoản COUNTER_ADMIN
+     */
+    @Transactional
+    public CounterCreationResponse createCounterWithAdmin(String counterCode, String name, String address, Integer maxStaff, 
+                                                          UUID adminUserId, String adminEmail, String adminFullName, String adminPhoneNumber) {
+        // Validate counter code unique
+        if (counterRepository.existsByCounterCode(counterCode)) {
+            throw new BadRequestException("Counter code already exists: " + counterCode);
+        }
+
+        CreateEmployeeResponse adminAccount = null;
+        UUID finalAdminUserId = adminUserId;
+
+        // Nếu có thông tin email admin, tạo tài khoản mới
+        if (adminEmail != null && !adminEmail.trim().isEmpty()) {
+            if (adminFullName == null || adminFullName.trim().isEmpty()) {
+                throw new BadRequestException("Admin full name is required when creating admin account");
+            }
+            if (adminPhoneNumber == null || adminPhoneNumber.trim().isEmpty()) {
+                throw new BadRequestException("Admin phone number is required when creating admin account");
+            }
+
+            CreateEmployeeRequest employeeRequest = CreateEmployeeRequest.builder()
+                    .email(adminEmail.trim())
+                    .fullName(adminFullName.trim())
+                    .phoneNumber(adminPhoneNumber.trim())
+                    .role("COUNTER_ADMIN")
+                    .build();
+
+            adminAccount = userServiceClient.createEmployee(employeeRequest);
+            finalAdminUserId = adminAccount.getUserId();
+            
+            log.info("Created admin account for counter {}: userId={}, email={}, employeeCode={}", 
+                    counterCode, adminAccount.getUserId(), adminAccount.getEmail(), adminAccount.getEmployeeCode());
+        } else if (finalAdminUserId != null) {
+            // Validate admin user exists
+            userServiceClient.getUser(finalAdminUserId);
+        }
+
+        Counter counter = new Counter();
+        counter.setCounterCode(counterCode);
+        counter.setName(name);
+        counter.setAddress(address);
+        counter.setMaxStaff(maxStaff);
+        counter.setAdminUserId(finalAdminUserId);
+        counter.setIsActive(true);
+
+        Counter saved = counterRepository.save(counter);
+
+        // Nếu có adminUserId, thêm vào counter_staff
+        if (finalAdminUserId != null) {
+            CounterStaff cs = new CounterStaff();
+            cs.setCounterId(saved.getId());
+            cs.setUserId(finalAdminUserId);
+            cs.setIsActive(true);
+            counterStaffRepository.save(cs);
+        }
+
+        return CounterCreationResponse.builder()
+                .counter(saved)
+                .adminAccount(adminAccount)
+                .build();
+    }
+
+    /**
+     * Tạo quầy giao dịch mới (chỉ ADMIN) - backward compatibility
+     */
+    @Transactional
+    public Counter createCounter(String counterCode, String name, String address, Integer maxStaff, UUID adminUserId) {
+        CounterCreationResponse response = createCounterWithAdmin(counterCode, name, address, maxStaff, adminUserId, null, null, null);
+        return response.getCounter();
+    }
+
+    /**
+     * Cập nhật thông tin quầy giao dịch (chỉ ADMIN)
+     */
+    @Transactional
+    public Counter updateCounter(UUID counterId, String counterCode, String name, String address, Integer maxStaff) {
+        Counter counter = counterRepository.findById(counterId)
+                .orElseThrow(() -> new NotFoundException("Counter not found"));
+
+        // Validate counter code unique (nếu thay đổi)
+        if (counterCode != null && !counterCode.equals(counter.getCounterCode())) {
+            if (counterRepository.existsByCounterCode(counterCode)) {
+                throw new BadRequestException("Counter code already exists: " + counterCode);
+            }
+            counter.setCounterCode(counterCode);
+        }
+
+        if (name != null) {
+            counter.setName(name);
+        }
+        if (address != null) {
+            counter.setAddress(address);
+        }
+        if (maxStaff != null) {
+            counter.setMaxStaff(maxStaff);
+        }
+
+        return counterRepository.save(counter);
+    }
+
+    /**
+     * Xóa quầy giao dịch (soft delete - set isActive = false) (chỉ ADMIN)
+     */
+    @Transactional
+    public void deleteCounter(UUID counterId) {
+        Counter counter = counterRepository.findById(counterId)
+                .orElseThrow(() -> new NotFoundException("Counter not found"));
+        
+        counter.setIsActive(false);
+        counterRepository.save(counter);
+    }
+
+    /**
+     * Lấy tất cả counters (bao gồm cả inactive) - dành cho ADMIN
+     */
+    public List<Counter> getAllCounters() {
+        return counterRepository.findAll();
+    }
 }
 

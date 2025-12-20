@@ -14,7 +14,9 @@ import com.minibank.userservice.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -111,6 +113,29 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>("User not found: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Admin: Lấy danh sách tất cả users ---
+    @GetMapping("/admin/users")
+    public ResponseEntity<ApiResponse<java.util.List<UserResponse>>> getAllUsers(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Verify admin role from token
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            java.util.List<UserResponse> users = userService.getAllUsers();
+            return ResponseEntity.ok(new ApiResponse<>("Users retrieved successfully", users));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to retrieve users: " + e.getMessage(), null));
         }
     }
 }

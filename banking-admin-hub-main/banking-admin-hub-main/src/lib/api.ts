@@ -62,4 +62,150 @@ export async function getAdminUsers(token: string) {
   });
 }
 
+export type CreateUserPayload = {
+  email: string;
+  password: string;
+  fullName: string;
+  role: string;
+  citizenId?: string;
+  employeeCode?: string;
+};
+
+export type UpdateUserPayload = {
+  fullName?: string;
+  role?: string;
+  citizenId?: string;
+  employeeCode?: string;
+};
+
+export async function createUser(token: string, payload: CreateUserPayload) {
+  return apiRequest<{ data: any }>("/users/admin/users", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export async function updateUser(token: string, userId: string, payload: UpdateUserPayload) {
+  return apiRequest<{ data: any }>(`/users/admin/users/${userId}`, {
+    method: "PUT",
+    token,
+    body: payload,
+  });
+}
+
+export async function deleteUser(token: string, userId: string) {
+  return apiRequest<{ data: null }>(`/users/admin/users/${userId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export async function lockUser(token: string, userId: string) {
+  return apiRequest<{ data: null }>(`/users/admin/users/${userId}/lock`, {
+    method: "PUT",
+    token,
+  });
+}
+
+export async function unlockUser(token: string, userId: string) {
+  return apiRequest<{ data: null }>(`/users/admin/users/${userId}/unlock`, {
+    method: "PUT",
+    token,
+  });
+}
+
+export async function freezeUser(token: string, userId: string) {
+  return apiRequest<{ data: null }>(`/users/admin/users/${userId}/freeze`, {
+    method: "PUT",
+    token,
+  });
+}
+
+export async function unfreezeUser(token: string, userId: string) {
+  return apiRequest<{ data: null }>(`/users/admin/users/${userId}/unfreeze`, {
+    method: "PUT",
+    token,
+  });
+}
+
+// Counter APIs
+export type Counter = {
+  counterId: string;
+  counterCode: string;
+  name: string;
+  address: string;
+  maxStaff: number;
+  adminUserId?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CounterResponse = {
+  data: Counter[];
+};
+
+export type CreateCounterPayload = {
+  counterCode: string;
+  name: string;
+  address: string;
+  maxStaff: number;
+  adminUserId?: string;
+};
+
+export type UpdateCounterPayload = {
+  counterCode: string;
+  name: string;
+  address: string;
+  maxStaff: number;
+};
+
+export async function getCounters(token: string, role?: string) {
+  return apiRequest<CounterResponse>("/counters", {
+    method: "GET",
+    token,
+    headers: role ? { "X-User-Role": role } : undefined,
+  });
+}
+
+export async function getCounter(token: string, counterId: string) {
+  return apiRequest<{ data: Counter }>(`/counters/${counterId}`, {
+    method: "GET",
+    token,
+  });
+}
+
+export async function getCounterStaff(token: string, counterId: string) {
+  return apiRequest<{ data: string[] }>(`/counters/${counterId}/staff`, {
+    method: "GET",
+    token,
+  });
+}
+
+export async function createCounter(token: string, payload: CreateCounterPayload, role: string) {
+  return apiRequest<{ data: Counter }>("/counters", {
+    method: "POST",
+    token,
+    body: payload,
+    headers: { "X-User-Role": role },
+  });
+}
+
+export async function updateCounter(token: string, counterId: string, payload: UpdateCounterPayload, role: string) {
+  return apiRequest<{ data: Counter }>(`/counters/${counterId}`, {
+    method: "PUT",
+    token,
+    body: payload,
+    headers: { "X-User-Role": role },
+  });
+}
+
+export async function deleteCounter(token: string, counterId: string, role: string) {
+  return apiRequest<{ data: null }>(`/counters/${counterId}`, {
+    method: "DELETE",
+    token,
+    headers: { "X-User-Role": role },
+  });
+}
 

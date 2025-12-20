@@ -2,6 +2,8 @@ package com.minibank.userservice.service;
 
 import com.minibank.userservice.dto.AuthResponse;
 import com.minibank.userservice.dto.CreateAccountRequest;
+import com.minibank.userservice.dto.CreateEmployeeRequest;
+import com.minibank.userservice.dto.CreateEmployeeResponse;
 import com.minibank.userservice.dto.PasswordResetConfirmRequest;
 import com.minibank.userservice.dto.PasswordResetRequest;
 import com.minibank.userservice.dto.TokenRefreshRequest;
@@ -21,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -257,6 +260,156 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("User not found"));
         user.setStatus(status);
         userRepository.save(user);
+    }
+
+    @Transactional
+    public UserResponse createUser(com.minibank.userservice.dto.CreateUserRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        
+        userRepository.findByEmail(normalizedEmail)
+                .ifPresent(u -> { throw new BadRequestException("Email already in use"); });
+
+        String hashedPassword = passwordEncoder.encode(request.getPassword());
+        User newUser = new User(normalizedEmail, hashedPassword, request.getFullName());
+        newUser.setRole(request.getRole());
+        newUser.setCitizenId(request.getCitizenId());
+        newUser.setEmployeeCode(request.getEmployeeCode());
+        
+        User saved = userRepository.save(newUser);
+        publishEvent("USER_CREATED", saved.getId());
+        
+        return UserResponse.from(saved);
+    }
+
+    @Transactional
+    public UserResponse updateUser(UUID userId, com.minibank.userservice.dto.UpdateUserRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
+        if (request.getCitizenId() != null) {
+            user.setCitizenId(request.getCitizenId());
+        }
+        if (request.getEmployeeCode() != null) {
+            user.setEmployeeCode(request.getEmployeeCode());
+        }
+        
+        User updated = userRepository.save(user);
+        publishEvent("USER_UPDATED", updated.getId());
+        
+        return UserResponse.from(updated);
+    }
+
+    @Transactional
+    public void deleteUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        
+        userRepository.delete(user);
+        publishEvent("USER_DELETED", userId);
+    }
+
+    /**
+     * Tạo tài khoản employee (COUNTER_ADMIN, COUNTER_STAFF, KYC_STAFF)
+     * Được gọi từ các service khác qua internal endpoint
+     */
+    @Transactional
+    public CreateEmployeeResponse createEmployee(CreateEmployeeRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        
+        // Kiểm tra email đã tồn tại chưa
+        userRepository.findByEmail(normalizedEmail)
+                .ifPresent(u -> { throw new BadRequestException("Email already in use"); });
+
+        // Validate role
+        String role = request.getRole().toUpperCase();
+        if (!List.of("COUNTER_ADMIN", "COUNTER_STAFF", "KYC_STAFF", "ADMIN").contains(role)) {
+            throw new BadRequestException("Invalid role: " + role);
+        }
+
+        // Tạo employee code nếu chưa có
+        String employeeCode = request.getEmployeeCode();
+        if (employeeCode == null || employeeCode.trim().isEmpty()) {
+            employeeCode = generateEmployeeCode(role);
+        }
+
+        // Tạo password nếu chưa có
+        String password = request.getPassword();
+        String generatedPassword = null;
+        if (password == null || password.trim().isEmpty()) {
+            generatedPassword = generateRandomPassword();
+            password = generatedPassword;
+        }
+
+        // Tạo user
+        User user = new User();
+        user.setEmail(normalizedEmail);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setFullName(request.getFullName().trim());
+        user.setPhoneNumber(request.getPhoneNumber().trim());
+        user.setRole(role);
+        user.setEmployeeCode(employeeCode);
+        user.setStatus(UserStatus.ACTIVE);
+        user.setEmailVerified(true); // Employee được tạo sẵn nên đã verified
+
+        User saved = userRepository.save(user);
+        publishEvent("EMPLOYEE_CREATED", saved.getId());
+
+        return CreateEmployeeResponse.builder()
+                .userId(saved.getId())
+                .email(saved.getEmail())
+                .fullName(saved.getFullName())
+                .phoneNumber(saved.getPhoneNumber())
+                .role(saved.getRole())
+                .employeeCode(saved.getEmployeeCode())
+                .generatedPassword(generatedPassword)
+                .build();
+    }
+
+    /**
+     * Tạo employee code tự động
+     */
+    private String generateEmployeeCode(String role) {
+        String prefix;
+        switch (role) {
+            case "COUNTER_ADMIN":
+                prefix = "CA";
+                break;
+            case "COUNTER_STAFF":
+                prefix = "CS";
+                break;
+            case "KYC_STAFF":
+                prefix = "KS";
+                break;
+            case "ADMIN":
+                prefix = "AD";
+                break;
+            default:
+                prefix = "EM";
+        }
+        
+        // Tạo mã 6 số ngẫu nhiên
+        SecureRandom random = new SecureRandom();
+        int number = random.nextInt(999999);
+        return String.format("%s%06d", prefix, number);
+    }
+
+    /**
+     * Tạo password ngẫu nhiên 12 ký tự
+     */
+    private String generateRandomPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder();
+        for (int i = 0; i < 12; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return password.toString();
     }
 
     private void publishEvent(String action, UUID userId) {

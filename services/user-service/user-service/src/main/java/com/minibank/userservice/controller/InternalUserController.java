@@ -1,12 +1,18 @@
 package com.minibank.userservice.controller;
 
+import com.minibank.userservice.dto.CreateEmployeeRequest;
+import com.minibank.userservice.dto.CreateEmployeeResponse;
 import com.minibank.userservice.dto.UserResponse;
 import com.minibank.userservice.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +40,12 @@ public class InternalUserController {
     @GetMapping("/by-email")
     public ResponseEntity<UserResponse> getUserByEmail(@RequestParam("email") String email) {
         return ResponseEntity.ok(userService.getUserByEmail(email));
+    }
+
+    @PostMapping("/employees")
+    public ResponseEntity<CreateEmployeeResponse> createEmployee(@Valid @RequestBody CreateEmployeeRequest request) {
+        CreateEmployeeResponse response = userService.createEmployee(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PatchMapping("/{id}/lock")
