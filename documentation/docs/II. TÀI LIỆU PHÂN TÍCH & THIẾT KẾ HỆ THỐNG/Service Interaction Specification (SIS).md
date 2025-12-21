@@ -1,6 +1,7 @@
 # **SERVICE INTERACTION SPECIFICATION (SIS) -- MINI BANKING SYSTEM** {#service-interaction-specification-sis-mini-banking-system}
 
 **Version:** 1.0  
+**Last Updated:** 2025-12-22  
 **Author:** Nhóm 7  
 **Mục tiêu:** Mô tả chi tiết cách **các microservice giao tiếp với
 nhau**, gồm REST API, Kafka Events, Auth, Error Handling và thứ tự gọi

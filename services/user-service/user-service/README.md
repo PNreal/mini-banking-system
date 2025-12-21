@@ -12,7 +12,7 @@ User Service là dịch vụ cốt lõi của hệ thống Mini Banking System, 
 
 - **Ngôn ngữ:** Java 17
 - **Framework:** Spring Boot 3.x / 4.x
-- **Database:** MySQL (Chạy qua XAMPP hoặc cài trực tiếp)
+- **Database:** PostgreSQL (chạy trong Docker container)
 - **Security:** Spring Security & JWT
 - **Mail:** JavaMailSender (Gmail SMTP)
 - **Build Tool:** Maven
@@ -29,176 +29,62 @@ User Service là dịch vụ cốt lõi của hệ thống Mini Banking System, 
 
 ### Protected Endpoints (Cần Token)
 
-| Method | Endpoint | Mô tả | Headers yêu cầu |
-|--------|----------|-------------|-----------------|
-| PUT | `/api/users/self-freeze` | Tự khóa tài khoản | `Authorization: Bearer <token>` |
+| Method | Endpoint | Mô tả |
+|--------|----------|-------------|
+| GET | `/api/users/profile` | Lấy thông tin user hiện tại |
+| PUT | `/api/users/profile` | Cập nhật thông tin user |
+| POST | `/api/users/change-password` | Đổi mật khẩu |
+| POST | `/api/users/refresh-token` | Cấp Access Token mới từ Refresh Token |
+| POST | `/api/users/logout` | Đăng xuất (Blacklist token) |
+| POST | `/api/users/verify-email` | Xác thực email |
+| POST | `/api/users/resend-verification` | Gửi lại email xác thực |
+| POST | `/api/users/self-freeze` | Tự khóa tài khoản |
+| POST | `/api/users/reset-password` | Reset mật khẩu (Sau khi quên) |
 
-## Cấu hình (Cần thiết để chạy)
+## Cấu hình Docker
 
-Trước khi chạy, hãy đảm bảo file `src/main/resources/application.properties` đã được điền đúng thông tin:
+Service được cấu hình trong `docker-compose.yml` với các cổng:
+- User Service: `http://localhost:8081`
+- PostgreSQL (external): `5434`
+- Kafka: `9092` (external), `29092` (internal)
 
-### Database (MySQL)
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/minibank
-spring.datasource.username=root
-# Nếu XAMPP không đặt pass thì để trống, nếu có thì điền vào
-spring.datasource.password=
-spring.jpa.hibernate.ddl-auto=update
-```
+## 🔗 Tích hợp với các service khác
 
-### Mail Configuration
-
-```properties
-spring.mail.host=smtp.gmail.com
-spring.mail.port=587
-spring.mail.username=EMAIL_THAT_CUA_BAN@gmail.com
-spring.mail.password=MAT_KHAU_UNG_DUNG_16_KY_TU
-spring.mail.properties.mail.smtp.auth=true
-spring.mail.properties.mail.smtp.starttls.enable=true
-```
+- **Account Service**: User Service gọi để tạo tài khoản mới khi người dùng đăng ký
+- **Transaction Service**: Xác thực người dùng trước khi thực hiện giao dịch
+- **Notification Service**: Gửi thông báo qua Kafka khi có sự kiện liên quan đến người dùng
+- **Log Service**: Ghi log các hoạt động của người dùng
 
 ## Database Schema
 
-### Users Table
+Bảng chính: `users`
 
-```sql
-CREATE TABLE users (
-    id INT KEY auto_increment,
-    email varchar(255) unique not null,
-    password_hash varchar(255) not null,
-    is_active BOOLEAN DEFAULT TRUE,
-    is_frozen BOOLEAN DEFAULT FALSE,
-    reset_token_hash VARCHAR(255) default NULL,
-    reset_token_expire timestamp NULL default NULL,
-    refresh_token_hash VARCHAR(255) default NULL,
-    refresh_token_expire timestamp NULL default NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+| Field | Type | Description |
+|-------|------|-------------|
+| id | BIGINT | Primary Key, Auto Increment |
+| email | VARCHAR(255) | Email đăng nhập (Unique) |
+| password | VARCHAR(255) | Mật khẩu đã mã hóa (BCrypt) |
+| full_name | VARCHAR(100) | Họ và tên |
+| phone_number | VARCHAR(20) | Số điện thoại |
+| date_of_birth | DATE | Ngày sinh |
+| address | TEXT | Địa chỉ |
+| is_email_verified | BOOLEAN | Email đã xác thực chưa |
+| is_active | BOOLEAN | Tài khoản còn active không |
+| is_locked | BOOLEAN | Tài khoản bị khóa không |
+| is_frozen | BOOLEAN | Tài khoản bị đóng băng không |
+| role | VARCHAR(20) | Vai trò (USER, ADMIN, STAFF, COUNTER_ADMIN) |
+| created_at | TIMESTAMP | Thời điểm tạo |
+| updated_at | TIMESTAMP | Thời điểm cập nhật |
 
-create unique index id_user_email on User(email);
-create index id_refresh_token on User(refresh_token_hash);
-create index id_reset_token on User(reset_token_hash);
-```
+## Events Kafka
 
-## Service Integration
+User Service gửi các events sau:
 
-Admin Service giao tiếp với các services khác:
-
-1. **Account Service**: Khi USER_CREATED event được tạo ra, Account Service sẽ lắng nghe để tạo tài khoản ngân hàng mặc định.
-2. **Kafka**: Publish các sự kiện liên quan đến thay đổi trạng thái user.
-
-## Authentication
-
-- Public Endpoints: Không yêu cầu header.
-- Protected Endpoints Yêu cầu JWT token trong header Authorization: Bearer <token>
-- Token được ký (sign) bởi User Service và có thể được verify bởi API Gateway hoặc các service khác thông qua Public Key hoặc Shared Secret.
-
-## Request/Response Format
-
-### Success Response
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "username": "nguyenvana",
-    "email": "vana@example.com",
-    "fullName": "Nguyen Van A"
-  }
-}
-```
-
-### Error Response
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "USER_NOT_FOUND",
-    "message": "User with email '...' not found",
-    "timestamp": "2025-12-04T08:30:00",
-    "path": "/api/v1/users/login"
-  }
-}
-```
-
-## Cấu trúc Project
-
-```
-admin-service/
-├── src/
-│   ├── main/
-│   │   ├── java/com/minibank/userservice/
-│   │   │   ├── config/          # Security, Kafka configs
-│   │   │   ├── controller/      # REST controllers
-│   │   │   ├── dto/             # Request/Response DTOs
-│   │   │   ├── entity/          # JPA entities
-│   │   │   ├── model/           # Stores user information
-│   │   │   ├── repository/      # JPA repositories
-│   │   │   └── service/         # Business logic (Auth, User mgmt)
-│   │   └── resources/
-│   │       └── application.properties          # Local config
-│   │       
-│   └── test/w
-├── pom.xml
-└── README.md
-```
-
-### Environment Variables
-
-Khi chạy bằng Docker, các biến môi trường sau có thể được override:
-
-```bash
-spring.datasource.url=jdbc:mysql://127.0.0.1:3306/minibank
-spring.datasource.username=root
-spring.datasource.password=password
-```
-
-## Chạy Service
-
-## Yêu cầu
-- Java 17 đã cài đặt.
-- Maven đã cài đặt (hoặc dùng Maven có sẵn trong IntelliJ).
-- MySQL (XAMPP) đang bật và đã tạo database tên là minibank
-
-#### Các bước chạy
-- Mở dự án bằng IntelliJ IDEA.
-- Đợi Maven tải thư viện xong.
-- Mở file UserServiceApplication.java.
-- Nhấn nút Run.
-- Service sẽ chạy tại: http://localhost:8081
-
-## Test nhanh (Postman)
-
-1. **Đăng ký**:
-URL: http://localhost:8081/api/users/register (POST)
-Body: {"email": "test@gmail.com", "password": "123"}
-
-2. **Đăng nhập**:
-URL: http://localhost:8081/api/users/login (POST)
-Body: {"email": "test@gmail.com", "password": "123"}
-Kết quả: Copy chuỗi accessToken.
-
-3. **Tự khóa tài khoản**:
-URL: http://localhost:8081/api/users/self-freeze (PUT)
-Auth: Chọn Bearer Token -> Dán token vừa copy vào.
-Kết quả: Database cột is_frozen chuyển thành 1.
-
-4. **Yêu cầu Quên mật khẩu**:
-URL: http://localhost:8081/api/users/forgot-password
-```json:
-{"email": "email_cua_ban@gmail.com"}
-```
-Kết quả: Kiểm tra hộp thư Gmail của bạn, copy đoạn mã Token trong link hoặc lấy từ Database.
-
-5. **Đặt lại mật khẩu**:
-URL: http://localhost:8081/api/users/reset-password
-```json:
-{
-    "token": "TOKEN",
-    "newPassword": "Newpassword"
-}
-```
-Kết quả: 204 No Content (Thành công). Hãy thử đăng nhập lại bằng mật khẩu mới.
+| Event | Description |
+|-------|-------------|
+| USER_CREATED | Khi có người dùng mới đăng ký |
+| USER_UPDATED | Khi thông tin người dùng thay đổi |
+| USER_LOCKED | Khi người dùng bị khóa |
+| USER_UNLOCKED | Khi người dùng được mở khóa |
+| PASSWORD_CHANGED | Khi người dùng đổi mật khẩu |
+| EMAIL_VERIFIED | Khi email được xác thực |

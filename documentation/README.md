@@ -1,40 +1,8 @@
-# Documentation - Tài Liệu Hệ Thống
+# Documentation - Tài Liệu Hệ Thống Docker
 
-Thư mục này chứa tất cả tài liệu kỹ thuật và hướng dẫn sử dụng Mini Banking System.
+Thư mục này chứa tất cả tài liệu kỹ thuật và hướng dẫn sử dụng Mini Banking System chạy bằng Docker.
 
 ## Danh Sách Tài Liệu
-
-### Hướng Dẫn Khởi Động
-
-#### [`HUONG_DAN_KHOI_DONG_BACKEND.md`](./HUONG_DAN_KHOI_DONG_BACKEND.md)  **MỚI**
-**Phương pháp đã kiểm chứng - Khuyến nghị đọc đầu tiên**
-
-Hướng dẫn khởi động backend đã được kiểm chứng thành công:
--  Phương pháp đã test thành công (2025-12-20)
--  Sửa lỗi API Gateway dependency
--  Khởi động từng service chi tiết
--  Checklist đầy đủ
--  Xử lý lỗi thường gặp
--  Tips và tricks
-
-**Phù hợp cho**: Khởi động backend lần đầu hoặc khi gặp vấn đề
-
----
-
-#### [`HUONG_DAN_CHAY_TUNG_BUOC.md`](./HUONG_DAN_CHAY_TUNG_BUOC.md)
-**Hướng dẫn tổng quan**
-
-Hướng dẫn chi tiết từng bước để khởi động và sử dụng hệ thống:
-- Yêu cầu hệ thống
-- Các bước khởi động chi tiết
-- Các điểm truy cập (URLs)
-- Xử lý sự cố thường gặp
-- Quy trình làm việc hàng ngày
-- Tips và best practices
-
-**Phù hợp cho**: Development, khi cần kiểm soát và debug từng service
-
----
 
 ### Docker
 
@@ -52,51 +20,32 @@ Tài liệu về cấu hình Docker:
 
 ---
 
-### Triển Khai Tính Năng
+### Tài Liệu Chi Tiết
 
-#### [`COUNTER_IMPLEMENTATION_SUMMARY.md`](./COUNTER_IMPLEMENTATION_SUMMARY.md)
-**Tóm tắt triển khai Quầy Giao Dịch**
+#### **docs/ - Tài liệu chi tiết theo phân loại**
 
-Chi tiết về hệ thống quản lý quầy:
-- Backend: Entity, Repository, Service, Controller
-- Database: counters, counter_staff tables
-- Frontend: Admin UI với CRUD operations
-- API endpoints đầy đủ
-- Dữ liệu mẫu (20 quầy)
-- Tính năng đã hoàn thành
+Thư mục `docs/` chứa toàn bộ tài liệu chi tiết của dự án, được phân loại theo các nhóm:
 
-**Liên quan**: Transaction Service, Counter Admin
+##### **I. TÀI LIỆU KHỞI TẠO DỰ ÁN**
+- [`Business Requirement Document – BRD.md`](./docs/I.%20TÀI%20LIỆU%20KHỞI%20TẠO%20DỰ%20ÁN/Business%20Requirement%20Document%20%E2%80%93%20BRD.md) - Yêu cầu nghiệp vụ
+- [`Project Overview.md`](./docs/I.%20TÀI%20LIỆU%20KHỞI%20TẠO%20DỰ%20ÁN/Project%20Overview.md) - Tổng quan dự án
 
----
+##### **II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG**
+- [`API Specification.md`](./docs/II.%20TÀI%20LIỆU%20PHÂN%20TÍCH%20&%20THIẾT%20KẾ%20HỆ%20THỐNG/API%20Specification.md) - Đặc tả API
+- [`Database Design Document (DBD).md`](./docs/II.%20TÀI%20LIỆU%20PHÂN%20TÍCH%20&%20THIẾT%20KẾ%20HỆ%20THỐNG/Database%20Design%20Document%20(DBD).md) - Thiết kế CSDL
+- [`Service Interaction Specification (SIS).md`](./docs/II.%20TÀI%20LIỆU%20PHÂN%20TÍCH%20&%20THIẾT%20KẾ%20HỆ%20THỐNG/Service%20Interaction%20Specification%20(SIS).md) - Tương tác service
+- [`Software Architecture Document (SAD).md`](./docs/II.%20TÀI%20LIỆU%20PHÂN%20TÍCH%20&%20THIẾT%20KẾ%20HỆ%20THỐNG/Software%20Architecture%20Document%20(SAD).md) - Kiến trúc hệ thống
+- [`Software Requirements Specification (SRD).md`](./docs/II.%20TÀI%20LIỆU%20PHÂN%20TÍCH%20&%20THIẾT%20KẾ%20HỆ%20THỐNG/Software%20Requirements%20Specification%20(SRD).md) - Đặc tả yêu cầu phần mềm
 
-#### [`USER_MANAGEMENT_IMPLEMENTATION.md`](./USER_MANAGEMENT_IMPLEMENTATION.md)
-**Tài liệu quản lý người dùng và nhân viên**
+##### **III. TÀI LIỆU GIAO DIỆN (UI/UX)**
+- [`README.md`](./docs/III.%20TÀI%20LIỆU%20GIAO%20DIỆN%20(UIUX)/README.md) - Tổng quan tài liệu UI/UX
+- [`01. Design System & Style Guide.md`](./docs/III.%20TÀI%20LIỆU%20GIAO%20DIỆN%20(UIUX)/01.%20Design%20System%20&%20Style%20Guide.md) - Hệ thống thiết kế
+- [`02. Component Library.md`](./docs/III.%20TÀI%20LIỆU%20GIAO%20DIỆN%20(UIUX)/02.%20Component%20Library.md) - Thư viện component
+- [`03. Screen Specifications.md`](./docs/III.%20TÀI%20LIỆU%20GIAO%20DIỆN%20(UIUX)/03.%20Screen%20Specifications.md) - Đặc tả màn hình
+- Các tài liệu UI/UX khác...
 
-Triển khai đầy đủ tính năng quản lý user:
-- Backend APIs: CRUD users
-- DTOs: CreateUserRequest, UpdateUserRequest
-- Frontend: Users page với dialogs
-- Khóa/Mở khóa/Đóng băng tài khoản
-- Role-based access control
-- Testing checklist
-
-**Liên quan**: User Service, Admin Panel
-
----
-
-#### [`NOTIFICATION_SYSTEM_OVERVIEW.md`](./NOTIFICATION_SYSTEM_OVERVIEW.md)
-**Tổng quan hệ thống thông báo**
-
-Chi tiết về Notification Service:
-- Database schema (notifications table)
-- 12 loại thông báo (TRANSACTION_SUCCESS, ACCOUNT_LOCKED, etc.)
-- 4 kênh gửi (EMAIL, SMS, PUSH, IN_APP)
-- WebSocket real-time notifications
-- Retry mechanism
-- API endpoints
-- Integration với services khác
-
-**Liên quan**: Notification Service, Kafka Events
+##### **IV. TÀI LIỆU KỸ THUẬT**
+- [`Docker Conventions & Guidelines.md`](./docs/IV.%20TÀI%20LIỆU%20KỸ%20THUẬT/Docker%20Conventions%20&%20Guidelines.md) - Quy chuẩn Docker
 
 ---
 
@@ -127,7 +76,7 @@ Bao gồm:
 
 ### Logic Hệ Thống
 
-#### [`LOGIC_LUONG_HOAT_DONG.md`](./LOGIC_LUONG_HOAT_DONG.md)
+#### `LOGIC_LUONG_HOAT_DONG.md`
 **Logic các luồng hoạt động - Tài liệu quan trọng**
 
 Mô tả chi tiết logic nghiệp vụ:
@@ -172,15 +121,32 @@ Mô tả chi tiết logic nghiệp vụ:
 
 ```
 documentation/
- README.md (file này)
- HUONG_DAN_KHOI_DONG_BACKEND.md       #  Khởi động backend (đã kiểm chứng)
- HUONG_DAN_CHAY_TUNG_BUOC.md          # Hướng dẫn khởi động tổng quan
- README_DOCKER.md                      # Docker & Ports
- COUNTER_IMPLEMENTATION_SUMMARY.md     # Quầy giao dịch
- USER_MANAGEMENT_IMPLEMENTATION.md     # Quản lý user
- NOTIFICATION_SYSTEM_OVERVIEW.md       # Hệ thống thông báo
- DATABASE_OVERVIEW.md                  # Tổng quan database
- LOGIC_LUONG_HOAT_DONG.md             # Logic nghiệp vụ
+ README.md                              # File này - Tổng quan tài liệu
+ README_DOCKER.md                       # Docker & Ports
+ DATABASE_OVERVIEW.md                   # Tổng quan database
+ docs/                                  # Tài liệu chi tiết
+   I. TÀI LIỆU KHỞI TẠO DỰ ÁN/
+     Business Requirement Document – BRD.md
+     Project Overview.md
+   II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG/
+     API Specification.md
+     Database Design Document (DBD).md
+     Service Interaction Specification (SIS).md
+     Software Architecture Document (SAD).md
+     Software Requirements Specification (SRD).md
+   III. TÀI LIỆU GIAO DIỆN (UIUX)/
+     README.md
+     01. Design System & Style Guide.md
+     02. Component Library.md
+     03. Screen Specifications.md
+     04. User Flow Diagrams.md
+     05. Responsive Design Guidelines.md
+     06. Accessibility Guidelines.md
+     07. Interaction Patterns.md
+     08. Wireframes & Mockups.md
+     UI Guideline _ Design System.md
+   IV. TÀI LIỆU KỸ THUẬT/
+     Docker Conventions & Guidelines.md
 ```
 
 ---
@@ -188,25 +154,34 @@ documentation/
 ## Hướng Dẫn Đọc Tài Liệu
 
 ### Cho Developer Mới:
-1. **Bắt đầu**: `HUONG_DAN_KHOI_DONG_BACKEND.md`  - Khởi động backend (đã kiểm chứng)
-2. **Tổng quan**: `HUONG_DAN_CHAY_TUNG_BUOC.md` - Hướng dẫn đầy đủ
-3. **Hiểu kiến trúc**: `LOGIC_LUONG_HOAT_DONG.md` - Logic nghiệp vụ
-4. **Database**: `DATABASE_OVERVIEW.md` - Cấu trúc dữ liệu
-5. **Tính năng cụ thể**: Đọc các file implementation tương ứng
+1. **Bắt đầu**: `README_DOCKER.md` - Khởi động hệ thống bằng Docker
+2. **Tổng quan**: `docs/I. TÀI LIỆU KHỞI TẠO DỰ ÁN/Project Overview.md` - Tổng quan dự án
+3. **Database**: `DATABASE_OVERVIEW.md` - Cấu trúc dữ liệu
+4. **Kiến trúc**: `docs/II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG/Software Architecture Document (SAD).md` - Kiến trúc hệ thống
+5. **API**: `docs/II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG/API Specification.md` - Đặc tả API
+6. **UI/UX**: `docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/README.md` - Tài liệu giao diện
 
 ### Cho DevOps/Infrastructure:
 1. `README_DOCKER.md` - Docker setup
 2. `DATABASE_OVERVIEW.md` - Database configuration
-3. `HUONG_DAN_CHAY_TUNG_BUOC.md` - Deployment guide
+3. `docs/IV. TÀI LIỆU KỸ THUẬT/Docker Conventions & Guidelines.md` - Docker conventions
+4. `docs/II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG/Software Architecture Document (SAD).md` - Kiến trúc triển khai
 
 ### Cho Product Owner/BA:
-1. `LOGIC_LUONG_HOAT_DONG.md` - Business flows
-2. Các file implementation - Feature details
+1. `docs/I. TÀI LIỆU KHỞI TẠO DỰ ÁN/Business Requirement Document – BRD.md` - Yêu cầu nghiệp vụ
+2. `docs/II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG/Software Requirements Specification (SRD).md` - Đặc tả yêu cầu
+3. `docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/README.md` - Tài liệu giao diện
+
+### Cho Frontend Developer:
+1. `docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/README.md` - Tổng quan tài liệu UI/UX
+2. `docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/01. Design System & Style Guide.md` - Hệ thống thiết kế
+3. `docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/02. Component Library.md` - Thư viện component
+4. `docs/II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG/API Specification.md` - API endpoints
 
 ### Khi Thêm Tính Năng Mới:
 1. `README_DOCKER.md` - Check port allocation
 2. `DATABASE_OVERVIEW.md` - Database design
-3. Tạo file implementation summary mới
+3. Cập nhật tài liệu liên quan trong thư mục `docs/`
 
 ---
 
@@ -214,32 +189,35 @@ documentation/
 
 ### Tôi muốn...
 
-**Khởi động backend**
-→ `HUONG_DAN_KHOI_DONG_BACKEND.md`  (Phương pháp đã kiểm chứng)
-
-**Khởi động hệ thống (tổng quan)**
-→ `HUONG_DAN_CHAY_TUNG_BUOC.md`
-
-**Hiểu luồng đăng nhập**
-→ `LOGIC_LUONG_HOAT_DONG.md` → Section 1
+**Khởi động hệ thống bằng Docker**
+→ `README_DOCKER.md` → "QUICK START"
 
 **Thêm service mới**
-→ `README_DOCKER.md` → "Thêm Service Mới"
+→ `README_DOCKER.md` → "THÊM SERVICE MỚI?"
+
+**Hiểu tổng quan dự án**
+→ `docs/I. TÀI LIỆU KHỞI TẠO DỰ ÁN/Project Overview.md`
+
+**Xem yêu cầu nghiệp vụ**
+→ `docs/I. TÀI LIỆU KHỞI TẠO DỰ ÁN/Business Requirement Document – BRD.md`
+
+**Hiểu kiến trúc hệ thống**
+→ `docs/II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG/Software Architecture Document (SAD).md`
+
+**Xem đặc tả API**
+→ `docs/II. TÀI LIỆU PHÂN TÍCH & THIẾT KẾ HỆ THỐNG/API Specification.md`
 
 **Xem cấu trúc database**
 → `DATABASE_OVERVIEW.md`
 
-**Hiểu hệ thống thông báo**
-→ `NOTIFICATION_SYSTEM_OVERVIEW.md`
+**Xem tài liệu UI/UX**
+→ `docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/README.md`
 
-**Quản lý quầy giao dịch**
-→ `COUNTER_IMPLEMENTATION_SUMMARY.md`
-
-**Quản lý users**
-→ `USER_MANAGEMENT_IMPLEMENTATION.md`
+**Quy chuẩn Docker**
+→ `docs/IV. TÀI LIỆU KỸ THUẬT/Docker Conventions & Guidelines.md`
 
 **Xử lý lỗi khi chạy**
-→ `HUONG_DAN_CHAY_TUNG_BUOC.md` → "Xử Lý Sự Cố"
+→ `README_DOCKER.md` → "TROUBLESHOOTING"
 
 ---
 
@@ -261,8 +239,8 @@ Nếu không tìm thấy thông tin cần thiết:
 1. Tìm kiếm trong các file markdown (Ctrl+F)
 2. Kiểm tra `../README.md` (root README)
 3. Xem code comments trong source code
-4. Kiểm tra `../CHANGELOG.md` cho lịch sử thay đổi
+4. Kiểm tra `docker-compose.yml` cho cấu hình hiện tại
 
 ---
 
-**Cập nhật lần cuối**: 2025-12-20
+**Cập nhật lần cuối**: 2025-12-22

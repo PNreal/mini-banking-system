@@ -24,7 +24,12 @@ docker-compose ps
 docker-compose logs -f
 ```
 
-### **4. Dừng services:**
+### **4. Truy cập ứng dụng:**
+- **Customer Web:** http://localhost:3002
+- **Admin Panel:** http://localhost:3001
+- **API Gateway:** http://localhost:8080
+
+### **5. Dừng services:**
 ```bash
 docker-compose down
 ```
@@ -84,12 +89,19 @@ docker-compose ps
 # Kiểm tra port đang được sử dụng
 netstat -ano | findstr "5433"  # Windows
 lsof -i :5433                   # Linux/Mac
+
+# Giải pháp:
+# 1. Đổi port trong docker-compose.yml
+# 2. Hoặc dừng process đang dùng port
 ```
 
 ### **Container name conflict?**
 ```bash
 # Xóa container cũ
 docker rm -f postgres-log-service
+
+# Restart lại
+docker-compose up -d
 ```
 
 ### **Database connection failed?**
@@ -99,6 +111,33 @@ docker-compose ps postgres-log
 
 # Xem logs
 docker-compose logs postgres-log
+
+# Restart lại
+docker-compose restart postgres-log
+```
+
+### **Service không khởi động?**
+```bash
+# Xem logs của service
+docker-compose logs user-service
+
+# Kiểm tra dependencies
+docker-compose ps
+
+# Restart lại
+docker-compose restart user-service
+```
+
+### **Frontend không truy cập được?**
+```bash
+# Xem logs của frontend
+docker-compose logs frontend
+
+# Kiểm tra port
+netstat -ano | findstr "3001"
+
+# Restart lại
+docker-compose restart frontend
 ```
 
 Xem chi tiết trong [Docker Conventions & Guidelines](./../docs/IV.%20TÀI%20LIỆU%20KỸ%20THUẬT/Docker%20Conventions%20%26%20Guidelines.md#8-troubleshooting)
@@ -115,9 +154,23 @@ docker/
 ├── TEMPLATE_application.properties     # Template application.properties
 ├── TEMPLATE_init-script.sql           # Template init script
 └── init-scripts/
-    ├── log-service-init.sql           # Init script cho log service
-    └── {service-name}-init.sql        # Thêm init script cho service mới
+    ├── account-service-init.sql
+    ├── admin-service-init.sql
+    ├── kyc-service-init.sql
+    ├── log-service-init.sql
+    ├── notification-service-init.sql
+    ├── transaction-service-init.sql
+    └── user-service-init.sql
 ```
+
+---
+
+## **SCRIPTS HỮU ÍCH**
+
+Từ thư mục gốc của project, bạn có thể sử dụng các scripts sau:
+- `scripts/stop-all.ps1` - Dừng toàn bộ hệ thống
+- `scripts/check-services.ps1` - Kiểm tra trạng thái services
+- `scripts/run-tests.ps1` - Chạy unit tests
 
 ---
 
@@ -126,7 +179,8 @@ docker/
 Nếu có thắc mắc:
 1. Đọc [Docker Conventions & Guidelines](./../docs/IV.%20TÀI%20LIỆU%20KỸ%20THUẬT/Docker%20Conventions%20%26%20Guidelines.md)
 2. Kiểm tra [SERVICE_PORT_ALLOCATION.md](./SERVICE_PORT_ALLOCATION.md)
-3. Hỏi team trong channel #docker-support
+3. Sử dụng scripts trong thư mục `scripts/`
+4. Kiểm tra logs bằng `docker-compose logs -f [service-name]`
 
 ---
 

@@ -22,6 +22,25 @@ docker-compose down
 
 ---
 
+## **TRUY CẬP HỆ THỐNG**
+
+- **Customer Web:** http://localhost:3002
+- **Admin Panel:** http://localhost:3001
+- **API Gateway:** http://localhost:8080
+
+---
+
+## **TÀI KHOẢN TEST**
+
+| Loại | Email | Password |
+|------|-------|----------|
+| Admin | admin@minibank.com | Admin@123 |
+| Customer | test.user@example.com | TestPassword#123 |
+| Staff | staff@minibank.com | Staff@123 |
+| Counter Admin | counter.admin@minibank.com | CounterAdmin@123 |
+
+---
+
 ## **PORT ALLOCATION**
 
 ### **Application Ports:**
@@ -29,19 +48,24 @@ docker-compose down
 - User Service: `8081`
 - Account Service: `8082`
 - Transaction Service: `8083`
-- Notification Service: `8084`
-- **Log Service: `8085`** (Đang sử dụng)
-- Admin Service: `8086`
+- Admin Service: `8084`
+- Log Service: `8085`
+- Notification Service: `8086`
 - Available: `8087`, `8088`, `8089`
 
+### **Frontend Ports:**
+- Customer Web: `3002`
+- Admin Panel: `3001`
+- Available: `3003`, `3004`
+
 ### **PostgreSQL Ports:**
-- **Log Service: `5433`** (Đang sử dụng)
 - User Service: `5434`
 - Account Service: `5435`
 - Transaction Service: `5436`
-- Notification Service: `5437`
-- Admin Service: `5438`
-- Available: `5439`
+- Admin Service: `5437`
+- Log Service: `5438`
+- Notification Service: `5439`
+- KYC Service: `5433`
 
 ### **Shared Services:**
 - Kafka: `9092` (external), `29092` (internal)
@@ -97,6 +121,40 @@ lsof -i :5433                   # Linux/Mac
 docker rm -f postgres-log-service
 ```
 
+### **Service không khởi động:**
+```bash
+# Xem logs của service cụ thể
+docker-compose logs user-service
+
+# Khởi động lại
+docker-compose down
+docker-compose up -d
+```
+
+### **Database connection failed:**
+```bash
+# Kiểm tra container
+docker-compose ps postgres-user
+
+# Xem logs
+docker-compose logs postgres-user
+
+# Restart lại
+docker-compose restart postgres-user
+```
+
+### **Frontend không truy cập được:**
+```bash
+# Kiểm tra container frontend đang chạy
+docker-compose ps frontend
+
+# Xem logs
+docker-compose logs frontend
+
+# Restart lại
+docker-compose restart frontend
+```
+
 Xem thêm trong [Docker Conventions & Guidelines](./docs/IV.%20TÀI%20LIỆU%20KỸ%20THUẬT/Docker%20Conventions%20%26%20Guidelines.md#8-troubleshooting)
 
 ---
@@ -116,5 +174,12 @@ Xem thêm trong [Docker Conventions & Guidelines](./docs/IV.%20TÀI%20LIỆU%20K
 
 ---
 
-**Chúc bạn code vui vẻ và không bị conflict!**
+## **SCRIPTS HỮU ÍCH**
 
+- `scripts/stop-all.ps1` - Dừng toàn bộ hệ thống
+- `scripts/check-services.ps1` - Kiểm tra trạng thái services
+- `scripts/run-tests.ps1` - Chạy unit tests
+
+---
+
+**Chúc bạn code vui vẻ và không bị conflict!**

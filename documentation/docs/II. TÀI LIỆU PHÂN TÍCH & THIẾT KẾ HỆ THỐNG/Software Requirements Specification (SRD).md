@@ -6,6 +6,8 @@ Dự án: Mini Banking System
 
 **Ngày:** 10/11/2025
 
+**Cập nhật:** 22/12/2025
+
 **Người biên soạn:** Nguyễn Văn Phương
 
 1\. Giới thiệu

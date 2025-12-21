@@ -1,13 +1,13 @@
-# Scripts - Các Script Quản Lý Hệ Thống
+# Scripts - Các Script Quản Lý Hệ Thống Docker
 
-Thư mục này chứa các PowerShell scripts để quản lý Mini Banking System.
+Thư mục này chứa các PowerShell scripts để quản lý Mini Banking System chạy bằng Docker.
 
 ## Danh Sách Scripts
 
 ### Dừng
 
 #### `stop-all.ps1`
-**Mục đích**: Dừng toàn bộ hệ thống (Java services + Frontend + Docker containers)
+**Mục đích**: Dừng toàn bộ hệ thống Docker
 
 **Cách dùng**:
 ```powershell
@@ -15,10 +15,9 @@ Thư mục này chứa các PowerShell scripts để quản lý Mini Banking Sys
 ```
 
 **Chức năng**:
-- Dừng tất cả Java processes
-- Dừng tất cả Node.js processes (Frontend)
-- Dừng Docker containers
-- Giải phóng tất cả ports
+- Dừng tất cả Docker containers
+- Dọn dẹp volumes (nếu cần)
+- Giải phóng các port
 - Hiển thị kết quả
 
 ---
@@ -35,7 +34,7 @@ Thư mục này chứa các PowerShell scripts để quản lý Mini Banking Sys
 
 **Hiển thị**:
 - Trạng thái 7 backend services (port 8080-8086)
-- Số lượng Java processes đang chạy
+- Trạng thái frontend applications (port 3001, 3002)
 - Trạng thái Docker containers (databases, Kafka, Zookeeper)
 - Danh sách containers đang chạy
 
@@ -76,18 +75,14 @@ Thư mục này chứa các PowerShell scripts để quản lý Mini Banking Sys
 
 ### Khởi động hệ thống:
 ```powershell
-# 1. Khởi động databases
+# 1. Khởi động toàn bộ hệ thống bằng Docker
 docker-compose up -d
 
-# 2. Đợi 10-15 giây
+# 2. Đợi 10-15 giây để services khởi động
 Start-Sleep -Seconds 15
 
-# 3. Khởi động backend thủ công (mở 7 terminals)
-# Xem hướng dẫn chi tiết: HUONG_DAN_MO_7_TERMINALS.md
-
-# 4. Khởi động frontend (terminal mới)
-cd frontend
-npm start
+# 3. Kiểm tra trạng thái
+.\scripts\check-services.ps1
 ```
 
 ### Kiểm tra trạng thái:
@@ -123,11 +118,12 @@ netstat -ano | findstr "8080"
 # Kiểm tra trạng thái
 .\scripts\check-services.ps1
 
+# Xem logs của service cụ thể
+docker-compose logs user-service
+
 # Khởi động lại
-.\scripts\stop-all.ps1
+docker-compose down
 docker-compose up -d
-Start-Sleep -Seconds 15
-# Sau đó khởi động thủ công 7 services
 ```
 
 ### Lỗi: Docker không chạy
@@ -143,8 +139,8 @@ docker-compose up -d
 
 - Tất cả scripts phải chạy từ thư mục gốc của project
 - Scripts yêu cầu PowerShell 5.0 trở lên
-- Cần quyền Administrator để kill processes
-- Logs của services sẽ hiển thị trong terminal windows riêng
+- Cần quyền Administrator để dừng containers
+- Logs của services có thể xem bằng lệnh `docker-compose logs -f [service-name]`
 
 ---
 
@@ -152,6 +148,6 @@ docker-compose up -d
 
 Nếu gặp vấn đề:
 1. Chạy `.\scripts\check-services.ps1` để kiểm tra trạng thái
-2. Xem logs trong terminal windows của services
+2. Xem logs bằng `docker-compose logs -f`
 3. Kiểm tra Docker containers: `docker ps`
 4. Tham khảo tài liệu chi tiết trong thư mục `documentation/`

@@ -2,7 +2,7 @@
 
 **Dự án:** Mini Banking System  
 **Phiên bản:** 1.0  
-**Ngày phát hành:**  
+**Ngày phát hành:** 22/12/2025  
 **Người biên soạn:** Nhóm 7
 
 ## **1. Mục tiêu dự án (Project Purpose)** {#mục-tiêu-dự-án-project-purpose}

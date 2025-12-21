@@ -29,62 +29,69 @@ X-User-Id: <UUID của user>
 
 Xem chi tiết trong `TransactionController`.
 
-## Cấu hình mặc định
+## Cấu hình Docker
 
-`src/main/resources/application.properties`:
-
-```properties
-spring.application.name=transaction-service
-server.port=8083
-
-spring.datasource.url=jdbc:postgresql://localhost:5432/transaction_db
-spring.datasource.username=transaction_user
-spring.datasource.password=transaction_password
-spring.jpa.hibernate.ddl-auto=update
-
-spring.kafka.bootstrap-servers=localhost:9092
-transaction.kafka.completed-topic=TRANSACTION_COMPLETED
-
-services.account-service.url=http://localhost:8082
-services.internal-secret=internal-secret
-```
-
-## 🐳 Chạy bằng Docker (service riêng lẻ)
-
-Trong thư mục `services/transaction-service/transaction-service`:
-
-```powershell
-docker-compose up -d --build
-```
-
-Các cổng sử dụng (theo `docker-compose.yml` + SERVICE_PORT_ALLOCATION.md):
-
+Service được cấu hình trong `docker-compose.yml` với các cổng:
 - Transaction Service: `http://localhost:8083`
 - PostgreSQL (external): `5436`
-- Kafka: `9094` (external), `29094` (internal)
-
-## 🏃 Chạy local bằng Maven
-
-Yêu cầu:
-- Java 17
-- Maven (hoặc dùng `mvnw`)
-- PostgreSQL chạy local với database `transaction_db`
-
-```powershell
-cd services\transaction-service\transaction-service
-$env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
-.\mvnw.cmd spring-boot:run
-```
-
-Service sẽ chạy tại: `http://localhost:8083`
+- Kafka: `9092` (external), `29092` (internal)
 
 ## 🔗 Tích hợp với các service khác
 
-- Gọi tới:
-  - `account-service`: kiểm tra và cập nhật số dư tài khoản.
-- Gửi event Kafka:
-  - Topic `TRANSACTION_COMPLETED` để:
-    - `log-service` ghi log giao dịch.
-    - `notification-service` gửi thông báo cho user.
+- **Account Service**: Gọi để cập nhật số dư tài khoản
+- **User Service**: Xác thực người dùng trước khi thực hiện giao dịch
+- **Log Service**: Ghi log tất cả các giao dịch
+- **Notification Service**: Gửi thông báo khi giao dịch hoàn thành
 
+## Database Schema
 
+Bảng chính: `transactions`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | BIGINT | Primary Key, Auto Increment |
+| user_id | UUID | ID của người dùng thực hiện giao dịch |
+| from_account_id | UUID | Tài khoản nguồn (cho chuyển khoản) |
+| to_account_id | UUID | Tài khoản đích (cho chuyển khoản) |
+| amount | DECIMAL(15,2) | Số tiền giao dịch |
+| transaction_type | VARCHAR(20) | Loại giao dịch (DEPOSIT, WITHDRAW, TRANSFER) |
+| status | VARCHAR(20) | Trạng thái (PENDING, COMPLETED, FAILED) |
+| description | TEXT | Mô tả giao dịch |
+| created_at | TIMESTAMP | Thời điểm tạo |
+| updated_at | TIMESTAMP | Thời điểm cập nhật |
+
+## Events Kafka
+
+Transaction Service gửi các events sau:
+
+| Event | Description |
+|-------|-------------|
+| TRANSACTION_COMPLETED | Khi giao dịch hoàn thành thành công |
+| TRANSACTION_FAILED | Khi giao dịch thất bại |
+| TRANSACTION_PENDING | Khi giao dịch đang chờ xử lý |
+
+## Quản lý Quầy Giao Dịch
+
+Transaction Service cũng quản lý hệ thống quầy giao dịch:
+
+### Bảng `counters`
+- id: ID quầy
+- name: Tên quầy
+- location: Địa điểm quầy
+- status: Trạng thái (ACTIVE, INACTIVE)
+- admin_user_id: ID admin quản lý quầy
+
+### Bảng `counter_staff`
+- id: ID nhân viên
+- counter_id: ID quầy làm việc
+- staff_code: Mã nhân viên
+- staff_name: Tên nhân viên
+- is_active: Trạng thái làm việc
+
+### API cho quản lý quầy
+- `POST /api/v1/counters` - Tạo quầy mới
+- `GET /api/v1/counters` - Lấy danh sách quầy
+- `PUT /api/v1/counters/{id}` - Cập nhật thông tin quầy
+- `DELETE /api/v1/counters/{id}` - Xóa quầy
+- `POST /api/v1/counters/{id}/staff` - Thêm nhân viên vào quầy
+- `GET /api/v1/counters/{id}/staff` - Lấy danh sách nhân viên quầy

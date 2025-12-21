@@ -3,7 +3,7 @@
 **Dự án:** Mini Banking System  
 **Phiên bản:** 1.1  
 **Ngày:** 20/11/2025  
-**Cập nhật:** 17/12/2025  
+**Cập nhật:** 22/12/2025  
 **Người biên soạn:** Nhóm 7
 
 **Changelog v1.1:**

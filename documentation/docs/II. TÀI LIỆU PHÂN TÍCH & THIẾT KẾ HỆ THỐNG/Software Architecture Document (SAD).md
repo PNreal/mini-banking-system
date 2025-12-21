@@ -2,6 +2,9 @@
 
 ### **Dự án: Mini Banking System**
 
+**Version:** 1.0  
+**Last update:** 2025-12-22
+
 ## **1. Giới thiệu** {#giới-thiệu}
 
 ### **1.1. Mục tiêu** {#mục-tiêu}

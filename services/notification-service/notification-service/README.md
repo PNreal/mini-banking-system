@@ -29,270 +29,129 @@ Notification Service cho hệ thống Mini Banking System, quản lý và gửi 
 
 ## API Endpoints
 
-### Notification Management
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/v1/notifications` | Tạo thông báo mới | Yes |
-| GET | `/api/v1/notifications/{notificationId}` | Lấy thông tin thông báo | Yes |
-| GET | `/api/v1/notifications/user/{userId}` | Lấy danh sách thông báo của user (paginated) | Yes |
-| GET | `/api/v1/notifications/user/{userId}/unread` | Lấy thông báo chưa đọc | Yes |
-| GET | `/api/v1/notifications/user/{userId}/type/{type}` | Lấy thông báo theo loại | Yes |
-| PATCH | `/api/v1/notifications/{notificationId}/read` | Đánh dấu đã đọc | Yes |
-| PATCH | `/api/v1/notifications/user/{userId}/read-all` | Đánh dấu tất cả đã đọc | Yes |
-| POST | `/api/v1/notifications/{notificationId}/resend` | Gửi lại thông báo | Yes |
-| GET | `/api/v1/notifications/user/{userId}/stats` | Lấy thống kê thông báo | Yes |
-
-### Health Check
+### User Endpoints (Yêu cầu authentication)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/health` | Health check endpoint |
-| GET | `/actuator/health` | Spring Boot Actuator health |
+| GET | `/api/v1/notifications` | Lấy danh sách thông báo của user |
+| GET | `/api/v1/notifications/{id}` | Lấy chi tiết thông báo |
+| PATCH | `/api/v1/notifications/{id}/read` | Đánh dấu đã đọc |
+| PATCH | `/api/v1/notifications/read-all` | Đánh dấu đã đọc tất cả |
+| GET | `/api/v1/notifications/unread-count` | Số lượng thông báo chưa đọc |
 
-## Notification Types
+### Admin Endpoints (Yêu cầu Admin role)
 
-- `TRANSACTION_SUCCESS`: Giao dịch thành công
-- `TRANSACTION_FAILED`: Giao dịch thất bại
-- `ACCOUNT_CREATED`: Tài khoản được tạo
-- `ACCOUNT_LOCKED`: Tài khoản bị khóa
-- `ACCOUNT_UNLOCKED`: Tài khoản được mở khóa
-- `ACCOUNT_FROZEN`: Tài khoản bị đóng băng
-- `ACCOUNT_UNFROZEN`: Tài khoản được gỡ đóng băng
-- `BALANCE_LOW`: Số dư thấp
-- `PAYMENT_DUE`: Thanh toán đến hạn
-- `SECURITY_ALERT`: Cảnh báo bảo mật
-- `SYSTEM_UPDATE`: Cập nhật hệ thống
-- `PROMOTIONAL`: Khuyến mãi
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/admin/notifications` | Lấy tất cả thông báo |
+| GET | `/api/v1/admin/notifications/stats` | Thống kê thông báo |
+| POST | `/api/v1/admin/notifications/send` | Gửi thông báo thủ công |
+| POST | `/api/v1/admin/notifications/resend-failed` | Gửi lại thông báo thất bại |
 
-## Notification Channels
+## Cấu hình Docker
 
-- `EMAIL`: Gửi qua email
-- `SMS`: Gửi qua SMS
-- `PUSH`: Push notification
-- `IN_APP`: Thông báo trong ứng dụng
+Service được cấu hình trong `docker-compose.yml` với các cổng:
+- Notification Service: `http://localhost:8086`
+- PostgreSQL (external): `5439`
+- Kafka: `9092` (external), `29092` (internal)
 
-## Notification Status
+## 🔗 Tích hợp với các service khác
 
-- `PENDING`: Đang chờ gửi
-- `SENT`: Đã gửi
-- `DELIVERED`: Đã giao
-- `FAILED`: Gửi thất bại
-- `READ`: Đã đọc
+Notification Service nhận events từ các service khác qua Kafka:
 
-## Request/Response Examples
-
-### Create Notification
-
-**Request:**
-```json
-POST /api/v1/notifications
-{
-  "userId": "123e4567-e89b-12d3-a456-426614174000",
-  "type": "TRANSACTION_SUCCESS",
-  "title": "Transaction Completed",
-  "message": "Your transaction of $100.00 has been completed successfully.",
-  "channel": "EMAIL",
-  "recipientEmail": "user@example.com"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "notificationId": "456e7890-e89b-12d3-a456-426614174001",
-    "userId": "123e4567-e89b-12d3-a456-426614174000",
-    "type": "TRANSACTION_SUCCESS",
-    "title": "Transaction Completed",
-    "message": "Your transaction of $100.00 has been completed successfully.",
-    "recipientEmail": "user@example.com",
-    "status": "SENT",
-    "channel": "EMAIL",
-    "sentAt": "2024-12-04T10:00:00",
-    "createdAt": "2024-12-04T10:00:00"
-  }
-}
-```
-
-### Get Notification Stats
-
-**Request:**
-```json
-GET /api/v1/notifications/user/{userId}/stats
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "totalNotifications": 50,
-    "unreadCount": 5,
-    "readCount": 40,
-    "sentCount": 48,
-    "failedCount": 2
-  }
-}
-```
+- **User Service**: Events về đăng ký, đăng nhập, thay đổi thông tin
+- **Account Service**: Events về tạo tài khoản, cập nhật số dư
+- **Transaction Service**: Events về giao dịch thành công/thất bại
+- **Admin Service**: Events về các hành động admin liên quan đến user
 
 ## Database Schema
 
-### Notifications Table
+### Bảng `notifications`
 
-```sql
-CREATE TABLE notifications (
-    notification_id UUID PRIMARY KEY,
-    user_id UUID NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    message TEXT NOT NULL,
-    recipient_email VARCHAR(255),
-    recipient_phone VARCHAR(20),
-    status VARCHAR(20) NOT NULL,
-    channel VARCHAR(20) NOT NULL,
-    sent_at TIMESTAMP,
-    read_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL
-);
+| Field | Type | Description |
+|-------|------|-------------|
+| id | BIGINT | Primary Key, Auto Increment |
+| user_id | UUID | ID của người dùng nhận thông báo |
+| type | VARCHAR(50) | Loại thông báo |
+| title | VARCHAR(200) | Tiêu đề thông báo |
+| message | TEXT | Nội dung thông báo |
+| channel | VARCHAR(20) | Kênh gửi (EMAIL, SMS, PUSH, IN_APP) |
+| status | VARCHAR(20) | Trạng thái (PENDING, SENT, FAILED) |
+| is_read | BOOLEAN | Đã đọc chưa |
+| created_at | TIMESTAMP | Thời điểm tạo |
+| sent_at | TIMESTAMP | Thời điểm gửi |
+| retry_count | INT | Số lần retry |
 
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_status ON notifications(status);
-CREATE INDEX idx_notifications_type ON notifications(type);
-CREATE INDEX idx_notifications_created_at ON notifications(created_at);
-```
+## Notification Types
 
-## Cấu hình
+| Type | Description |
+|------|-------------|
+| TRANSACTION_SUCCESS | Giao dịch thành công |
+| TRANSACTION_FAILED | Giao dịch thất bại |
+| ACCOUNT_CREATED | Tạo tài khoản mới |
+| ACCOUNT_LOCKED | Tài khoản bị khóa |
+| ACCOUNT_UNLOCKED | Tài khoản được mở khóa |
+| LOGIN_SUCCESS | Đăng nhập thành công |
+| LOGIN_FAILED | Đăng nhập thất bại |
+| PASSWORD_CHANGED | Đổi mật khẩu |
+| ADMIN_ACTION | Admin thực hiện hành động |
+| SYSTEM_MAINTENANCE | Hệ thống bảo trì |
+| PROMOTION | Khuyến mãi |
 
-### Database
+## Kafka Events
 
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5436/notification_db
-spring.datasource.username=notification_user
-spring.datasource.password=notification_password
-```
+Notification Service lắng nghe các topics sau:
 
-### Mail Configuration
+| Topic | Service | Description |
+|-------|---------|-------------|
+| USER_EVENTS | User Service | Events về hoạt động người dùng |
+| ACCOUNT_EVENTS | Account Service | Events về tài khoản |
+| TRANSACTION_EVENTS | Transaction Service | Events về giao dịch |
+| ADMIN_EVENTS | Admin Service | Events về hành động admin |
 
-```properties
-spring.mail.host=smtp.gmail.com
-spring.mail.port=587
-spring.mail.username=your-email@gmail.com
-spring.mail.password=your-password
-```
+## API Examples
 
-### Server
-
-```properties
-server.port=8086
-```
-
-## Cấu trúc Project
+### Lấy danh sách thông báo
 
 ```
-notification-service/
-├── src/
-│   ├── main/
-│   │   ├── java/com/minibank/notificationservice/
-│   │   │   ├── config/          # Configuration classes
-│   │   │   ├── controller/      # REST controllers
-│   │   │   ├── dto/             # Data Transfer Objects
-│   │   │   ├── entity/          # JPA entities
-│   │   │   ├── exception/       # Exception handlers
-│   │   │   ├── repository/      # JPA repositories
-│   │   │   └── service/         # Business logic
-│   │   └── resources/
-│   │       └── application.properties
-│   └── test/
-├── pom.xml
-└── README.md
+GET /api/v1/notifications?page=0&size=20&status=UNREAD
 ```
 
-## Chạy Service
-
-### Local Development
-
-```bash
-# Build
-mvn clean install
-
-# Run
-mvn spring-boot:run
+Response:
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "type": "TRANSACTION_SUCCESS",
+      "title": "Giao dịch thành công",
+      "message": "Bạn đã chuyển khoản 1,000,000 VND đến tài khoản xxx",
+      "channel": "IN_APP",
+      "status": "SENT",
+      "isRead": false,
+      "createdAt": "2023-01-01T10:00:00"
+    }
+  ],
+  "totalElements": 50,
+  "totalPages": 3,
+  "size": 20,
+  "number": 0
+}
 ```
 
-Service sẽ chạy trên port **8086**.
+### Gửi thông báo thủ công (Admin)
 
-### Docker
-
-```bash
-# Build and run
-docker-compose up -d --build
-
-# View logs
-docker logs notification-service -f
-
-# Stop
-docker-compose down
+```
+POST /api/v1/admin/notifications/send
 ```
 
-## Testing
-
-```bash
-# Run all tests
-mvn test
-
-# Run specific test class
-mvn test -Dtest=NotificationServiceTest
+Request:
+```json
+{
+  "userId": "uuid",
+  "type": "SYSTEM_MAINTENANCE",
+  "title": "Hệ thống bảo trì",
+  "message": "Hệ thống sẽ bảo trì từ 22:00-24:00今晚",
+  "channels": ["EMAIL", "IN_APP"]
+}
 ```
-
-## Kafka Integration
-
-Service tự động lắng nghe các Kafka topics sau:
-- `TRANSACTION_COMPLETED`: Tạo notification khi transaction hoàn thành
-- `ACCOUNT_EVENT`: Tạo notification cho các sự kiện account (created, locked, frozen, etc.)
-- `ADMIN_ACTION`: Tạo security alert khi có admin action
-
-## Async Processing
-
-Notifications được gửi bất đồng bộ để không block API response. Sử dụng ThreadPoolTaskExecutor với:
-- Core pool size: 5 threads
-- Max pool size: 10 threads
-- Queue capacity: 100
-
-## Scheduled Retry
-
-Service tự động retry các notifications thất bại mỗi 5 phút. Chỉ retry các notifications ở trạng thái PENDING hoặc FAILED.
-
-## Email Templates
-
-Email được gửi với HTML template đẹp mắt, bao gồm:
-- Header với branding
-- Formatted content
-- Footer với disclaimer
-
-## WebSocket Support (Real-time Notifications)
-
-Service hỗ trợ WebSocket để gửi real-time notifications:
-
-- **Endpoint:** `ws://localhost:8086/ws/notifications`
-- **Protocol:** STOMP over WebSocket với SockJS fallback
-- **Authentication:** JWT token qua query parameter hoặc Authorization header
-- **Channels:**
-  - `/topic/transactions/{userId}` - Transaction notifications
-  - `/topic/account-status/{userId}` - Account status changes
-  - `/topic/security/{userId}` - Security alerts
-  - `/topic/system` - System broadcasts
-
-Xem chi tiết trong [WEBSOCKET_IMPLEMENTATION.md](./WEBSOCKET_IMPLEMENTATION.md)
-
-## Lưu ý
-
-- Service cần PostgreSQL database đang chạy
-- Service cần Kafka broker đang chạy để nhận events
-- Email configuration cần được cấu hình đúng để gửi email (MAIL_USERNAME, MAIL_PASSWORD)
-- SMS và Push Notification hiện tại là mock implementation - cần tích hợp với provider thực tế (Twilio, AWS SNS, FCM, APNS)
-- WebSocket yêu cầu JWT token để authenticate (cấu hình qua `jwt.secret`)
-- Notification operations yêu cầu authentication qua API Gateway
-- Service-to-service communication sử dụng header `X-Internal-Secret`
-

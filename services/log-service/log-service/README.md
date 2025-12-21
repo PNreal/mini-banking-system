@@ -28,99 +28,95 @@ Microservice để quản lý và lưu trữ logs của hệ thống banking.
 
 ### User Endpoints
 
-- `GET /api/v1/logs/me` - Lấy logs của user hiện tại
+- `GET /api/v1/logs/user` - Lấy logs của user hiện tại
 
-### Health Check
+## Cấu hình Docker
 
-- `GET /api/v1/health` - Health check endpoint
-- `GET /actuator/health` - Spring Boot Actuator health
+Service được cấu hình trong `docker-compose.yml` với các cổng:
+- Log Service: `http://localhost:8085`
+- PostgreSQL (external): `5438`
+- Kafka: `9092` (external), `29092` (internal)
+
+## 🔗 Tích hợp với các service khác
+
+Log Service nhận logs từ các service khác qua Kafka:
+
+- **User Service**: Logs về đăng nhập, đăng ký, thay đổi thông tin
+- **Account Service**: Logs về tạo tài khoản, cập nhật số dư
+- **Transaction Service**: Logs về giao dịch thành công/thất bại
+- **Admin Service**: Logs về các hành động admin
+- **Notification Service**: Logs về gửi thông báo
+
+## Database Schema
+
+### Bảng `logs`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | BIGINT | Primary Key, Auto Increment |
+| user_id | UUID | ID của người dùng liên quan |
+| service_name | VARCHAR(50) | Tên service tạo log |
+| action | VARCHAR(100) | Hành động được ghi lại |
+| details | TEXT | Chi tiết hành động (JSON) |
+| ip_address | VARCHAR(45) | IP address của client |
+| user_agent | VARCHAR(255) | User agent của client |
+| timestamp | TIMESTAMP | Thời điểm tạo log |
 
 ## Kafka Topics
 
-Service lắng nghe các topics:
-- `USER_EVENT`
-- `TRANSACTION_COMPLETED`
-- `ADMIN_ACTION`
-- `ACCOUNT_EVENT`
+Log Service lắng nghe các topics sau:
 
-## Cấu trúc Project
+| Topic | Service | Description |
+|-------|---------|-------------|
+| USER_LOGS | User Service | Logs về hoạt động người dùng |
+| ACCOUNT_LOGS | Account Service | Logs về tài khoản |
+| TRANSACTION_LOGS | Transaction Service | Logs về giao dịch |
+| ADMIN_LOGS | Admin Service | Logs về hành động admin |
+| NOTIFICATION_LOGS | Notification Service | Logs về thông báo |
+
+## API Examples
+
+### Lấy logs với phân trang
 
 ```
-log-service/
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── com/minibank/logservice/
-│   │   │       ├── config/          # Configuration classes
-│   │   │       ├── controller/      # REST controllers
-│   │   │       ├── consumer/        # Kafka consumers
-│   │   │       ├── dto/             # Data Transfer Objects
-│   │   │       ├── entity/          # JPA entities
-│   │   │       ├── exception/       # Exception handlers
-│   │   │       ├── repository/      # Data repositories
-│   │   │       ├── service/         # Business logic
-│   │   │       ├── util/            # Utility classes
-│   │   │       └── validation/      # Custom validators
-│   │   └── resources/
-│   │       ├── application.properties          # Local development
-│   │       └── application-docker.properties   # Docker environment
-│   └── test/                        # Unit tests
-├── Dockerfile                        # Docker image build
-├── docker-compose.yml                # Docker Compose configuration
-├── pom.xml
-└── README.md
+GET /api/v1/admin/logs?page=0&size=20
 ```
 
-## Chạy Service
+### Tìm kiếm logs
 
-### Chạy bằng Maven (Local)
-
-Xem chi tiết trong [RUN_GUIDE.md](./RUN_GUIDE.md) hoặc [QUICK_START.md](./QUICK_START.md)
-
-### Chạy bằng Docker
-
-```bash
-# Khởi động tất cả services (PostgreSQL, Kafka, Log Service)
-docker-compose up -d
-
-# Xem logs
-docker-compose logs -f log-service
-
-# Dừng services
-docker-compose down
+```
+GET /api/v1/admin/logs/search?action=LOGIN&startDate=2023-01-01&endDate=2023-01-31
 ```
 
-**Lưu ý:** Khi chạy bằng Docker, service sẽ tự động sử dụng `application-docker.properties` với cấu hình phù hợp cho môi trường container.
+### Lấy thống kê logs
 
-## Testing
-
-```bash
-# Run all tests
-mvn test
-
-# Run specific test class
-mvn test -Dtest=LogServiceTest
+```
+GET /api/v1/admin/logs/statistics?period=DAILY
 ```
 
-## Build
-
-```bash
-# Build JAR
-mvn clean package
-
-# Run JAR
-java -jar target/log-service-0.0.1-SNAPSHOT.jar
+Response:
+```json
+{
+  "totalLogs": 10000,
+  "logsByAction": {
+    "LOGIN": 3000,
+    "TRANSACTION": 2500,
+    "REGISTER": 1500,
+    "ADMIN_ACTION": 1000,
+    "NOTIFICATION": 2000
+  },
+  "logsByService": {
+    "user-service": 4000,
+    "transaction-service": 3000,
+    "account-service": 2000,
+    "admin-service": 800,
+    "notification-service": 200
+  },
+  "dailyStats": [
+    {
+      "date": "2023-01-01",
+      "count": 500
+    }
+  ]
+}
 ```
-
-## Configuration
-
-Xem `application.properties` để cấu hình:
-- Database connection
-- Kafka settings
-- Server port
-- Logging levels
-
-## License
-
-Internal project
-

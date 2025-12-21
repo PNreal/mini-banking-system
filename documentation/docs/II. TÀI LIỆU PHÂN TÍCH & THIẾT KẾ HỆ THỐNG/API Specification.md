@@ -1,7 +1,7 @@
 # **MINI BANKING SYSTEM -- API SPECIFICATION (v1.1)** {#mini-banking-system-api-specification-v1.1}
 
 **Version:** 1.1  
-**Last update:** 2025-01-XX  
+**Last update:** 2025-12-22  
 **Base URL:** /api/v1
 
 # **1. Authentication & Authorization** {#authentication-authorization}

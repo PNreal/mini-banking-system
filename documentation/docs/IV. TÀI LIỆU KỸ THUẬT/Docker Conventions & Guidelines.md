@@ -1,7 +1,7 @@
 # **DOCKER CONVENTIONS & GUIDELINES - MINI BANKING SYSTEM**
 
 **Version:** 1.0  
-**Last Updated:** 2025-12-03  
+**Last Updated:** 2025-12-22  
 **Mục đích:** Đảm bảo các thành viên trong team sử dụng Docker một cách nhất quán, tránh conflict giữa các services.
 
 ---
