@@ -38,24 +38,30 @@ import {
   createCounter, 
   updateCounter, 
   deleteCounter,
+  reactivateCounter,
+  getUserById,
   type Counter,
   type CreateCounterPayload,
   type UpdateCounterPayload
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/auth/AuthContext";
 
 interface CounterWithStaff extends Counter {
   employeeCount: number;
+  adminName?: string;
 }
 
 export default function Counters() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isReactivateDialogOpen, setIsReactivateDialogOpen] = useState(false);
   const [counters, setCounters] = useState<CounterWithStaff[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCounter, setSelectedCounter] = useState<CounterWithStaff | null>(null);
   const { toast } = useToast();
+  const { token } = useAuth();
 
   // Form states
   const [formData, setFormData] = useState({
@@ -72,25 +78,38 @@ export default function Counters() {
   const loadCounters = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token") || "";
-      const role = localStorage.getItem("role") || "";
+      if (!token) {
+        throw new Error("No authentication token");
+      }
+      const role = "ADMIN";
       const response = await getCounters(token, role);
       
-      // Load staff count for each counter
+      // Load staff count and admin name for each counter
       const countersWithStaff = await Promise.all(
         response.data.map(async (counter) => {
+          let employeeCount = 0;
+          let adminName: string | undefined;
+          
+          // Get staff count
           try {
             const staffResponse = await getCounterStaff(token, counter.counterId);
-            return {
-              ...counter,
-              employeeCount: staffResponse.data.length,
-            };
+            employeeCount = staffResponse.data.length;
           } catch (error) {
-            return {
-              ...counter,
-              employeeCount: 0,
-            };
+            // Silently ignore staff count errors
+            employeeCount = 0;
           }
+          
+          // Get admin name if adminUserId exists (skip due to CORS)
+          // Note: Internal API has CORS restrictions from browser
+          if (counter.adminUserId) {
+            adminName = "Admin"; // Placeholder since we can't fetch from browser
+          }
+          
+          return {
+            ...counter,
+            employeeCount,
+            adminName,
+          };
         })
       );
       
@@ -109,8 +128,10 @@ export default function Counters() {
 
   const handleCreate = async () => {
     try {
-      const token = localStorage.getItem("token") || "";
-      const role = localStorage.getItem("role") || "";
+      if (!token) {
+        throw new Error("No authentication token");
+      }
+      const role = "ADMIN";
       
       const payload: CreateCounterPayload = {
         counterCode: formData.counterCode,
@@ -142,8 +163,10 @@ export default function Counters() {
     if (!selectedCounter) return;
 
     try {
-      const token = localStorage.getItem("token") || "";
-      const role = localStorage.getItem("role") || "";
+      if (!token) {
+        throw new Error("No authentication token");
+      }
+      const role = "ADMIN";
       
       const payload: UpdateCounterPayload = {
         counterCode: formData.counterCode,
@@ -176,23 +199,59 @@ export default function Counters() {
     if (!selectedCounter) return;
 
     try {
-      const token = localStorage.getItem("token") || "";
-      const role = localStorage.getItem("role") || "";
+      if (!token) {
+        throw new Error("No authentication token");
+      }
+      const role = "ADMIN";
       
+      console.log("Deleting counter:", selectedCounter.counterId);
       await deleteCounter(token, selectedCounter.counterId, role);
+      console.log("Counter deleted successfully");
       
       toast({
         title: "Thành công",
-        description: "Đã xóa quầy giao dịch",
+        description: `Đã xóa quầy giao dịch "${selectedCounter.name}"`,
       });
       
       setIsDeleteDialogOpen(false);
       setSelectedCounter(null);
-      loadCounters();
+      await loadCounters();
     } catch (error: any) {
+      console.error("Error deleting counter:", error);
       toast({
         title: "Lỗi",
         description: error.message || "Không thể xóa quầy giao dịch",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReactivate = async () => {
+    if (!selectedCounter) return;
+
+    try {
+      if (!token) {
+        throw new Error("No authentication token");
+      }
+      const role = "ADMIN";
+      
+      console.log("Reactivating counter:", selectedCounter.counterId);
+      await reactivateCounter(token, selectedCounter.counterId, role);
+      console.log("Counter reactivated successfully");
+      
+      toast({
+        title: "Thành công",
+        description: `Đã kích hoạt lại quầy giao dịch "${selectedCounter.name}"`,
+      });
+      
+      setIsReactivateDialogOpen(false);
+      setSelectedCounter(null);
+      await loadCounters();
+    } catch (error: any) {
+      console.error("Error reactivating counter:", error);
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể kích hoạt lại quầy giao dịch",
         variant: "destructive",
       });
     }
@@ -212,6 +271,11 @@ export default function Counters() {
   const openDeleteDialog = (counter: CounterWithStaff) => {
     setSelectedCounter(counter);
     setIsDeleteDialogOpen(true);
+  };
+
+  const openReactivateDialog = (counter: CounterWithStaff) => {
+    setSelectedCounter(counter);
+    setIsReactivateDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -376,17 +440,55 @@ export default function Counters() {
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+              <AlertDialogTitle>Xác nhận xóa quầy giao dịch</AlertDialogTitle>
               <AlertDialogDescription>
-                Bạn có chắc chắn muốn xóa quầy <strong>{selectedCounter?.name}</strong>?
+                Bạn có chắc chắn muốn xóa quầy <strong>{selectedCounter?.name}</strong> (Mã: {selectedCounter?.counterCode})?
                 <br />
-                Hành động này sẽ đánh dấu quầy là không hoạt động.
+                <br />
+                Hành động này sẽ đánh dấu quầy là không hoạt động. Quầy sẽ không thể thực hiện giao dịch mới.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-                Xóa
+              <AlertDialogCancel onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setSelectedCounter(null);
+              }}>
+                Hủy
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDelete} 
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Xác nhận xóa
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Reactivate Confirmation Dialog */}
+        <AlertDialog open={isReactivateDialogOpen} onOpenChange={setIsReactivateDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận kích hoạt lại quầy giao dịch</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bạn có chắc chắn muốn kích hoạt lại quầy <strong>{selectedCounter?.name}</strong> (Mã: {selectedCounter?.counterCode})?
+                <br />
+                <br />
+                Sau khi kích hoạt, quầy sẽ có thể thực hiện giao dịch mới.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setIsReactivateDialogOpen(false);
+                setSelectedCounter(null);
+              }}>
+                Hủy
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleReactivate} 
+                className="bg-success hover:bg-success/90"
+              >
+                Xác nhận kích hoạt
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -444,29 +546,43 @@ export default function Counters() {
                 <div className="text-sm">
                   <span className="text-muted-foreground">Admin: </span>
                   <span className="font-medium">
-                    {counter.adminUserId ? "Đã chỉ định" : "Chưa có"}
+                    {counter.adminName || (counter.adminUserId ? "Đã chỉ định" : "Chưa có")}
                   </span>
                 </div>
               </CardContent>
               <CardFooter className="gap-2 pt-0">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => openEditDialog(counter)}
-                >
-                  <Edit className="mr-1 h-4 w-4" />
-                  Sửa
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={() => openDeleteDialog(counter)}
-                >
-                  <Trash2 className="mr-1 h-4 w-4" />
-                  Xóa
-                </Button>
+                {counter.isActive ? (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => openEditDialog(counter)}
+                    >
+                      <Edit className="mr-1 h-4 w-4" />
+                      Sửa
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => openDeleteDialog(counter)}
+                    >
+                      <Trash2 className="mr-1 h-4 w-4" />
+                      Xóa
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-success hover:bg-success hover:text-white"
+                    onClick={() => openReactivateDialog(counter)}
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    Kích hoạt lại
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           ))}

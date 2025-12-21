@@ -8,4 +8,6 @@ public class UpdateUserRequest {
     private String role;
     private String citizenId;
     private String employeeCode;
+    private String email;
+    private String phoneNumber;
 }

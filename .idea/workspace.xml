@@ -5,9 +5,48 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ba62017f-99b8-4bf4-a7d4-033d71aaf205" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/services/admin-service/admin-service/src/main/java/com/minibank/adminservice/config/AppConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/admin-service/admin-service/src/main/java/com/minibank/adminservice/config/AppConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/admin-service/admin-service/src/main/java/com/minibank/adminservice/service/AccountServiceClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/admin-service/admin-service/src/main/java/com/minibank/adminservice/service/AccountServiceClient.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/admin-service/admin-service/src/main/java/com/minibank/adminservice/service/UserServiceClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/admin-service/admin-service/src/main/java/com/minibank/adminservice/service/UserServiceClient.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/HUONG_DAN_KHOI_DONG.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LICENSE" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/banking-admin-hub-main/banking-admin-hub-main/src/lib/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/banking-admin-hub-main/banking-admin-hub-main/src/lib/api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/banking-admin-hub-main/banking-admin-hub-main/src/pages/admin/Counters.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/banking-admin-hub-main/banking-admin-hub-main/src/pages/admin/Counters.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/banking-admin-hub-main/banking-admin-hub-main/src/pages/admin/Employees.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/banking-admin-hub-main/banking-admin-hub-main/src/pages/admin/Employees.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/banking-admin-hub-main/banking-admin-hub-main/src/pages/admin/Users.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/banking-admin-hub-main/banking-admin-hub-main/src/pages/admin/Users.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/I. TÀI LIỆU KHỞI TẠO DỰ ÁN/Business Requirement Document – BRD.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/I. TÀI LIỆU KHỞI TẠO DỰ ÁN/Project Overview.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/II. TÀI LIỆU PHÂN TÍCH &amp; THIẾT KẾ HỆ THỐNG/API Specification.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/II. TÀI LIỆU PHÂN TÍCH &amp; THIẾT KẾ HỆ THỐNG/Database Design Document (DBD).md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/II. TÀI LIỆU PHÂN TÍCH &amp; THIẾT KẾ HỆ THỐNG/Service Interaction Specification (SIS).md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/II. TÀI LIỆU PHÂN TÍCH &amp; THIẾT KẾ HỆ THỐNG/Software Architecture Document (SAD).md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/II. TÀI LIỆU PHÂN TÍCH &amp; THIẾT KẾ HỆ THỐNG/Software Requirements Specification (SRD).md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/01. Design System &amp; Style Guide.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/02. Component Library.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/03. Screen Specifications.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/04. User Flow Diagrams.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/05. Responsive Design Guidelines.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/06. Accessibility Guidelines.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/07. Interaction Patterns.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/08. Wireframes &amp; Mockups.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/ACID-Logic_nghiệp-vụ.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/UI Guideline _ Design System.docx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/III. TÀI LIỆU GIAO DIỆN (UIUX)/UI Guideline _ Design System.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/IV. TÀI LIỆU KỸ THUẬT/Docker Conventions &amp; Guidelines.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/documentation/COUNTER_IMPLEMENTATION_SUMMARY.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/documentation/HUONG_DAN_CHAY_TUNG_BUOC.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/documentation/LOGIC_LUONG_HOAT_DONG.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/documentation/NOTIFICATION_SYSTEM_OVERVIEW.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/documentation/USER_MANAGEMENT_IMPLEMENTATION.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Register.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Register.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/transaction-service/transaction-service/src/main/java/com/minibank/transactionservice/controller/CounterController.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/transaction-service/transaction-service/src/main/java/com/minibank/transactionservice/controller/CounterController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/transaction-service/transaction-service/src/main/java/com/minibank/transactionservice/service/CounterService.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/transaction-service/transaction-service/src/main/java/com/minibank/transactionservice/service/CounterService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/user-service/user-service/src/main/java/com/minibank/userservice/controller/UserController.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/user-service/user-service/src/main/java/com/minibank/userservice/controller/UserController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/user-service/user-service/src/main/java/com/minibank/userservice/dto/UpdateUserRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/user-service/user-service/src/main/java/com/minibank/userservice/dto/UpdateUserRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/user-service/user-service/src/main/java/com/minibank/userservice/dto/UserResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/user-service/user-service/src/main/java/com/minibank/userservice/dto/UserResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/user-service/user-service/src/main/java/com/minibank/userservice/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/user-service/user-service/src/main/java/com/minibank/userservice/service/UserService.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -23,12 +62,12 @@
     &quot;assignee&quot;: &quot;PNreal&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/PNreal/mini-banking-system.git&quot;,
-    &quot;accountId&quot;: &quot;8aa99821-18de-4853-92e4-069b8408670f&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/PNreal/mini-banking-system",
+    "accountId": "8aa99821-18de-4853-92e4-069b8408670f"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 7
 }</component>
@@ -42,7 +81,7 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "admin-service/main",
+    "git-widget-placeholder": "main",
     "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "X:/mini-banking-system",
@@ -92,6 +131,7 @@
       <workItem from="1765692570912" duration="465000" />
       <workItem from="1765815116567" duration="595000" />
       <workItem from="1765855175641" duration="1277000" />
+      <workItem from="1766325780417" duration="1193000" />
     </task>
     <servers />
   </component>

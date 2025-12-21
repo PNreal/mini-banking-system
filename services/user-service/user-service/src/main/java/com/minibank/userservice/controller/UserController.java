@@ -138,4 +138,147 @@ public class UserController {
                     .body(new ApiResponse<>("Failed to retrieve users: " + e.getMessage(), null));
         }
     }
+
+    // --- Admin: Cập nhật thông tin user ---
+    @PutMapping("/admin/users/{userId}")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @PathVariable("userId") java.util.UUID userId,
+            @RequestBody com.minibank.userservice.dto.UpdateUserRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Verify admin role from token
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            UserResponse updatedUser = userService.updateUser(userId, request);
+            return ResponseEntity.ok(new ApiResponse<>("User updated successfully", updatedUser));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to update user: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Admin: Khóa tài khoản user ---
+    @PutMapping("/admin/users/{userId}/lock")
+    public ResponseEntity<ApiResponse<Void>> lockUser(
+            @PathVariable("userId") java.util.UUID userId,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            userService.lockUser(userId);
+            return ResponseEntity.ok(new ApiResponse<>("User locked successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to lock user: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Admin: Mở khóa tài khoản user ---
+    @PutMapping("/admin/users/{userId}/unlock")
+    public ResponseEntity<ApiResponse<Void>> unlockUser(
+            @PathVariable("userId") java.util.UUID userId,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            userService.unlockUser(userId);
+            return ResponseEntity.ok(new ApiResponse<>("User unlocked successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to unlock user: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Admin: Đóng băng tài khoản user ---
+    @PutMapping("/admin/users/{userId}/freeze")
+    public ResponseEntity<ApiResponse<Void>> freezeUser(
+            @PathVariable("userId") java.util.UUID userId,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            userService.freezeUser(userId);
+            return ResponseEntity.ok(new ApiResponse<>("User frozen successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to freeze user: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Admin: Mở đóng băng tài khoản user ---
+    @PutMapping("/admin/users/{userId}/unfreeze")
+    public ResponseEntity<ApiResponse<Void>> unfreezeUser(
+            @PathVariable("userId") java.util.UUID userId,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            userService.unfreezeUser(userId);
+            return ResponseEntity.ok(new ApiResponse<>("User unfrozen successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to unfreeze user: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Admin: Xóa tài khoản user ---
+    @DeleteMapping("/admin/users/{userId}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @PathVariable("userId") java.util.UUID userId,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            userService.deleteUser(userId);
+            return ResponseEntity.ok(new ApiResponse<>("User deleted successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to delete user: " + e.getMessage(), null));
+        }
+    }
 }

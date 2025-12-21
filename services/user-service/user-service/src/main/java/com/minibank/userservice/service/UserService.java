@@ -301,6 +301,18 @@ public class UserService {
         if (request.getEmployeeCode() != null) {
             user.setEmployeeCode(request.getEmployeeCode());
         }
+        if (request.getEmail() != null) {
+            // Check if email already exists for another user
+            userRepository.findByEmail(request.getEmail()).ifPresent(existingUser -> {
+                if (!existingUser.getId().equals(userId)) {
+                    throw new IllegalArgumentException("Email already exists");
+                }
+            });
+            user.setEmail(request.getEmail());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
         
         User updated = userRepository.save(user);
         publishEvent("USER_UPDATED", updated.getId());

@@ -304,7 +304,7 @@ function App() {
   const handleRegister = async (form) => {
     try {
       const response = await registerApi({
-        username: form.username,
+        fullName: form.fullName,
         email: form.email,
         password: form.password,
       });

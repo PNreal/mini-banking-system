@@ -45,7 +45,8 @@ import {
   lockUser, 
   unlockUser, 
   freezeUser, 
-  unfreezeUser 
+  unfreezeUser,
+  getAccountByUserId 
 } from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
 import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
@@ -58,6 +59,7 @@ interface User {
   status?: string | null;
   role?: string | null;
   citizenId?: string | null;
+  accountNumber?: string | null;
   employeeCode?: string | null;
   createdAt?: string | null;
 }
@@ -91,13 +93,28 @@ export default function Users() {
       const res = await getAdminUsers(token);
       console.log("API Response:", res);
       const data = Array.isArray(res?.data) ? res.data : [];
+      // Chỉ hiển thị users có vai trò CUSTOMER
+      const customerUsers = data.filter((u: User) => u.role === "CUSTOMER");
+      
+      // Lấy STK cho mỗi customer
+      const usersWithAccounts = await Promise.all(
+        customerUsers.map(async (user: User) => {
+          try {
+            const account = await getAccountByUserId(user.userId);
+            return {
+              ...user,
+              accountNumber: account?.accountNumber || null,
+            };
+          } catch {
+            return { ...user, accountNumber: null };
+          }
+        })
+      );
+      
       console.log("Users data:", data);
       console.log("Total users:", data.length);
-      console.log("Roles breakdown:", data.reduce((acc: any, u: User) => {
-        acc[u.role || 'unknown'] = (acc[u.role || 'unknown'] || 0) + 1;
-        return acc;
-      }, {}));
-      setUsers(data);
+      console.log("Customer users:", usersWithAccounts.length);
+      setUsers(usersWithAccounts);
       setError(null);
     } catch (err: any) {
       console.error("Error fetching users:", err);
@@ -221,7 +238,7 @@ export default function Users() {
                 <TableHead>Email</TableHead>
                 <TableHead>Vai trò</TableHead>
                 <TableHead>CCCD</TableHead>
-                <TableHead>Mã nhân viên</TableHead>
+                <TableHead>STK</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Ngày tạo</TableHead>
                 <TableHead className="w-12"></TableHead>
@@ -256,8 +273,8 @@ export default function Users() {
                     <TableCell className="text-muted-foreground">
                       {user.citizenId || "-"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {user.employeeCode || "-"}
+                    <TableCell className="font-mono text-muted-foreground">
+                      {user.accountNumber || "-"}
                     </TableCell>
                     <TableCell>
                       <Badge

@@ -129,6 +129,22 @@ public class CounterController {
     }
 
     /**
+     * PUT /counters/{counterId}/reactivate - Kích hoạt lại quầy giao dịch (chỉ ADMIN)
+     */
+    @PutMapping("/{counterId}/reactivate")
+    public ResponseEntity<ApiResponse<CounterResponse>> reactivateCounter(
+            @PathVariable UUID counterId,
+            @RequestHeader(value = "X-User-Role", required = false) String role
+    ) {
+        if (role == null || !"ADMIN".equalsIgnoreCase(role.trim())) {
+            throw new ForbiddenException("Chỉ ADMIN mới có quyền kích hoạt lại quầy giao dịch.");
+        }
+
+        Counter counter = counterService.reactivateCounter(counterId);
+        return ResponseEntity.ok(ApiResponse.success(toResponse(counter)));
+    }
+
+    /**
      * Admin tổng: chỉ định admin quầy cho counter.
      * PATCH /counters/{counterId}/admin-user
      */

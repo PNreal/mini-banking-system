@@ -20,6 +20,7 @@ public class UserResponse {
     private String role;
     private String citizenId;
     private String employeeCode;
+    private String phoneNumber;
     private LocalDateTime createdAt;
 
     public static UserResponse from(User user) {
@@ -31,6 +32,7 @@ public class UserResponse {
                 .role(user.getRole())
                 .citizenId(user.getCitizenId())
                 .employeeCode(user.getEmployeeCode())
+                .phoneNumber(user.getPhoneNumber())
                 .createdAt(toLocalDateTime(user.getCreatedAt()))
                 .build();
     }

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const Register = ({ onRegister }) => {
   const [form, setForm] = useState({
-    username: '',
+    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -43,11 +43,11 @@ const Register = ({ onRegister }) => {
               <legend className="border-bottom mb-3">Đăng ký tài khoản</legend>
 
               <div className="form-group mb-3">
-                <label className="form-control-label">Tên đăng nhập</label>
+                <label className="form-control-label">Họ và tên</label>
                 <input
                   type="text"
-                  name="username"
-                  value={form.username}
+                  name="fullName"
+                  value={form.fullName}
                   onChange={handleChange}
                   className="form-control"
                   required

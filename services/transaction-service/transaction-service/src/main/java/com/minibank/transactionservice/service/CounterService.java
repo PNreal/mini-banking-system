@@ -425,6 +425,18 @@ public class CounterService {
     }
 
     /**
+     * Kích hoạt lại quầy giao dịch (set isActive = true) (chỉ ADMIN)
+     */
+    @Transactional
+    public Counter reactivateCounter(UUID counterId) {
+        Counter counter = counterRepository.findById(counterId)
+                .orElseThrow(() -> new NotFoundException("Counter not found"));
+        
+        counter.setIsActive(true);
+        return counterRepository.save(counter);
+    }
+
+    /**
      * Lấy tất cả counters (bao gồm cả inactive) - dành cho ADMIN
      */
     public List<Counter> getAllCounters() {
