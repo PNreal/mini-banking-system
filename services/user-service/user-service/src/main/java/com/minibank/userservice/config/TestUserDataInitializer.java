@@ -25,17 +25,8 @@ public class TestUserDataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        // Test user thường
-        createUserIfNotExists("test.user@example.com", "Nguyen Van Test", "TestPassword#123", "CUSTOMER");
-        
-        // Admin account
+        // Admin account - chỉ tạo tài khoản admin mặc định
         createUserIfNotExists("admin@minibank.com", "Admin User", "Admin@123", "ADMIN", "AD001");
-        
-        // Staff account
-        createUserIfNotExists("staff@minibank.com", "Staff User", "Staff@123", "STAFF", "ST001");
-
-        // Counter admin account (vẫn đăng nhập qua Staff Login; quyền "admin quầy" được xác định bởi Counter.adminUserId ở transaction-service)
-        createUserIfNotExists("counter.admin@minibank.com", "Counter Admin", "CounterAdmin@123", "STAFF", "CA001");
     }
     
     private void createUserIfNotExists(String email, String fullName, String rawPassword, String role) {

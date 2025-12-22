@@ -133,22 +133,54 @@ public class TransactionService {
     }
 
     @Transactional
-    public TransactionResponse transfer(BigDecimal amount, UUID userId, UUID toAccountId) {
+    public TransactionResponse transfer(BigDecimal amount, UUID userId, String toAccountNumber) {
         validateAmount(amount);
+        
+        // 1. Kiểm tra KYC của người gửi
+        UserResponse sender = userServiceClient.getUser(userId);
+        if (sender == null) {
+            throw new BadRequestException("Không tìm thấy thông tin người gửi");
+        }
+        if (!"APPROVED".equalsIgnoreCase(sender.getKycStatus())) {
+            throw new BadRequestException("Bạn cần hoàn tất xác minh danh tính (KYC) trước khi chuyển tiền");
+        }
+        
+        // 2. Lấy account của người gửi
         UUID fromAccountId = resolveAccountId(userId);
-
+        AccountResponse fromAccount = accountServiceClient.getAccount(fromAccountId);
+        
+        // 3. Tìm account người nhận theo STK
+        AccountResponse toAccount = accountServiceClient.getAccountByAccountNumber(toAccountNumber);
+        if (toAccount == null || toAccount.getAccountId() == null) {
+            throw new BadRequestException("Không tìm thấy tài khoản với số: " + toAccountNumber);
+        }
+        UUID toAccountId = toAccount.getAccountId();
+        
+        // 4. Kiểm tra không chuyển cho chính mình
         if (fromAccountId.equals(toAccountId)) {
-            throw new BadRequestException("Cannot transfer to the same account");
+            throw new BadRequestException("Không thể chuyển tiền cho chính mình");
+        }
+        
+        // 5. Kiểm tra KYC của người nhận
+        UserResponse receiver = userServiceClient.getUser(toAccount.getUserId());
+        if (receiver == null) {
+            throw new BadRequestException("Không tìm thấy thông tin người nhận");
+        }
+        if (!"APPROVED".equalsIgnoreCase(receiver.getKycStatus())) {
+            throw new BadRequestException("Tài khoản người nhận chưa được xác minh danh tính (KYC)");
         }
 
+        // 6. Thực hiện chuyển tiền
         accountServiceClient.transfer(new AccountTransferRequest(fromAccountId, toAccountId, amount));
 
+        // 7. Lưu transaction
         Transaction tx = buildTransaction(fromAccountId, toAccountId, amount, TransactionType.TRANSFER, TransactionStatus.SUCCESS);
         Transaction saved = transactionRepository.save(tx);
         publishCompletedEvent(saved, userId);
 
-        AccountResponse account = accountServiceClient.getAccount(fromAccountId);
-        BigDecimal newBalance = account != null ? account.getBalance() : null;
+        // 8. Trả về response với số dư mới
+        AccountResponse updatedAccount = accountServiceClient.getAccount(fromAccountId);
+        BigDecimal newBalance = updatedAccount != null ? updatedAccount.getBalance() : null;
         return TransactionResponse.from(saved).withBalance(newBalance);
     }
 
@@ -806,7 +838,14 @@ public class TransactionService {
             throw new BadRequestException("Transaction is not pending");
         }
 
-        if (!tx.getStaffId().equals(staffId)) {
+        // Kiểm tra staff có thuộc quầy của giao dịch không (cho phép bất kỳ staff nào trong quầy)
+        if (tx.getCounterId() != null) {
+            boolean isStaffInCounter = counterService.isStaffInCounter(staffId, tx.getCounterId());
+            if (!isStaffInCounter) {
+                throw new BadRequestException("Staff is not assigned to this counter");
+            }
+        } else if (!tx.getStaffId().equals(staffId)) {
+            // Fallback: nếu không có counterId thì kiểm tra staffId
             throw new BadRequestException("Staff ID does not match");
         }
 

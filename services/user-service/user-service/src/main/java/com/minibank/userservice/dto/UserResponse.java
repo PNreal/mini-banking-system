@@ -23,6 +23,7 @@ public class UserResponse {
     private String phoneNumber;
     private String avatarUrl;
     private LocalDateTime createdAt;
+    private String kycStatus; // PENDING, APPROVED, REJECTED, or null
 
     public static UserResponse from(User user) {
         return UserResponse.builder()
@@ -36,6 +37,23 @@ public class UserResponse {
                 .phoneNumber(user.getPhoneNumber())
                 .avatarUrl(user.getAvatarUrl())
                 .createdAt(toLocalDateTime(user.getCreatedAt()))
+                .kycStatus(null) // Will be set by service
+                .build();
+    }
+
+    public static UserResponse from(User user, String kycStatus) {
+        return UserResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .status(user.getStatus())
+                .role(user.getRole())
+                .citizenId(user.getCitizenId())
+                .employeeCode(user.getEmployeeCode())
+                .phoneNumber(user.getPhoneNumber())
+                .avatarUrl(user.getAvatarUrl())
+                .createdAt(toLocalDateTime(user.getCreatedAt()))
+                .kycStatus(kycStatus)
                 .build();
     }
 

@@ -17,5 +17,6 @@ public class UserResponse {
     private String fullName;
     private String citizenId;
     private String employeeCode;
+    private String kycStatus; // PENDING, APPROVED, REJECTED, or null if no KYC
 }
 

@@ -293,6 +293,30 @@ public class UserController {
         }
     }
 
+    // --- Admin: Đặt lại mật khẩu cho user ---
+    @PutMapping("/admin/users/{userId}/reset-password")
+    public ResponseEntity<ApiResponse<Void>> adminResetPassword(
+            @PathVariable("userId") java.util.UUID userId,
+            @Valid @RequestBody com.minibank.userservice.dto.AdminResetPasswordRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            userService.adminResetPassword(userId, request.getNewPassword());
+            return ResponseEntity.ok(new ApiResponse<>("Password reset successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to reset password: " + e.getMessage(), null));
+        }
+    }
+
     // --- Admin: Đóng băng tài khoản user ---
     @PutMapping("/admin/users/{userId}/freeze")
     public ResponseEntity<ApiResponse<Void>> freezeUser(

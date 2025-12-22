@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { confirmCounterDepositApi, getStaffDashboardApi } from '../api/client';
+import { confirmCounterDepositApi, confirmCounterWithdrawApi, getStaffDashboardApi } from '../api/client';
 
 const formatAmount = (value) =>
   Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
@@ -43,7 +43,8 @@ const StaffPendingApprovals = ({ user }) => {
       setPendingTransactions(
         pending.map((p) => ({
           id: p.transactionId,
-          type: p.type === 'COUNTER_DEPOSIT' ? 'Nạp tiền' : p.type,
+          type: p.type,
+          typeDisplay: p.type === 'COUNTER_DEPOSIT' ? 'Nạp tiền' : p.type === 'COUNTER_WITHDRAW' ? 'Rút tiền' : p.type,
           customer: p.customerName,
           accountNumber: p.accountNumber,
           amount: p.amount,
@@ -83,12 +84,19 @@ const StaffPendingApprovals = ({ user }) => {
     });
   }, [pendingTransactions, query]);
 
-  const handleApprove = async (txId) => {
+  const handleApprove = async (txId, txType) => {
     if (!authToken) return;
+    console.log('handleApprove called with:', { txId, txType });
     try {
-      await confirmCounterDepositApi(authToken, txId);
+      if (txType === 'COUNTER_WITHDRAW') {
+        console.log('Calling confirmCounterWithdrawApi...');
+        await confirmCounterWithdrawApi(authToken, txId);
+      } else {
+        console.log('Calling confirmCounterDepositApi...');
+        await confirmCounterDepositApi(authToken, txId);
+      }
     } catch (e) {
-      console.log('Failed to confirm counter deposit:', e);
+      console.log('Failed to confirm counter transaction:', e);
     } finally {
       await load({ silent: true });
     }
@@ -190,14 +198,18 @@ const StaffPendingApprovals = ({ user }) => {
                           {tx.transactionCode ? ` • Mã: ${tx.transactionCode}` : ''}
                         </small>
                       </td>
-                      <td>{tx.type}</td>
+                      <td>
+                        <span className={`badge ${tx.type === 'COUNTER_WITHDRAW' ? 'bg-danger' : 'bg-success'}`}>
+                          {tx.typeDisplay}
+                        </span>
+                      </td>
                       <td>{tx.amount ? `${formatAmount(tx.amount)} đ` : '-'}</td>
                       <td>{formatDate(tx.createdAt)}</td>
                       <td>
                         <button
                           type="button"
                           className="btn btn-sm btn-success"
-                          onClick={() => handleApprove(tx.id)}
+                          onClick={() => handleApprove(tx.id, tx.type)}
                           disabled={refreshing}
                         >
                           Duyệt

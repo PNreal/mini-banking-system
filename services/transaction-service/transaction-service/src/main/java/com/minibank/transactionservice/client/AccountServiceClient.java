@@ -41,6 +41,11 @@ public class AccountServiceClient {
         return exchange(url, HttpMethod.GET, null, AccountResponse.class);
     }
 
+    public AccountResponse getAccountByAccountNumber(String accountNumber) {
+        String url = accountServiceUrl + "/internal/accounts/by-account-number/" + accountNumber;
+        return exchange(url, HttpMethod.GET, null, AccountResponse.class);
+    }
+
     public AccountResponse updateBalance(UUID accountId, UpdateBalanceRequest request) {
         String url = accountServiceUrl + "/internal/accounts/" + accountId + "/update-balance";
         return exchange(url, HttpMethod.PATCH, request, AccountResponse.class);

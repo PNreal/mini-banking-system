@@ -264,7 +264,7 @@ const StaffSettings = ({ user, onUpdate }) => {
               'Luu'
             )}
           </button>
-          <Link className="btn btn-outline-secondary ml-2" to="/change-password">
+          <Link className="btn btn-outline-secondary ml-2" to="/staff/change-password">
             Doi mat khau
           </Link>
         </div>

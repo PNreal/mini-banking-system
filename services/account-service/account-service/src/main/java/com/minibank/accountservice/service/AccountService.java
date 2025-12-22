@@ -87,6 +87,12 @@ public class AccountService {
                 .orElseThrow(() -> new NotFoundException("Account not found"));
     }
 
+    @Transactional(readOnly = true)
+    public Account getByAccountNumber(String accountNumber) {
+        return accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new NotFoundException("Account not found with account number: " + accountNumber));
+    }
+
     @Transactional
     public Account updateBalance(UUID accountId, UpdateBalanceRequest request) {
         Account account = accountRepository.findWithLockingById(accountId)

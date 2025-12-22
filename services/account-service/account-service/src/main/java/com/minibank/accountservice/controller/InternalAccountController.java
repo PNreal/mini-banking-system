@@ -46,6 +46,12 @@ public class InternalAccountController {
         return ResponseEntity.ok(AccountResponse.from(account));
     }
 
+    @GetMapping("/by-account-number/{accountNumber}")
+    public ResponseEntity<AccountResponse> getByAccountNumber(@PathVariable String accountNumber) {
+        Account account = accountService.getByAccountNumber(accountNumber);
+        return ResponseEntity.ok(AccountResponse.from(account));
+    }
+
     @GetMapping("/{accountId}/balance")
     public ResponseEntity<BalanceResponse> getBalance(@PathVariable UUID accountId) {
         Account account = accountService.getById(accountId);

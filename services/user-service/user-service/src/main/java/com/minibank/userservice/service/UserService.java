@@ -43,6 +43,7 @@ public class UserService {
     private final AccountServiceClient accountServiceClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final com.minibank.userservice.repository.KycRequestRepository kycRequestRepository;
 
     @Value("${user.kafka.user-event-topic:USER_EVENT}")
     private String userEventTopic;
@@ -251,6 +252,19 @@ public class UserService {
     }
 
     @Transactional
+    public void adminResetPassword(UUID userId, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        String hashedPassword = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashedPassword);
+        userRepository.save(user);
+
+        publishEvent("PASSWORD_RESET_BY_ADMIN", user.getId());
+        log.info("Password reset by admin for user: {}", user.getEmail());
+    }
+
+    @Transactional
     public void freezeCurrentUser(String token) {
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
@@ -317,13 +331,24 @@ public class UserService {
     public UserResponse getUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        return UserResponse.from(user);
+        String kycStatus = getKycStatusForUser(userId);
+        return UserResponse.from(user, kycStatus);
     }
 
     public UserResponse getUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("User not found with email: " + email));
-        return UserResponse.from(user);
+        String kycStatus = getKycStatusForUser(user.getId());
+        return UserResponse.from(user, kycStatus);
+    }
+
+    /**
+     * Lấy KYC status mới nhất của user
+     */
+    private String getKycStatusForUser(UUID userId) {
+        return kycRequestRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
+                .map(kyc -> kyc.getStatus().name())
+                .orElse(null);
     }
 
     @Transactional

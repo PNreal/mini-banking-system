@@ -126,14 +126,24 @@ const Layout = ({
                     )}
                     {/* Staff menu */}
                     {isStaff && (
-                      <NavLink
-                        className={({ isActive }) =>
-                          `nav-item nav-link${isActive ? ' active' : ''}`
-                        }
-                        to="/staff/dashboard"
-                      >
-                        Staff Dashboard
-                      </NavLink>
+                      <>
+                        <NavLink
+                          className={({ isActive }) =>
+                            `nav-item nav-link${isActive ? ' active' : ''}`
+                          }
+                          to="/staff/dashboard"
+                        >
+                          Staff Dashboard
+                        </NavLink>
+                        <NavLink
+                          className={({ isActive }) =>
+                            `nav-item nav-link${isActive ? ' active' : ''}`
+                          }
+                          to="/staff/settings"
+                        >
+                          Cài đặt
+                        </NavLink>
+                      </>
                     )}
                     {/* Admin menu (admin UI đã tách sang app riêng) */}
                     {isAdmin && (

@@ -111,8 +111,8 @@ public class TransactionController {
     @PostMapping("/transfer")
     public ResponseEntity<ApiResponse<TransactionResponse>> transfer(@Valid @RequestBody TransferRequest request,
                                                                      @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
-        log.info("Transfer request from user {} to account {}", userId, request.getToAccountId());
-        TransactionResponse response = transactionService.transfer(request.getAmount(), userId, request.getToAccountId());
+        log.info("Transfer request from user {} to account number {}", userId, request.getToAccountNumber());
+        TransactionResponse response = transactionService.transfer(request.getAmount(), userId, request.getToAccountNumber());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
