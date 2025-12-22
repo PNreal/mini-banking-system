@@ -315,7 +315,6 @@ function App() {
       const response = await registerApi({
         fullName: form.fullName,
         email: form.email,
-        phoneNumber: form.phoneNumber,
         password: form.password,
       });
 
@@ -611,7 +610,7 @@ function App() {
           <Route path="/admin/login" element={<ExternalRedirect baseUrl={ADMIN_UI_BASE} />} />
           <Route path="/staff/login" element={<StaffLogin onLogin={handleStaffLogin} />} />
           <Route path="/staff" element={<Navigate to="/staff/login" replace />} />
-          <Route path="/register" element={<Register onRegister={handleRegister} />} />
+          <Route path="/register" element={<Register onRegister={handleRegister} addFlash={addFlash} />} />
           <Route
             path="/deposit"
             element={
