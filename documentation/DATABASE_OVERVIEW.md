@@ -150,7 +150,7 @@ Lưu trữ quầy giao dịch
 
 **Indexes**: Cần tạo cho counter_code, admin_user_id, is_active
 
-**Sample Data**: ✅ 20 counters (Q001-Q020) được tạo bởi TestCounterAdminInitializer.java
+**Sample Data**: ✅ 2 counters (Q001-Q002) được tạo bởi TestCounterAdminInitializer.java
 
 ---
 

@@ -1,0 +1,9 @@
+User 1:
+Email: user1_20251222202919@example.com
+Password: User1Password@123
+Account: 461242123024 | Status: ACTIVE
+User 2:
+Email: user2_20251222202919@example.com
+Password: User2Password@123
+Account: 887414680411 | Status: ACTIVE
+

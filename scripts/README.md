@@ -71,6 +71,84 @@ Thư mục này chứa các PowerShell scripts để quản lý Mini Banking Sys
 
 ---
 
+#### `test-api.ps1`
+**Mục đích**: Test toàn bộ API endpoints của hệ thống
+
+**Cách dùng**:
+```powershell
+# Chạy tất cả tests
+.\scripts\test-api.ps1
+
+# Chạy test cho module cụ thể
+.\scripts\test-api.ps1 auth          # Authentication tests
+.\scripts\test-api.ps1 account       # Account tests
+.\scripts\test-api.ps1 transaction   # Transaction tests
+.\scripts\test-api.ps1 kyc           # KYC tests
+.\scripts\test-api.ps1 counter       # Counter tests
+.\scripts\test-api.ps1 admin         # Admin tests
+.\scripts\test-api.ps1 notification  # Notification tests
+.\scripts\test-api.ps1 log           # Log tests
+.\scripts\test-api.ps1 transfer      # Transfer tests
+.\scripts\test-api.ps1 security      # Security tests
+.\scripts\test-api.ps1 staff         # Staff dashboard tests
+```
+
+**Test Suites (14 modules)**:
+1. Authentication - Đăng ký, đăng nhập, refresh token
+2. Account - Thông tin tài khoản, số dư
+3. Transactions - Nạp/rút tiền, lịch sử giao dịch
+4. KYC - Xác minh danh tính
+5. Counter - Quầy giao dịch
+6. Admin - Quản trị hệ thống
+7. Notifications - Thông báo
+8. Logs - Nhật ký hoạt động
+9. Password Management - Đổi/quên mật khẩu
+10. User Management - Quản lý user (admin)
+11. Counter Transactions - Giao dịch tại quầy
+12. Transfer - Chuyển tiền
+13. Security - Bảo mật, phân quyền
+14. Staff Dashboard - Dashboard nhân viên
+
+---
+
+#### `test-business-logic.ps1`
+**Mục đích**: Test các business logic quan trọng
+
+**Cách dùng**:
+```powershell
+.\scripts\test-business-logic.ps1
+```
+
+**Test Cases**:
+1. Account Balance Consistency - Kiểm tra tính nhất quán số dư
+2. Insufficient Balance Prevention - Ngăn rút quá số dư
+3. Negative Amount Prevention - Ngăn số tiền âm
+4. Self-Transfer Prevention - Ngăn chuyển tiền cho chính mình
+5. Login Lock After Failed Attempts - Khóa sau 5 lần sai mật khẩu
+6. Role-Based Access Control - Phân quyền truy cập
+7. Transaction History Isolation - Cô lập lịch sử giao dịch
+8. Frozen Account Restrictions - Hạn chế tài khoản bị đóng băng
+9. Duplicate Email Prevention - Ngăn email trùng lặp
+10. Token Validation - Xác thực token
+
+---
+
+#### `test-quick.bat`
+**Mục đích**: Test nhanh các API cơ bản (dùng curl)
+
+**Cách dùng**:
+```cmd
+scripts\test-quick.bat
+```
+
+**Kiểm tra**:
+- Customer login
+- Admin login
+- Get counters
+- Health check
+
+---
+
 ## Quy Trình Làm Việc Hàng Ngày
 
 ### Khởi động hệ thống:

@@ -315,6 +315,7 @@ function App() {
       const response = await registerApi({
         fullName: form.fullName,
         email: form.email,
+        phoneNumber: form.phoneNumber,
         password: form.password,
       });
 
