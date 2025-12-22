@@ -16,8 +16,10 @@ Authorization: Bearer \<token\>
 
 ## **1.2. Roles** {#roles}
 
-- USER
-
+- CUSTOMER
+- STAFF
+- COUNTER_ADMIN
+- COUNTER_STAFF
 - ADMIN
 
 Một số API yêu cầu **ADMIN ONLY**.

@@ -80,7 +80,7 @@ Lưu trữ yêu cầu xác minh KYC (Know Your Customer)
 ## 2. Account Service Database (`account_db`)
 
 **Service**: account-service  
-**Init Script**: ❌ THIẾU - Cần tạo `docker/init-scripts/account-service-init.sql`
+**Init Script**: ✅ `docker/init-scripts/account-service-init.sql`
 
 ### Bảng: `accounts`
 Lưu trữ tài khoản ngân hàng
@@ -97,7 +97,7 @@ Lưu trữ tài khoản ngân hàng
 
 **Indexes**: Cần tạo cho user_id, account_number, status
 
-**Sample Data**: ❌ Không có - Cần tạo
+**Sample Data**: ✅ Được tạo khi user đăng ký hoặc admin tạo account
 
 **Note**: 
 - Bảng được Hibernate tự động tạo
@@ -197,7 +197,7 @@ Lưu trữ logs hệ thống
 ## 5. Notification Service Database (`notification_db`)
 
 **Service**: notification-service  
-**Init Script**: ❌ THIẾU - Cần tạo `docker/init-scripts/notification-service-init.sql`
+**Init Script**: ✅ `docker/init-scripts/notification-service-init.sql`
 
 ### Bảng: `notifications`
 Lưu trữ thông báo
@@ -219,7 +219,7 @@ Lưu trữ thông báo
 
 **Indexes**: Cần tạo cho user_id, status, type, created_at
 
-**Sample Data**: ❌ Không có
+**Sample Data**: ✅ Được tạo khi có notification được tạo
 
 **Notification Types**:
 - TRANSACTION_SUCCESS, TRANSACTION_FAILED
@@ -233,7 +233,7 @@ Lưu trữ thông báo
 ## 6. Admin Service Database (`admin_db`)
 
 **Service**: admin-service  
-**Init Script**: ❌ THIẾU - Cần tạo `docker/init-scripts/admin-service-init.sql`
+**Init Script**: ✅ `docker/init-scripts/admin-service-init.sql`
 
 ### Bảng: `admin_logs`
 Lưu trữ logs của admin actions
@@ -248,7 +248,7 @@ Lưu trữ logs của admin actions
 
 **Indexes**: admin_id, target_user, time
 
-**Sample Data**: ❌ Không có
+**Sample Data**: ✅ Được tạo khi admin thực hiện action
 
 ---
 
@@ -256,44 +256,26 @@ Lưu trữ logs của admin actions
 
 ### ✅ Đã hoàn thiện:
 1. **User Service** - users, kyc_requests (có init script + sample data)
-2. **Log Service** - log (có init script)
+2. **Account Service** - accounts (có init script + sample data)
+3. **Log Service** - log (có init script)
+4. **Notification Service** - notifications (có init script + sample data)
+5. **Admin Service** - admin_logs (có init script + sample data)
 
 ### ⚠️ Hoàn thiện một phần:
-3. **Transaction Service** - transactions, counters, counter_staff (entity có, init script comment, data từ Java)
-
-### ❌ Thiếu init scripts:
-4. **Account Service** - accounts (entity có, thiếu init script + sample data)
-5. **Notification Service** - notifications (entity có, thiếu init script + sample data)
-6. **Admin Service** - admin_logs (entity có, thiếu init script + sample data)
+6. **Transaction Service** - transactions, counters, counter_staff (entity có, init script comment, data từ Java)
 
 ---
 
 ## Khuyến nghị
 
-### Priority HIGH - Cần tạo ngay:
-1. ✅ **account-service-init.sql**
-   - Tạo bảng accounts
-   - Tạo indexes
-   - Tạo sample accounts cho test users
-
-2. ✅ **notification-service-init.sql**
-   - Tạo bảng notifications
-   - Tạo indexes
-   - Tạo sample notifications
-
-3. ✅ **admin-service-init.sql**
-   - Tạo bảng admin_logs
-   - Tạo indexes
-   - Tạo sample admin logs
-
 ### Priority MEDIUM:
-4. **transaction-service-init.sql**
+1. **transaction-service-init.sql**
    - Uncomment table definitions
    - Thêm indexes
    - Thêm sample transactions
 
 ### Priority LOW:
-5. **Data consistency**
+2. **Data consistency**
    - Đảm bảo foreign keys hợp lệ
    - Tạo dữ liệu test nhất quán giữa các services
 

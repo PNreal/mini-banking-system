@@ -65,7 +65,6 @@ docker-compose down
 - Admin Service: `5437`
 - Log Service: `5438`
 - Notification Service: `5439`
-- KYC Service: `5433`
 
 ### **Shared Services:**
 - Kafka: `9092` (external), `29092` (internal)

@@ -84,6 +84,26 @@ Content-Type: application/json
 User registered successfully.
 ```
 
+### 1.2 Đổi mật khẩu
+```http
+PUT http://localhost:8080/api/v1/users/change-password
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "currentPassword": "OldPassword@123",
+  "newPassword": "NewPassword@123"
+}
+```
+
+**Response:** `200 OK`
+```
+{
+  "message": "Password changed successfully",
+  "data": null
+}
+```
+
 ### 1.2 Đăng nhập Customer
 ```http
 POST http://localhost:8080/api/v1/users/login
@@ -165,6 +185,15 @@ Content-Type: application/json
 }
 ```
 
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "role": "CUSTOMER"
+}
+```
+
 ---
 
 ## 2. USER PROFILE APIs
@@ -190,7 +219,27 @@ Authorization: Bearer {accessToken}
 }
 ```
 
-### 2.2 Tự khóa tài khoản
+### 2.2 Upload Avatar
+```http
+POST http://localhost:8080/api/v1/users/me/avatar
+Authorization: Bearer {accessToken}
+Content-Type: multipart/form-data
+
+file: [image file]
+```
+
+**Response:**
+```json
+{
+  "message": "Avatar uploaded successfully",
+  "data": {
+    "avatarUrl": "/assets/default.jpg",
+    "imageUrl": "/assets/default.jpg"
+  }
+}
+```
+
+### 2.3 Tự khóa tài khoản
 ```http
 PUT http://localhost:8080/api/v1/users/self-freeze
 Authorization: Bearer {accessToken}
@@ -460,6 +509,80 @@ Content-Type: application/json
 
 > **Lưu ý:** Mã giao dịch (transactionCode) được tạo theo format: `{employeeCode}{4 số cuối CCCD}{ddMMyy}`
 
+### 6.3 Rút tiền tại quầy
+```http
+POST http://localhost:8080/api/v1/transactions/withdraw-counter
+X-User-Id: {userId}
+Content-Type: application/json
+
+{
+  "amount": 500000,
+  "counterId": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "transactionId": "uuid",
+    "transactionCode": "EMP0011234221224",
+    "type": "COUNTER_WITHDRAW",
+    "amount": 500000,
+    "status": "PENDING",
+    "counterId": "uuid",
+    "staffId": "uuid",
+    "createdAt": "2024-12-22T10:00:00Z"
+  }
+}
+```
+
+### 6.4 Xác nhận giao dịch tại quầy (Staff)
+```http
+POST http://localhost:8080/api/v1/transactions/deposit-counter/{transactionId}/confirm
+X-User-Id: {staffId}
+```
+
+```http
+POST http://localhost:8080/api/v1/transactions/withdraw-counter/{transactionId}/confirm
+X-User-Id: {staffId}
+```
+
+### 6.5 Hủy giao dịch tại quầy
+```http
+POST http://localhost:8080/api/v1/transactions/deposit-counter/{transactionId}/cancel
+X-User-Id: {userId}
+```
+
+```http
+POST http://localhost:8080/api/v1/transactions/withdraw-counter/{transactionId}/cancel
+X-User-Id: {userId}
+```
+
+### 6.6 Lấy danh sách giao dịch pending tại quầy
+```http
+GET http://localhost:8080/api/v1/transactions/pending-counter
+X-User-Id: {userId}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "transactionId": "uuid",
+      "transactionCode": "EMP0011234221224",
+      "type": "COUNTER_DEPOSIT",
+      "amount": 1000000,
+      "status": "PENDING",
+      "createdAt": "2024-12-22T10:00:00Z"
+    }
+  ]
+}
+```
+
 ### 6.3 Xác nhận nạp tiền tại quầy (Staff)
 ```http
 POST http://localhost:8080/api/v1/transactions/deposit-counter/{transactionId}/confirm
@@ -516,22 +639,84 @@ X-User-Id: {userId}
 }
 ```
 
-### 6.8 Chi tiết giao dịch
+### 6.7 Chi tiết giao dịch
 ```http
 GET http://localhost:8080/api/v1/transactions/{transactionId}
 X-User-Id: {userId}
 ```
 
-### 6.9 Staff Dashboard
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "transactionId": "uuid",
+    "type": "DEPOSIT",
+    "amount": 1000000,
+    "status": "SUCCESS",
+    "timestamp": "2024-12-22T10:00:00Z",
+    "fromAccountId": "uuid",
+    "toAccountId": null,
+    "transactionCode": null
+  }
+}
+```
+
+### 6.8 Staff Dashboard
 ```http
 GET http://localhost:8080/api/v1/transactions/staff/dashboard?pendingLimit=10&recentCustomersLimit=5
 X-User-Id: {staffId}
 ```
 
-### 6.10 Khách hàng gần đây (Staff)
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "stats": {
+      "todayTransactions": 10,
+      "todayAmount": 50000000,
+      "pendingApprovals": 3,
+      "customersServed": 8
+    },
+    "pendingApprovals": [
+      {
+        "transactionId": "uuid",
+        "type": "COUNTER_DEPOSIT",
+        "amount": 1000000,
+        "createdAt": "2024-12-22T10:00:00Z"
+      }
+    ],
+    "recentCustomers": [
+      {
+        "userId": "uuid",
+        "fullName": "Nguyen Van A",
+        "lastTransactionAt": "2024-12-22T09:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+### 6.9 Khách hàng gần đây (Staff)
 ```http
 GET http://localhost:8080/api/v1/transactions/staff/recent-customers?limit=5
 X-User-Id: {staffId}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "userId": "uuid",
+      "fullName": "Nguyen Van A",
+      "email": "user@example.com",
+      "lastTransactionAt": "2024-12-22T09:30:00Z"
+    }
+  ]
+}
 ```
 
 ---
