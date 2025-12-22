@@ -7,10 +7,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // Đơn giản hóa: toàn bộ /api/v1/users/** là public (user-service tự chịu trách nhiệm auth)
     private static final List<String> PUBLIC_ENDPOINTS = List.of(
             "/api/v1/users",
+            "/api/v1/kyc",
             "/api/v1/health",
             "/actuator/health",
             "/actuator/info"
@@ -61,11 +66,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwtUtil.validateToken(token)) {
                 String userId = jwtUtil.extractUserId(token);
                 String role = jwtUtil.extractRole(token);
+                String email = jwtUtil.extractEmail(token);
+
+                // Set Authentication in SecurityContext
+                List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                        new SimpleGrantedAuthority("ROLE_" + (role != null ? role : "USER"))
+                );
+                UsernamePasswordAuthenticationToken authentication = 
+                        new UsernamePasswordAuthenticationToken(email, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
 
                 // Add user info to request headers for downstream services
                 JwtRequestWrapper wrappedRequest = new JwtRequestWrapper(request);
-                wrappedRequest.addHeader("X-User-Id", userId);
-                wrappedRequest.addHeader("X-User-Role", role);
+                wrappedRequest.addHeader("X-User-Id", userId != null ? userId : "");
+                wrappedRequest.addHeader("X-User-Role", role != null ? role : "");
                 wrappedRequest.addHeader("X-Trace-Id", UUID.randomUUID().toString());
 
                 log.debug("Authenticated user: {} with role: {} for path: {}", userId, role, path);

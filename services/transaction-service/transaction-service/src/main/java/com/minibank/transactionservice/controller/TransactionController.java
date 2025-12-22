@@ -1,8 +1,10 @@
 package com.minibank.transactionservice.controller;
 
+import com.minibank.transactionservice.dto.AdminDashboardResponse;
 import com.minibank.transactionservice.dto.AmountRequest;
 import com.minibank.transactionservice.dto.ApiResponse;
 import com.minibank.transactionservice.dto.CounterDepositRequest;
+import com.minibank.transactionservice.dto.CounterWithdrawRequest;
 import com.minibank.transactionservice.dto.PagedResponse;
 import com.minibank.transactionservice.dto.RecentCustomerResponse;
 import com.minibank.transactionservice.dto.StaffDashboardResponse;
@@ -70,6 +72,34 @@ public class TransactionController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    // ============ COUNTER WITHDRAW ENDPOINTS ============
+
+    @PostMapping("/withdraw-counter")
+    public ResponseEntity<ApiResponse<TransactionResponse>> withdrawAtCounter(@Valid @RequestBody CounterWithdrawRequest request,
+                                                                              @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+        log.info("Counter withdraw request for user {} at counter {}", userId, request.getCounterId());
+        TransactionResponse response = transactionService.withdrawAtCounter(request.getAmount(), userId, request.getCounterId());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/withdraw-counter/{transactionId}/confirm")
+    public ResponseEntity<ApiResponse<TransactionResponse>> confirmCounterWithdraw(
+            @PathVariable UUID transactionId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID staffId) {
+        log.info("Confirm counter withdraw for transaction {} by staff {}", transactionId, staffId);
+        TransactionResponse response = transactionService.confirmCounterWithdraw(transactionId, staffId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/withdraw-counter/{transactionId}/cancel")
+    public ResponseEntity<ApiResponse<TransactionResponse>> cancelCounterWithdraw(
+            @PathVariable UUID transactionId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+        log.info("Cancel counter withdraw for transaction {} by user {}", transactionId, userId);
+        TransactionResponse response = transactionService.cancelCounterWithdraw(transactionId, userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @PostMapping("/withdraw")
     public ResponseEntity<ApiResponse<TransactionResponse>> withdraw(@Valid @RequestBody AmountRequest request,
                                                                      @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
@@ -107,6 +137,17 @@ public class TransactionController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    /**
+     * Lấy danh sách giao dịch tại quầy đang chờ xử lý của user
+     */
+    @GetMapping("/pending-counter")
+    public ResponseEntity<ApiResponse<List<TransactionResponse>>> getPendingCounterTransactions(
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+        log.info("Get pending counter transactions for user {}", userId);
+        List<TransactionResponse> response = transactionService.getPendingCounterTransactions(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @GetMapping("/staff/recent-customers")
     public ResponseEntity<ApiResponse<List<RecentCustomerResponse>>> getRecentCustomersForStaff(
             @RequestHeader(value = "X-User-Id", required = false) UUID staffId,
@@ -121,6 +162,45 @@ public class TransactionController {
             @RequestParam(defaultValue = "10") int pendingLimit,
             @RequestParam(defaultValue = "5") int recentCustomersLimit) {
         StaffDashboardResponse response = transactionService.getStaffDashboard(staffId, pendingLimit, recentCustomersLimit);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * Admin endpoint: Lấy tất cả giao dịch trong hệ thống
+     */
+    @GetMapping("/admin/all")
+    public ResponseEntity<ApiResponse<PagedResponse<TransactionResponse>>> getAllTransactions(
+            @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) TransactionType type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to) {
+        
+        if (role == null || !"ADMIN".equalsIgnoreCase(role.trim())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Access denied. Admin role required.", "/api/v1/transactions/admin/all"));
+        }
+        
+        PagedResponse<TransactionResponse> response = transactionService.getAllTransactions(type, status, from, to, page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * Admin endpoint: Lấy thống kê dashboard cho admin
+     */
+    @GetMapping("/admin/dashboard")
+    public ResponseEntity<ApiResponse<AdminDashboardResponse>> getAdminDashboard(
+            @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestParam(defaultValue = "7") int days) {
+        
+        if (role == null || !"ADMIN".equalsIgnoreCase(role.trim())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Access denied. Admin role required.", "/api/v1/transactions/admin/dashboard"));
+        }
+        
+        // Limit days to reasonable range
+        int safeDays = Math.max(1, Math.min(days, 30));
+        AdminDashboardResponse response = transactionService.getAdminDashboard(safeDays);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

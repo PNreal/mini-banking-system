@@ -11,12 +11,21 @@ import Employees from "@/pages/admin/Employees";
 import Transactions from "@/pages/admin/Transactions";
 import Statistics from "@/pages/admin/Statistics";
 import Settings from "@/pages/admin/Settings";
+import KycManagement from "@/pages/admin/KycManagement";
 import AdminLogin from "@/pages/admin/Login";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/auth/AuthContext";
 import { RequireAuth } from "@/auth/RequireAuth";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -42,6 +51,7 @@ const App = () => (
               <Route path="employees" element={<Employees />} />
               <Route path="transactions" element={<Transactions />} />
               <Route path="statistics" element={<Statistics />} />
+              <Route path="kyc" element={<KycManagement />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

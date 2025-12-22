@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ExternalRedirect from './components/ExternalRedirect';
+import RequireKyc from './components/RequireKyc';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
@@ -21,17 +22,19 @@ import CounterAdminDashboard from './pages/CounterAdminDashboard';
 import StaffLogin from './pages/StaffLogin';
 import StaffSettings from './pages/StaffSettings';
 import Notifications from './pages/Notifications';
+import KycRequired from './pages/KycRequired';
+import PendingDeposits from './pages/PendingDeposits';
 import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import ServerError from './pages/ServerError';
 import './App.css';
-import { loginApi, loginStaffApi, registerApi, getAccountInfoApi, getUserInfoApi, depositApi, transferApi, getTransactionsHistoryApi } from './api/client';
+import { loginApi, loginStaffApi, registerApi, getAccountInfoApi, getUserInfoApi, depositApi, withdrawApi, transferApi, getTransactionsHistoryApi } from './api/client';
 
 const initialUser = {
-  username: 'User', // TÃªn máº·c Äá»nh, sáº½ ÄÆ°á»£c thay tháº¿ báº±ng tÃªn tá»« backend
+  username: 'User', // TÃƒÂªn mÃ¡ÂºÂ·c Ã„Â‘Ã¡Â»Â‹nh, sÃ¡ÂºÂ½ Ã„Â‘Ã†Â°Ã¡Â»Â£c thay thÃ¡ÂºÂ¿ bÃ¡ÂºÂ±ng tÃƒÂªn tÃ¡Â»Â« backend
   email: 'user@bk88.vn',
   userId: '000123456789',
-  balance: 0, // Sá» dÆ° máº·c Äá»nh lÃ  0 khi chÆ°a fetch ÄÆ°á»£c tá»« backend
+  balance: 0, // SÃ¡Â»Â‘ dÃ†Â° mÃ¡ÂºÂ·c Ã„Â‘Ã¡Â»Â‹nh lÃƒÂ  0 khi chÃ†Â°a fetch Ã„Â‘Ã†Â°Ã¡Â»Â£c tÃ¡Â»Â« backend
   imageFile: `${process.env.PUBLIC_URL}/assets/default.jpg`,
   isFrozen: false,
 };
@@ -49,7 +52,7 @@ function App() {
     setFlashMessages((prev) => [...prev, { id: Date.now() + Math.random(), type, text }]);
   };
 
-  // HÃ m fetch thÃ´ng tin user vÃ  account tá»« backend
+  // HÃƒÂ m fetch thÃƒÂ´ng tin user vÃƒÂ  account tÃ¡Â»Â« backend
   const fetchUserData = async (token) => {
     try {
       const [accountResult, userResult] = await Promise.allSettled([
@@ -66,6 +69,7 @@ function App() {
       return {
         balance: accountInfo.balance || 0,
         userId: accountInfo.accountId || userInfo.userId || userInfo.accountId || '',
+        accountNumber: accountInfo.accountNumber || null, // Sá»‘ tÃ i khoáº£n chá»‰ cÃ³ khi KYC Ä‘Æ°á»£c approve
         isFrozen: accountInfo.status === 'FROZEN',
         status: accountInfo.status || 'ACTIVE',
         username: userInfo.fullName || userInfo.username || 'User',
@@ -78,57 +82,59 @@ function App() {
     }
   };
 
-  // HÃ m fetch lá»ch sá»­ giao dá»ch tá»« backend
+  // HÃƒÂ m fetch lÃ¡Â»Â‹ch sÃ¡Â»Â­ giao dÃ¡Â»Â‹ch tÃ¡Â»Â« backend
   const fetchTransactions = async (token) => {
     try {
       const response = await getTransactionsHistoryApi(token, {
         page: 0,
-        size: 50, // Láº¥y 50 giao dá»ch gáº§n nháº¥t
+        size: 50, // LÃ¡ÂºÂ¥y 50 giao dÃ¡Â»Â‹ch gÃ¡ÂºÂ§n nhÃ¡ÂºÂ¥t
       });
 
-      if (response?.success && response?.data?.content) {
-        // Láº¥y accountId cá»§a user hiá»n táº¡i Äá» xÃ¡c Äá»nh giao dá»ch gá»­i/nháº­n
+      // Backend trả về PagedResponse với field 'items' (không phải 'content')
+      const items = response?.data?.items || response?.data?.content || [];
+      if (response?.success && items.length > 0) {
+        // LÃ¡ÂºÂ¥y accountId cÃ¡Â»Â§a user hiÃ¡Â»Â‡n tÃ¡ÂºÂ¡i Ã„Â‘Ã¡Â»Âƒ xÃƒÂ¡c Ã„Â‘Ã¡Â»Â‹nh giao dÃ¡Â»Â‹ch gÃ¡Â»Â­i/nhÃ¡ÂºÂ­n
         const currentAccountId = user?.userId || user?.accountId;
         
-        // Map dá»¯ liá»u tá»« backend sang format mÃ  Dashboard component expect
-        const mappedTransactions = response.data.content.map((tx) => {
-          // Map transaction type sang tiáº¿ng Viá»t
+        // Map dÃ¡Â»Â¯ liÃ¡Â»Â‡u tÃ¡Â»Â« backend sang format mÃƒÂ  Dashboard component expect
+        const mappedTransactions = items.map((tx) => {
+          // Map transaction type sang tiÃ¡ÂºÂ¿ng ViÃ¡Â»Â‡t
           let typeLabel = '';
           let amount = Number(tx.amount);
           
           switch (tx.type) {
             case 'DEPOSIT':
-              typeLabel = 'Náº¡p tiá»n';
-              amount = Math.abs(amount); // DÆ°Æ¡ng
+              typeLabel = 'NÃ¡ÂºÂ¡p tiÃ¡Â»Ân';
+              amount = Math.abs(amount); // DÃ†Â°Ã†Â¡ng
               break;
             case 'WITHDRAW':
-              typeLabel = 'RÃºt tiá»n';
-              amount = -Math.abs(amount); // Ãm
+              typeLabel = 'RÃƒÂºt tiÃ¡Â»Ân';
+              amount = -Math.abs(amount); // ÃƒÂ‚m
               break;
             case 'TRANSFER':
-              // XÃ¡c Äá»nh xem user lÃ  ngÆ°á»i gá»­i hay ngÆ°á»i nháº­n
+              // XÃƒÂ¡c Ã„Â‘Ã¡Â»Â‹nh xem user lÃƒÂ  ngÃ†Â°Ã¡Â»Âi gÃ¡Â»Â­i hay ngÃ†Â°Ã¡Â»Âi nhÃ¡ÂºÂ­n
               const isSender = currentAccountId && tx.fromAccountId && 
                                String(tx.fromAccountId) === String(currentAccountId);
               const isReceiver = currentAccountId && tx.toAccountId && 
                                  String(tx.toAccountId) === String(currentAccountId);
               
               if (isSender) {
-                typeLabel = 'Chuyá»n khoáº£n';
-                amount = -Math.abs(amount); // Ãm (gá»­i Äi)
+                typeLabel = 'ChuyÃ¡Â»Âƒn khoÃ¡ÂºÂ£n';
+                amount = -Math.abs(amount); // ÃƒÂ‚m (gÃ¡Â»Â­i Ã„Â‘i)
               } else if (isReceiver) {
-                typeLabel = 'Nháº­n chuyá»n khoáº£n';
-                amount = Math.abs(amount); // DÆ°Æ¡ng (nháº­n vá»)
+                typeLabel = 'NhÃ¡ÂºÂ­n chuyÃ¡Â»Âƒn khoÃ¡ÂºÂ£n';
+                amount = Math.abs(amount); // DÃ†Â°Ã†Â¡ng (nhÃ¡ÂºÂ­n vÃ¡Â»Â)
               } else {
-                typeLabel = 'Chuyá»n khoáº£n';
-                amount = -Math.abs(amount); // Máº·c Äá»nh coi nhÆ° gá»­i Äi
+                typeLabel = 'ChuyÃ¡Â»Âƒn khoÃ¡ÂºÂ£n';
+                amount = -Math.abs(amount); // MÃ¡ÂºÂ·c Ã„Â‘Ã¡Â»Â‹nh coi nhÃ†Â° gÃ¡Â»Â­i Ã„Â‘i
               }
               break;
             case 'COUNTER_DEPOSIT':
-              typeLabel = 'Náº¡p tiá»n táº¡i quáº§y';
-              amount = Math.abs(amount); // DÆ°Æ¡ng
+              typeLabel = 'NÃ¡ÂºÂ¡p tiÃ¡Â»Ân tÃ¡ÂºÂ¡i quÃ¡ÂºÂ§y';
+              amount = Math.abs(amount); // DÃ†Â°Ã†Â¡ng
               break;
             default:
-              typeLabel = tx.type || 'Giao dá»ch';
+              typeLabel = tx.type || 'Giao dÃ¡Â»Â‹ch';
           }
 
           return {
@@ -136,22 +142,25 @@ function App() {
             type: typeLabel,
             amount: amount,
             date: tx.timestamp || tx.date || new Date().toISOString(),
+            status: tx.status,
+            transactionCode: tx.transactionCode,
+            transactionId: tx.transactionId,
           };
         });
 
-        // Sáº¯p xáº¿p theo thá»i gian má»i nháº¥t trÆ°á»c
+        // SÃ¡ÂºÂ¯p xÃ¡ÂºÂ¿p theo thÃ¡Â»Âi gian mÃ¡Â»Â›i nhÃ¡ÂºÂ¥t trÃ†Â°Ã¡Â»Â›c
         mappedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
         
         setTransactions(mappedTransactions);
         return mappedTransactions;
       } else {
-        // Náº¿u khÃ´ng cÃ³ dá»¯ liá»u, set máº£ng rá»ng
+        // NÃ¡ÂºÂ¿u khÃƒÂ´ng cÃƒÂ³ dÃ¡Â»Â¯ liÃ¡Â»Â‡u, set mÃ¡ÂºÂ£ng rÃ¡Â»Â—ng
         setTransactions([]);
         return [];
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
-      // Náº¿u cÃ³ lá»i, giá»¯ nguyÃªn transactions hiá»n táº¡i hoáº·c set máº£ng rá»ng
+      // NÃ¡ÂºÂ¿u cÃƒÂ³ lÃ¡Â»Â—i, giÃ¡Â»Â¯ nguyÃƒÂªn transactions hiÃ¡Â»Â‡n tÃ¡ÂºÂ¡i hoÃ¡ÂºÂ·c set mÃ¡ÂºÂ£ng rÃ¡Â»Â—ng
       setTransactions([]);
       return [];
     }
@@ -309,15 +318,23 @@ function App() {
         password: form.password,
       });
 
-      if (response?.success || response?.data) {
-        addFlash('success', 'Dang ky thanh cong. Vui long dang nhap.');
-        return true;
+      // Backend trả về string "User registered successfully." khi thành công
+      if (response || response?.success || response?.data) {
+        addFlash('success', 'Đăng ký thành công! Đang đăng nhập...');
+        
+        // Tự động đăng nhập sau khi đăng ký thành công
+        const loginSuccess = await handleLogin({
+          email: form.email,
+          password: form.password,
+        });
+        
+        return loginSuccess;
       }
 
-      addFlash('danger', 'Dang ky that bai.');
+      addFlash('danger', 'Đăng ký thất bại.');
       return false;
     } catch (error) {
-      addFlash('danger', error.message || 'Dang ky that bai.');
+      addFlash('danger', error.message || 'Đăng ký thất bại.');
       return false;
     }
   };
@@ -355,13 +372,13 @@ function App() {
 
   const handleDeposit = async (amount) => {
     if (!amount || amount <= 0) {
-      addFlash('danger', 'Sá» tiá»n khÃ´ng há»£p lá».');
+      addFlash('danger', 'SÃ¡Â»Â‘ tiÃ¡Â»Ân khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»Â‡.');
       return false;
     }
 
     const token = authToken || sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
     if (!token) {
-      addFlash('danger', 'PhiÃªn ÄÄng nháº­p ÄÃ£ háº¿t háº¡n. Vui lÃ²ng ÄÄng nháº­p láº¡i.');
+      addFlash('danger', 'PhiÃƒÂªn Ã„Â‘Ã„Âƒng nhÃ¡ÂºÂ­p Ã„Â‘ÃƒÂ£ hÃ¡ÂºÂ¿t hÃ¡ÂºÂ¡n. Vui lÃƒÂ²ng Ã„Â‘Ã„Âƒng nhÃ¡ÂºÂ­p lÃ¡ÂºÂ¡i.');
       return false;
     }
 
@@ -370,35 +387,35 @@ function App() {
       
       if (response?.success && response?.data) {
         const newBalance = response.data.newBalance || user.balance + amount;
-        // Cáº­p nháº­t balance trong user state
+        // CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t balance trong user state
         setUser((prev) => ({
           ...prev,
           balance: newBalance,
         }));
         
-        // ThÃªm transaction vÃ o lá»ch sá»­
-        updateBalance(amount, 'Náº¡p tiá»n');
+        // ThÃƒÂªm transaction vÃƒÂ o lÃ¡Â»Â‹ch sÃ¡Â»Â­
+        updateBalance(amount, 'NÃ¡ÂºÂ¡p tiÃ¡Â»Ân');
         
-        // Refresh transactions tá»« backend
+        // Refresh transactions tÃ¡Â»Â« backend
         await fetchTransactions(token);
         
-        addFlash('success', `Náº¡p tiá»n thÃ nh cÃ´ng. Sá» dÆ° má»i: ${newBalance.toLocaleString('vi-VN')} VND`);
+        addFlash('success', `NÃ¡ÂºÂ¡p tiÃ¡Â»Ân thÃƒÂ nh cÃƒÂ´ng. SÃ¡Â»Â‘ dÃ†Â° mÃ¡Â»Â›i: ${newBalance.toLocaleString('vi-VN')} VND`);
         return true;
       } else {
-        addFlash('danger', 'Náº¡p tiá»n tháº¥t báº¡i. Vui lÃ²ng thá»­ láº¡i.');
+        addFlash('danger', 'NÃ¡ÂºÂ¡p tiÃ¡Â»Ân thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i. Vui lÃƒÂ²ng thÃ¡Â»Â­ lÃ¡ÂºÂ¡i.');
         return false;
       }
     } catch (error) {
       console.error('Error depositing:', error);
-      let errorMessage = 'Náº¡p tiá»n tháº¥t báº¡i.';
+      let errorMessage = 'NÃ¡ÂºÂ¡p tiÃ¡Â»Ân thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i.';
       
       if (error.message) {
         if (error.message.includes('ACCOUNT_FROZEN')) {
-          errorMessage = 'TÃ i khoáº£n Äang bá» khÃ³a. KhÃ´ng thá» thá»±c hiá»n giao dá»ch.';
+          errorMessage = 'TÃƒÂ i khoÃ¡ÂºÂ£n Ã„Â‘ang bÃ¡Â»Â‹ khÃƒÂ³a. KhÃƒÂ´ng thÃ¡Â»Âƒ thÃ¡Â»Â±c hiÃ¡Â»Â‡n giao dÃ¡Â»Â‹ch.';
         } else if (error.message.includes('INSUFFICIENT_BALANCE')) {
-          errorMessage = 'Sá» dÆ° khÃ´ng Äá»§.';
+          errorMessage = 'SÃ¡Â»Â‘ dÃ†Â° khÃƒÂ´ng Ã„Â‘Ã¡Â»Â§.';
         } else if (error.message.includes('INVALID_AMOUNT')) {
-          errorMessage = 'Sá» tiá»n khÃ´ng há»£p lá».';
+          errorMessage = 'SÃ¡Â»Â‘ tiÃ¡Â»Ân khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»Â‡.';
         } else {
           errorMessage = error.message;
         }
@@ -409,31 +426,62 @@ function App() {
     }
   };
 
-  const handleWithdraw = (amount) => {
+  const handleWithdraw = async (amount) => {
     if (!amount || amount <= 0) {
-      addFlash('danger', 'Sá» tiá»n khÃ´ng há»£p lá».');
+      addFlash('danger', 'Số tiền không hợp lệ.');
       return false;
     }
     if (amount > user.balance) {
-      addFlash('warning', 'Sá» dÆ° khÃ´ng Äá»§.');
+      addFlash('warning', 'Số dư không đủ.');
       return false;
     }
-    updateBalance(-amount, 'RÃºt tiá»n');
-    addFlash('success', 'RÃºt tiá»n thÃ nh cÃ´ng (demo).');
-    return true;
+
+    try {
+      const token = authToken || sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
+      const response = await withdrawApi(token, amount);
+      if (response && response.data) {
+        // Cập nhật số dư từ response
+        const newBalance = response.data.newBalance;
+        setUser((prev) => ({ ...prev, balance: newBalance }));
+        
+        // Refresh transactions từ backend
+        await fetchTransactions(token);
+        
+        addFlash('success', 'Rút tiền thành công.');
+        return true;
+      }
+    } catch (error) {
+      console.error('Error withdrawing:', error);
+      let errorMessage = 'Rút tiền thất bại.';
+
+      if (error.message) {
+        if (error.message.includes('ACCOUNT_FROZEN')) {
+          errorMessage = 'Tài khoản đang bị khóa. Không thể thực hiện giao dịch.';
+        } else if (error.message.includes('INSUFFICIENT_BALANCE')) {
+          errorMessage = 'Số dư không đủ.';
+        } else if (error.message.includes('INVALID_AMOUNT')) {
+          errorMessage = 'Số tiền không hợp lệ.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      addFlash('danger', errorMessage);
+      return false;
+    }
+    return false;
   };
 
   const handleTransfer = async (toAccountId, amount, note) => {
     if (!toAccountId) {
-      addFlash('danger', 'Vui lÃ²ng nháº­p sá» tÃ i khoáº£n ngÆ°á»i nháº­n.');
+      addFlash('danger', 'Vui lÃƒÂ²ng nhÃ¡ÂºÂ­p sÃ¡Â»Â‘ tÃƒÂ i khoÃ¡ÂºÂ£n ngÃ†Â°Ã¡Â»Âi nhÃ¡ÂºÂ­n.');
       return false;
     }
     if (!amount || amount <= 0) {
-      addFlash('danger', 'Sá» tiá»n khÃ´ng há»£p lá».');
+      addFlash('danger', 'SÃ¡Â»Â‘ tiÃ¡Â»Ân khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»Â‡.');
       return false;
     }
     if (amount > user.balance) {
-      addFlash('warning', 'Sá» dÆ° khÃ´ng Äá»§.');
+      addFlash('warning', 'SÃ¡Â»Â‘ dÃ†Â° khÃƒÂ´ng Ã„Â‘Ã¡Â»Â§.');
       return false;
     }
 
@@ -441,18 +489,18 @@ function App() {
       const token = authToken || sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await transferApi(token, toAccountId, amount, note);
       if (response && response.data) {
-        // Cáº­p nháº­t sá» dÆ° tá»« response
+        // CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t sÃ¡Â»Â‘ dÃ†Â° tÃ¡Â»Â« response
         const newBalance = response.data.newBalance;
         setUser((prev) => ({ ...prev, balance: newBalance }));
         
-        // Refresh transactions tá»« backend
+        // Refresh transactions tÃ¡Â»Â« backend
         await fetchTransactions(token);
         
-        addFlash('success', 'Chuyá»n khoáº£n thÃ nh cÃ´ng.');
+        addFlash('success', 'ChuyÃ¡Â»Âƒn khoÃ¡ÂºÂ£n thÃƒÂ nh cÃƒÂ´ng.');
         return true;
       }
     } catch (error) {
-      addFlash('danger', error.message || 'Chuyá»n khoáº£n tháº¥t báº¡i. Vui lÃ²ng thá»­ láº¡i.');
+      addFlash('danger', error.message || 'ChuyÃ¡Â»Âƒn khoÃ¡ÂºÂ£n thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i. Vui lÃƒÂ²ng thÃ¡Â»Â­ lÃ¡ÂºÂ¡i.');
       return false;
     }
     return false;
@@ -460,24 +508,24 @@ function App() {
 
   const handleUpdateProfile = (data) => {
     setUser((prev) => ({ ...prev, ...data }));
-    addFlash('success', 'Cáº­p nháº­t há» sÆ¡ (demo).');
+    addFlash('success', 'CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t hÃ¡Â»Â“ sÃ†Â¡ (demo).');
   };
 
   const handleChangePassword = () => {
-    addFlash('success', 'Äá»i máº­t kháº©u (demo).');
+    addFlash('success', 'Ã„ÂÃ¡Â»Â•i mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u (demo).');
   };
 
   const handleForgotPassword = (email) => {
-    addFlash('info', `ÄÃ£ gá»­i email khÃ´i phá»¥c tá»i ${email} (demo).`);
+    addFlash('info', `Ã„ÂÃƒÂ£ gÃ¡Â»Â­i email khÃƒÂ´i phÃ¡Â»Â¥c tÃ¡Â»Â›i ${email} (demo).`);
   };
 
   const handleResetPassword = () => {
-    addFlash('success', 'Äáº·t láº¡i máº­t kháº©u (demo).');
+    addFlash('success', 'Ã„ÂÃ¡ÂºÂ·t lÃ¡ÂºÂ¡i mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u (demo).');
   };
 
   const handleFreezeToggle = () => {
     setUser((prev) => ({ ...prev, isFrozen: !prev.isFrozen }));
-    addFlash('info', 'ÄÃ£ chuyá»n tráº¡ng thÃ¡i tÃ i khoáº£n (demo).');
+    addFlash('info', 'Ã„ÂÃƒÂ£ chuyÃ¡Â»Âƒn trÃ¡ÂºÂ¡ng thÃƒÂ¡i tÃƒÂ i khoÃ¡ÂºÂ£n (demo).');
   };
 
   if (!isAuthReady) {
@@ -515,7 +563,7 @@ function App() {
               )
             }
           />
-          {/* Admin UI đã tách sang app riêng (banking-admin-hub-main) */}
+          {/* Admin UI Ä‘Ã£ tÃ¡ch sang app riÃªng (banking-admin-hub-main) */}
           <Route path="/admin/*" element={<ExternalRedirect baseUrl={ADMIN_UI_BASE} />} />
           <Route
             path="/counter/admin"
@@ -558,7 +606,7 @@ function App() {
             }
           />
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
-          {/* route admin/login chuyển hướng qua app admin mới */}
+          {/* route admin/login chuyá»ƒn hÆ°á»›ng qua app admin má»›i */}
           <Route path="/admin/login" element={<ExternalRedirect baseUrl={ADMIN_UI_BASE} />} />
           <Route path="/staff/login" element={<StaffLogin onLogin={handleStaffLogin} />} />
           <Route path="/staff" element={<Navigate to="/staff/login" replace />} />
@@ -567,7 +615,9 @@ function App() {
             path="/deposit"
             element={
               isAuthenticated && isCustomer ? (
-                <Deposit balance={user.balance} onSubmit={handleDeposit} isFrozen={user.isFrozen} />
+                <RequireKyc>
+                  <Deposit balance={user.balance} onSubmit={handleDeposit} isFrozen={user.isFrozen} />
+                </RequireKyc>
               ) : isAuthenticated ? (
                 <Forbidden />
               ) : (
@@ -579,7 +629,9 @@ function App() {
             path="/withdraw"
             element={
               isAuthenticated && isCustomer ? (
-                <Withdraw balance={user.balance} onSubmit={handleWithdraw} isFrozen={user.isFrozen} />
+                <RequireKyc>
+                  <Withdraw balance={user.balance} onSubmit={handleWithdraw} isFrozen={user.isFrozen} />
+                </RequireKyc>
               ) : isAuthenticated ? (
                 <Forbidden />
               ) : (
@@ -591,7 +643,9 @@ function App() {
             path="/transfer"
             element={
               isAuthenticated && isCustomer ? (
-                <Transfer balance={user.balance} onSubmit={handleTransfer} isFrozen={user.isFrozen} />
+                <RequireKyc>
+                  <Transfer balance={user.balance} onSubmit={handleTransfer} isFrozen={user.isFrozen} />
+                </RequireKyc>
               ) : isAuthenticated ? (
                 <Forbidden />
               ) : (
@@ -599,6 +653,7 @@ function App() {
               )
             }
           />
+          <Route path="/kyc-required" element={<KycRequired />} />
           <Route
             path="/settings"
             element={
@@ -626,6 +681,31 @@ function App() {
                 <Forbidden />
               ) : (
                 <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/pending-deposits"
+            element={
+              isAuthenticated && isCustomer ? (
+                <RequireKyc>
+                  <PendingDeposits 
+                    user={user} 
+                    onTransactionUpdate={() => {
+                      const token = authToken || sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
+                      if (token) {
+                        fetchTransactions(token);
+                        fetchUserData(token).then(data => {
+                          if (data) setUser(prev => ({ ...prev, ...data }));
+                        });
+                      }
+                    }}
+                  />
+                </RequireKyc>
+              ) : isAuthenticated ? (
+                <Forbidden />
+              ) : (
+                <Navigate to="/login" replace />
               )
             }
           />
@@ -676,3 +756,4 @@ function App() {
 }
 
 export default App;
+

@@ -37,7 +37,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Search, MoreHorizontal, Edit, Trash2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getAdminUsers } from "@/lib/api";
+import { getAdminUsers, createUser } from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
 
 interface Employee {
@@ -51,8 +51,9 @@ interface Employee {
   status: "active" | "inactive";
 }
 
-const roleConfig = {
+const roleConfig: Record<string, { label: string; className: string }> = {
   staff: { label: "Nhân viên", className: "bg-info/10 text-info border-info/20" },
+  counter_staff: { label: "Nhân viên quầy", className: "bg-info/10 text-info border-info/20" },
   counter_admin: { label: "Admin quầy", className: "bg-primary/10 text-primary border-primary/20" },
   admin: { label: "Admin", className: "bg-destructive/10 text-destructive border-destructive/20" },
   custom: { label: "Custom", className: "bg-warning/10 text-warning border-warning/20" },
@@ -78,42 +79,81 @@ export default function Employees() {
     phone: "",
     role: "staff",
     counter: "",
+    counterId: "",
   });
+  const [newEmployeeData, setNewEmployeeData] = useState({
+    code: "",
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    role: "STAFF",
+    counterId: "",
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [oldCounterId, setOldCounterId] = useState<string | null>(null);
   const { token } = useAuth();
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      if (!token) return;
+  const fetchEmployees = async () => {
+    if (!token) return;
+    
+    try {
+      setLoading(true);
+      const response = await getAdminUsers(token);
       
+      // Chỉ lấy users có vai trò nhân viên (không phải CUSTOMER và không phải ADMIN)
+      const staffUsers = (response.data || []).filter((user: any) => 
+        user.role && user.role !== "CUSTOMER" && user.role !== "ADMIN"
+      );
+      
+      // Lấy thông tin quầy cho từng nhân viên
+      let userCounterMap: Record<string, string> = {};
       try {
-        setLoading(true);
-        const response = await getAdminUsers(token);
+        const { getCounters, getCounterStaff } = await import("@/lib/api");
+        const countersResponse = await getCounters(token, "ADMIN");
+        const allCounters = countersResponse.data || [];
         
-        // Chỉ lấy users có vai trò nhân viên (không phải CUSTOMER)
-        const staffUsers = (response.data || []).filter((user: any) => 
-          user.role && user.role !== "CUSTOMER"
-        );
-        
-        // Map dữ liệu từ API sang format Employee
-        const mappedEmployees: Employee[] = staffUsers.map((user: any) => ({
-          id: user.userId || user.id,
+        // Tạo map userId -> counterName
+        for (const counter of allCounters) {
+          try {
+            const staffResponse = await getCounterStaff(token, counter.counterId);
+            const staffIds = staffResponse.data || [];
+            staffIds.forEach((staffId: string) => {
+              userCounterMap[staffId] = counter.name;
+            });
+          } catch (error) {
+            // Bỏ qua lỗi nếu không lấy được danh sách nhân viên của quầy
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching counters for employees:", error);
+        // Tiếp tục với userCounterMap rỗng
+      }
+      
+      // Map dữ liệu từ API sang format Employee
+      const mappedEmployees: Employee[] = staffUsers.map((user: any) => {
+        const userId = user.userId || user.id;
+        return {
+          id: userId,
           code: user.employeeCode || user.userCode || "N/A",
           name: user.fullName || user.username || "Unknown",
           email: user.email || "",
           phone: user.phoneNumber || user.phone || "N/A",
           role: user.role?.toLowerCase() || "staff",
-          counter: user.counterName || user.counter || "N/A",
+          counter: userCounterMap[userId] || user.counterName || user.counter || "N/A",
           status: user.status === "ACTIVE" || user.isActive ? "active" : "inactive",
-        }));
-        
-        setEmployees(mappedEmployees);
-      } catch (error) {
-        console.error("Error fetching employees:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+        };
+      });
+      
+      setEmployees(mappedEmployees);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     const fetchCounters = async () => {
       if (!token) return;
       
@@ -139,6 +179,10 @@ export default function Employees() {
 
   const handleEdit = (employee: Employee) => {
     setSelectedEmployee(employee);
+    // Tìm counterId từ tên quầy
+    const counter = counters.find(c => c.name === employee.counter);
+    const counterId = counter?.counterId || "";
+    
     setFormData({
       code: employee.code,
       name: employee.name,
@@ -146,7 +190,9 @@ export default function Employees() {
       phone: employee.phone,
       role: employee.role,
       counter: employee.counter,
+      counterId: counterId,
     });
+    setOldCounterId(counterId || null);
     setIsEditDialogOpen(true);
   };
 
@@ -173,7 +219,9 @@ export default function Employees() {
     if (!token || !selectedEmployee) return;
 
     try {
-      const { updateUser } = await import("@/lib/api");
+      const { updateUser, addStaffToCounter, removeStaffFromCounter } = await import("@/lib/api");
+      
+      // Cập nhật thông tin nhân viên
       await updateUser(token, selectedEmployee.id, {
         fullName: formData.name,
         role: formData.role.toUpperCase(),
@@ -182,27 +230,98 @@ export default function Employees() {
         phoneNumber: formData.phone,
       });
 
+      // Xử lý cập nhật quầy
+      const newCounterId = formData.counterId === "" ? null : formData.counterId;
+      const hasCounterChanged = newCounterId !== oldCounterId;
+
+      if (hasCounterChanged) {
+        // Xóa khỏi quầy cũ (nếu có)
+        if (oldCounterId) {
+          try {
+            await removeStaffFromCounter(token, oldCounterId, selectedEmployee.id);
+            console.log(`Đã xóa nhân viên khỏi quầy cũ: ${oldCounterId}`);
+          } catch (error: any) {
+            console.warn("Không thể xóa khỏi quầy cũ:", error.message);
+          }
+        }
+        
+        // Thêm vào quầy mới (nếu có chọn quầy)
+        if (newCounterId) {
+          try {
+            await addStaffToCounter(token, newCounterId, {
+              userId: selectedEmployee.id,
+            });
+            console.log(`Đã thêm nhân viên vào quầy mới: ${newCounterId}`);
+          } catch (error: any) {
+            console.error("Không thể thêm vào quầy mới:", error.message);
+            alert(`Cảnh báo: Cập nhật thông tin thành công nhưng không thể gán quầy. ${error.message}`);
+          }
+        }
+      }
+
       // Refresh danh sách
-      const response = await getAdminUsers(token);
-      const staffUsers = (response.data || []).filter((user: any) => 
-        user.role && user.role !== "CUSTOMER"
-      );
-      const mappedEmployees: Employee[] = staffUsers.map((user: any) => ({
-        id: user.userId || user.id,
-        code: user.employeeCode || user.userCode || "N/A",
-        name: user.fullName || user.username || "Unknown",
-        email: user.email || "",
-        phone: user.phoneNumber || user.phone || "N/A",
-        role: user.role?.toLowerCase() || "staff",
-        counter: user.counterName || user.counter || "N/A",
-        status: user.status === "ACTIVE" || user.isActive ? "active" : "inactive",
-      }));
-      setEmployees(mappedEmployees);
+      await fetchEmployees();
 
       setIsEditDialogOpen(false);
+      setOldCounterId(null);
       alert("Cập nhật nhân viên thành công!");
     } catch (error: any) {
       alert(`Lỗi khi cập nhật nhân viên: ${error.message}`);
+    }
+  };
+
+  const handleCreateEmployee = async () => {
+    if (!token) return;
+
+    // Validate
+    if (!newEmployeeData.email || !newEmployeeData.name || !newEmployeeData.password) {
+      alert("Vui lòng điền đầy đủ thông tin bắt buộc (Email, Họ tên, Mật khẩu)");
+      return;
+    }
+
+    setCreateLoading(true);
+    try {
+      // Tạo nhân viên qua API createUser
+      const response = await createUser(token, {
+        email: newEmployeeData.email,
+        password: newEmployeeData.password,
+        fullName: newEmployeeData.name,
+        role: newEmployeeData.role,
+        employeeCode: newEmployeeData.code || undefined,
+      });
+
+      // Nếu có chọn quầy, thêm nhân viên vào quầy
+      if (newEmployeeData.counterId && response?.data?.userId) {
+        try {
+          const { addStaffToCounter } = await import("@/lib/api");
+          await addStaffToCounter(token, newEmployeeData.counterId, {
+            userId: response.data.userId,
+          });
+        } catch (error: any) {
+          console.warn("Không thể gán quầy cho nhân viên:", error.message);
+        }
+      }
+
+      // Reset form và đóng dialog
+      setNewEmployeeData({
+        code: "",
+        name: "",
+        email: "",
+        phone: "",
+        password: "",
+        role: "STAFF",
+        counterId: "",
+      });
+      setIsDialogOpen(false);
+      
+      // Refresh danh sách
+      await fetchEmployees();
+      
+      alert("Thêm nhân viên thành công!");
+    } catch (error: any) {
+      alert(`Lỗi khi tạo nhân viên: ${error.message}`);
+    } finally {
+      setCreateLoading(false);
     }
   };
 
@@ -244,46 +363,86 @@ export default function Employees() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="emp-code">Mã nhân viên</Label>
-                    <Input id="emp-code" placeholder="VD: NV006" />
+                    <Input 
+                      id="emp-code" 
+                      placeholder="VD: NV006 (tự động nếu bỏ trống)"
+                      value={newEmployeeData.code}
+                      onChange={(e) => setNewEmployeeData({...newEmployeeData, code: e.target.value})}
+                    />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="emp-role">Vai trò</Label>
-                    <Select>
+                    <Label htmlFor="emp-role">Vai trò *</Label>
+                    <Select
+                      value={newEmployeeData.role}
+                      onValueChange={(value) => setNewEmployeeData({...newEmployeeData, role: value})}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn vai trò" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="staff">Nhân viên</SelectItem>
-                        <SelectItem value="counter_admin">Admin quầy</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="custom">Custom</SelectItem>
+                        <SelectItem value="STAFF">Nhân viên</SelectItem>
+                        <SelectItem value="COUNTER_ADMIN">Admin quầy</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="emp-name">Họ tên</Label>
-                  <Input id="emp-name" placeholder="Nhập họ tên nhân viên" />
+                  <Label htmlFor="emp-name">Họ tên *</Label>
+                  <Input 
+                    id="emp-name" 
+                    placeholder="Nhập họ tên nhân viên"
+                    value={newEmployeeData.name}
+                    onChange={(e) => setNewEmployeeData({...newEmployeeData, name: e.target.value})}
+                  />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="emp-email">Email</Label>
-                  <Input id="emp-email" type="email" placeholder="email@minibank.com" />
+                  <Label htmlFor="emp-email">Email *</Label>
+                  <Input 
+                    id="emp-email" 
+                    type="email" 
+                    placeholder="email@minibank.com"
+                    value={newEmployeeData.email}
+                    onChange={(e) => setNewEmployeeData({...newEmployeeData, email: e.target.value})}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="emp-password">Mật khẩu *</Label>
+                  <Input 
+                    id="emp-password" 
+                    type="password" 
+                    placeholder="Nhập mật khẩu"
+                    value={newEmployeeData.password}
+                    onChange={(e) => setNewEmployeeData({...newEmployeeData, password: e.target.value})}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="emp-phone">Số điện thoại</Label>
-                  <Input id="emp-phone" placeholder="0901234567" />
+                  <Input 
+                    id="emp-phone" 
+                    placeholder="0901234567"
+                    value={newEmployeeData.phone}
+                    onChange={(e) => setNewEmployeeData({...newEmployeeData, phone: e.target.value})}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="emp-counter">Quầy giao dịch</Label>
-                  <Select>
+                  <Select
+                    value={newEmployeeData.counterId || "none"}
+                    onValueChange={(value) => setNewEmployeeData({
+                      ...newEmployeeData, 
+                      counterId: value === "none" ? "" : value
+                    })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn quầy" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="q001">Quầy Trung tâm</SelectItem>
-                      <SelectItem value="q002">Quầy Thủ Đức</SelectItem>
-                      <SelectItem value="q003">Quầy Bình Thạnh</SelectItem>
-                      <SelectItem value="q004">Quầy Quận 7</SelectItem>
+                      <SelectItem value="none">Không chọn quầy</SelectItem>
+                      {counters.map((counter) => (
+                        <SelectItem key={counter.counterId} value={counter.counterId}>
+                          {counter.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -292,8 +451,8 @@ export default function Employees() {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Hủy
                 </Button>
-                <Button onClick={() => setIsDialogOpen(false)}>
-                  Thêm nhân viên
+                <Button onClick={handleCreateEmployee} disabled={createLoading}>
+                  {createLoading ? "Đang tạo..." : "Thêm nhân viên"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -474,13 +633,29 @@ export default function Employees() {
               <div className="grid gap-2">
                 <Label htmlFor="edit-emp-counter">Quầy giao dịch</Label>
                 <Select 
-                  value={formData.counter}
-                  onValueChange={(value) => setFormData({...formData, counter: value})}
+                  value={formData.counterId || "none"}
+                  onValueChange={(value) => {
+                    if (value === "none") {
+                      setFormData({
+                        ...formData, 
+                        counterId: "",
+                        counter: ""
+                      });
+                    } else {
+                      const selectedCounter = counters.find(c => c.counterId === value);
+                      setFormData({
+                        ...formData, 
+                        counterId: value,
+                        counter: selectedCounter?.name || ""
+                      });
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn quầy" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Không có quầy</SelectItem>
                     {counters.map((counter) => (
                       <SelectItem key={counter.counterId} value={counter.counterId}>
                         {counter.name}

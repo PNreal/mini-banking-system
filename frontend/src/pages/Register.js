@@ -30,7 +30,8 @@ const Register = ({ onRegister }) => {
 
     const ok = await onRegister(form);
     if (ok) {
-      navigate('/login');
+      // Đăng ký và đăng nhập thành công, chuyển đến dashboard
+      navigate('/dashboard');
     }
   };
 

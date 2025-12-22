@@ -21,6 +21,7 @@ public class UserResponse {
     private String citizenId;
     private String employeeCode;
     private String phoneNumber;
+    private String avatarUrl;
     private LocalDateTime createdAt;
 
     public static UserResponse from(User user) {
@@ -33,6 +34,7 @@ public class UserResponse {
                 .citizenId(user.getCitizenId())
                 .employeeCode(user.getEmployeeCode())
                 .phoneNumber(user.getPhoneNumber())
+                .avatarUrl(user.getAvatarUrl())
                 .createdAt(toLocalDateTime(user.getCreatedAt()))
                 .build();
     }

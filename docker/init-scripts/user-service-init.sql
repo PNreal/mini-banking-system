@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Insert sample admin user
--- Password: admin123 (hashed with BCrypt)
-INSERT INTO users (user_id, email, password_hash, full_name, status, role, employee_code, created_at, updated_at)
+-- Password: Admin@123 (hashed with BCrypt)
+INSERT INTO users (user_id, email, password_hash, full_name, status, role, employee_code, email_verified, failed_login_attempts, created_at, updated_at)
 VALUES 
-    (gen_random_uuid(), 'admin@minibank.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Admin User', 'ACTIVE', 'ADMIN', 'ADM001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (gen_random_uuid(), 'admin@minibank.com', '$2a$10$vpIVHqcjTsBO3eYlA3eJIuchy4qAx8KqPLQB3mo2QKCeNknXbOm/m', 'Admin User', 'ACTIVE', 'ADMIN', 'ADM001', true, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert sample staff users

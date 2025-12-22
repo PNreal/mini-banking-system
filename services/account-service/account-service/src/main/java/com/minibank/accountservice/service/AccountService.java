@@ -191,6 +191,37 @@ public class AccountService {
         }
     }
 
+    /**
+     * Kích hoạt tài khoản sau khi KYC được approve
+     * Nếu user chưa có account thì tạo mới, nếu có rồi thì đảm bảo status ACTIVE
+     */
+    @Transactional
+    public Account activateAfterKyc(UUID userId) {
+        Optional<Account> existing = accountRepository.findByUserId(userId);
+        
+        if (existing.isPresent()) {
+            Account account = existing.get();
+            // Nếu account đang PENDING hoặc FROZEN thì activate
+            if (account.getStatus() != AccountStatus.ACTIVE) {
+                account.setStatus(AccountStatus.ACTIVE);
+                accountRepository.save(account);
+                publishEvent("ACCOUNT_KYC_ACTIVATED", account.getId(), userId);
+            }
+            return account;
+        } else {
+            // Tạo account mới với status ACTIVE
+            Account account = new Account();
+            account.setUserId(userId);
+            account.setAccountNumber(generateUniqueAccountNumber());
+            account.setBalance(BigDecimal.ZERO);
+            account.setStatus(AccountStatus.ACTIVE);
+            Account saved = accountRepository.save(account);
+            publishEvent("ACCOUNT_CREATED_KYC", saved.getId(), userId);
+            log.info("Account created after KYC approval for user {}: {}", userId, saved.getAccountNumber());
+            return saved;
+        }
+    }
+
     private void ensureActive(Account account) {
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new BadRequestException("Account is not active");
@@ -203,15 +234,20 @@ public class AccountService {
 
     private String generateUniqueAccountNumber() {
         // 12-digit numeric string (like STK), retry on collision
-        for (int i = 0; i < 20; i++) {
-            long n = Math.abs(RNG.nextLong()) % 1_000_000_000_000L; // 0..999,999,999,999
-            String candidate = String.format("%012d", n);
-            if (!accountRepository.existsByAccountNumber(candidate)) {
-                return candidate;
+        // Sử dụng synchronized để tránh race condition khi nhiều request đồng thời
+        synchronized (this) {
+            for (int i = 0; i < 100; i++) {
+                long n = Math.abs(RNG.nextLong()) % 1_000_000_000_000L; // 0..999,999,999,999
+                String candidate = String.format("%012d", n);
+                if (!accountRepository.existsByAccountNumber(candidate)) {
+                    log.debug("Generated unique account number: {} after {} attempts", candidate, i + 1);
+                    return candidate;
+                }
+                log.debug("Account number {} already exists, retrying...", candidate);
             }
         }
-        // Extremely unlikely fallback
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        // Nếu sau 100 lần vẫn không tạo được, throw exception thay vì dùng UUID
+        throw new RuntimeException("Unable to generate unique account number after 100 attempts");
     }
 
     private void publishEvent(String action, UUID accountId, UUID userId) {

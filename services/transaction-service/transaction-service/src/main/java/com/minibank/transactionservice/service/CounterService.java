@@ -9,8 +9,6 @@ import com.minibank.transactionservice.dto.CreateEmployeeResponse;
 import com.minibank.transactionservice.dto.UserResponse;
 import com.minibank.transactionservice.entity.Counter;
 import com.minibank.transactionservice.entity.CounterStaff;
-import com.minibank.transactionservice.entity.TransactionStatus;
-import com.minibank.transactionservice.entity.TransactionType;
 import com.minibank.transactionservice.exception.BadRequestException;
 import com.minibank.transactionservice.exception.ForbiddenException;
 import com.minibank.transactionservice.exception.NotFoundException;
@@ -72,15 +70,10 @@ public class CounterService {
             throw new BadRequestException("Counter has no active staff");
         }
 
-        // Đếm số transaction PENDING của mỗi nhân viên
+        // Đếm số transaction PENDING của mỗi nhân viên (sử dụng query tối ưu)
         Map<UUID, Long> staffPendingCounts = new HashMap<>();
         for (CounterStaff staff : staffList) {
-            // Đếm số transaction COUNTER_DEPOSIT PENDING của nhân viên này
-            long pendingCount = transactionRepository.findAll().stream()
-                    .filter(tx -> tx.getType() == TransactionType.COUNTER_DEPOSIT 
-                            && tx.getStatus() == TransactionStatus.PENDING
-                            && staff.getUserId().equals(tx.getStaffId()))
-                    .count();
+            long pendingCount = transactionRepository.countPendingByStaffId(staff.getUserId());
             staffPendingCounts.put(staff.getUserId(), pendingCount);
         }
 
@@ -441,6 +434,48 @@ public class CounterService {
      */
     public List<Counter> getAllCounters() {
         return counterRepository.findAll();
+    }
+
+    /**
+     * ADMIN tổng: Thêm nhân viên vào quầy (không cần là counter admin)
+     */
+    @Transactional
+    public void addStaffToCounterByAdmin(UUID counterId, UUID staffUserId) {
+        Counter counter = counterRepository.findById(counterId)
+                .orElseThrow(() -> new NotFoundException("Counter not found"));
+        
+        // Kiểm tra xem nhân viên đã có trong quầy chưa
+        CounterStaff existingStaff = counterStaffRepository.findByCounterIdAndUserId(counterId, staffUserId);
+        
+        if (existingStaff != null) {
+            // Nếu đã có nhưng inactive, kích hoạt lại
+            if (!existingStaff.getIsActive()) {
+                existingStaff.setIsActive(true);
+                counterStaffRepository.save(existingStaff);
+            }
+            // Nếu đã active rồi thì không làm gì
+            return;
+        }
+        
+        // Thêm mới
+        CounterStaff newStaff = new CounterStaff();
+        newStaff.setCounterId(counterId);
+        newStaff.setUserId(staffUserId);
+        newStaff.setIsActive(true);
+        counterStaffRepository.save(newStaff);
+    }
+
+    /**
+     * ADMIN tổng: Xóa nhân viên khỏi quầy (không cần là counter admin)
+     */
+    @Transactional
+    public void removeStaffFromCounterByAdmin(UUID counterId, UUID staffUserId) {
+        CounterStaff cs = counterStaffRepository.findByCounterIdAndUserId(counterId, staffUserId);
+        if (cs == null) {
+            throw new NotFoundException("Nhân viên không thuộc quầy này.");
+        }
+        cs.setIsActive(false);
+        counterStaffRepository.save(cs);
     }
 }
 

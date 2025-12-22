@@ -7,8 +7,14 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import type { DailyTransactionStat } from "@/lib/api";
 
-const data = [
+type Props = {
+  dailyStats?: DailyTransactionStat[];
+};
+
+// Mock data for when no real data is available
+const mockData = [
   { name: "T2", deposit: 24000000, withdraw: 14000000, transfer: 18000000 },
   { name: "T3", deposit: 13000000, withdraw: 9800000, transfer: 22000000 },
   { name: "T4", deposit: 98000000, withdraw: 39000000, transfer: 35000000 },
@@ -18,7 +24,23 @@ const data = [
   { name: "CN", deposit: 43000000, withdraw: 34000000, transfer: 29000000 },
 ];
 
-export function TransactionChart() {
+const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+export function TransactionChart({ dailyStats }: Props) {
+  // Transform dailyStats to chart format
+  const chartData = dailyStats && dailyStats.length > 0
+    ? dailyStats.map((stat) => {
+        const date = new Date(stat.date);
+        const dayName = dayNames[date.getDay()];
+        return {
+          name: dayName,
+          deposit: stat.depositAmount + stat.counterDepositAmount,
+          withdraw: stat.withdrawAmount,
+          transfer: stat.transferAmount,
+        };
+      })
+    : mockData;
+
   return (
     <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-6 flex items-center justify-between">
@@ -46,7 +68,7 @@ export function TransactionChart() {
 
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
+          <AreaChart data={chartData}>
             <defs>
               <linearGradient id="colorDeposit" x1="0" y1="0" x2="0" y2="1">
                 <stop

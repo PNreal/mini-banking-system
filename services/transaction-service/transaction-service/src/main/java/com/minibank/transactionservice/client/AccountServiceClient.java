@@ -26,7 +26,7 @@ public class AccountServiceClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${services.account-service.url:http://localhost:8082}")
+    @Value("${services.account-service.url:http://localhost:8082/api}")
     private String accountServiceUrl;
     @Value("${services.internal-secret:internal-secret}")
     private String internalSecret;

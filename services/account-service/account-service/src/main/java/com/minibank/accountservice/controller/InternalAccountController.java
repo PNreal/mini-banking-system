@@ -91,5 +91,15 @@ public class InternalAccountController {
         accountService.unlock(accountId);
         return ResponseEntity.ok(new ApiResponse<>("Account unlocked", "OK"));
     }
+
+    /**
+     * Kích hoạt tài khoản sau khi KYC được approve
+     * Tạo số tài khoản chính thức cho user
+     */
+    @PostMapping("/activate-kyc/{userId}")
+    public ResponseEntity<ApiResponse<AccountResponse>> activateAfterKyc(@PathVariable UUID userId) {
+        Account account = accountService.activateAfterKyc(userId);
+        return ResponseEntity.ok(new ApiResponse<>("Account activated after KYC", AccountResponse.from(account)));
+    }
 }
 

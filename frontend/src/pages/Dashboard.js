@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getTransactionsHistoryApi } from '../api/client';
 
 const formatAmount = (value) =>
   Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
@@ -18,6 +19,33 @@ const formatDate = (date) => {
 
 const Dashboard = ({ user, transactions, onFreezeToggle }) => {
   const isFrozen = user?.isFrozen;
+  const [pendingCount, setPendingCount] = useState(0);
+  
+  // Fetch pending counter deposits count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
+        if (!token) return;
+        
+        const res = await getTransactionsHistoryApi(token, { 
+          page: 0, 
+          size: 50,
+          type: 'COUNTER_DEPOSIT'
+        });
+        const items = res?.data?.items || [];
+        const pending = items.filter(tx => tx.status === 'PENDING');
+        setPendingCount(pending.length);
+      } catch (e) {
+        console.log('Failed to fetch pending count:', e);
+      }
+    };
+    
+    fetchPendingCount();
+    // Auto refresh mỗi 15 giây
+    const interval = setInterval(fetchPendingCount, 15000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Giới hạn số lượng giao dịch hiển thị trên dashboard (5 giao dịch gần nhất)
   const MAX_DISPLAY_TRANSACTIONS = 5;
@@ -32,6 +60,19 @@ const Dashboard = ({ user, transactions, onFreezeToggle }) => {
           <div className="alert alert-danger shadow-sm border-0 mb-4">
             <i className="fas fa-exclamation-triangle me-2"></i>
             Tài khoản của bạn đang bị khóa. Một số tính năng sẽ bị vô hiệu hóa.
+          </div>
+        )}
+
+        {/* Thông báo giao dịch pending */}
+        {pendingCount > 0 && (
+          <div className="alert alert-warning shadow-sm border-0 mb-4 d-flex justify-content-between align-items-center">
+            <div>
+              <i className="fas fa-clock me-2"></i>
+              Bạn có <strong>{pendingCount}</strong> giao dịch nạp tiền đang chờ xử lý tại quầy.
+            </div>
+            <Link to="/pending-deposits" className="btn btn-sm btn-warning">
+              Xem chi tiết
+            </Link>
           </div>
         )}
 
@@ -63,9 +104,11 @@ const Dashboard = ({ user, transactions, onFreezeToggle }) => {
                 </div>
                 <h3 className="user-name mb-1">{user?.username}</h3>
                 <p className="text-muted mb-2 small">{user?.email}</p>
-                <span className="badge rounded-pill bg-light text-dark border px-2 px-md-3 py-1 py-md-2 small">
-                  Số Tài Khoản: {user?.userId}
-                </span>
+                {user?.accountNumber && user.accountNumber.trim() !== '' && (
+                  <span className="badge rounded-pill bg-light text-dark border px-2 px-md-3 py-1 py-md-2 small">
+                    Số Tài Khoản: {user.accountNumber}
+                  </span>
+                )}
               </div>
             </div>
           </div>

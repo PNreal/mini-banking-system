@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUserInfoApi, updateUserProfileApi, uploadAvatarApi } from '../api/client';
+import { getUserInfoApi, updateUserProfileApi, uploadAvatarApi, submitKycRequestApi, getMyKycStatusApi, uploadKycImageApi } from '../api/client';
 
 const Settings = ({ user, onUpdate }) => {
   const navigate = useNavigate();
@@ -14,21 +14,32 @@ const Settings = ({ user, onUpdate }) => {
   });
 
   const [kycForm, setKycForm] = useState({
-    idNumber: '',
-    idType: 'CCCD', // CCCD, CMND, Passport
-    issueDate: '',
-    issuePlace: '',
-    address: '',
+    citizenId: '', // Số giấy tờ
+    fullName: '', // Họ tên
+    dateOfBirth: '', // Ngày sinh
+    gender: 'MALE', // Giới tính: MALE, FEMALE, OTHER
+    placeOfIssue: '', // Nơi cấp
+    dateOfIssue: '', // Ngày cấp
+    expiryDate: '', // Ngày hết hạn
+    permanentAddress: '', // Địa chỉ thường trú
+    currentAddress: '', // Địa chỉ hiện tại
+    phoneNumber: '', // Số điện thoại
+    email: '', // Email
   });
 
-  const [kycStatus, setKycStatus] = useState('NOT_VERIFIED'); // NOT_VERIFIED, PENDING, VERIFIED, REJECTED
+  const [kycStatus, setKycStatus] = useState('NOT_VERIFIED'); // NOT_VERIFIED, PENDING, APPROVED, REJECTED
+  const [submittingKyc, setSubmittingKyc] = useState(false);
   const [idFrontImage, setIdFrontImage] = useState(null);
   const [idBackImage, setIdBackImage] = useState(null);
+  const [selfieImage, setSelfieImage] = useState(null);
+  const [frontImageUrl, setFrontImageUrl] = useState(null);
+  const [backImageUrl, setBackImageUrl] = useState(null);
+  const [selfieImageUrl, setSelfieImageUrl] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // Fetch user data từ backend khi component mount
+  // Fetch user data và KYC status từ backend khi component mount
   useEffect(() => {
     const fetchUserData = async () => {
       const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
@@ -40,23 +51,62 @@ const Settings = ({ user, onUpdate }) => {
       setLoading(true);
       setError(null);
       try {
-        const userData = await getUserInfoApi(token);
-        if (userData?.data) {
+        const [userData, kycStatusData] = await Promise.allSettled([
+          getUserInfoApi(token),
+          getMyKycStatusApi(token),
+        ]);
+
+        // Xử lý user data
+        if (userData.status === 'fulfilled' && userData.value?.data) {
+          const userInfo = userData.value.data;
           setForm({
-            username: userData.data.fullName || userData.data.username || user?.username || '',
-            email: userData.data.email || user?.email || '',
+            username: userInfo.fullName || userInfo.username || user?.username || '',
+            email: userInfo.email || user?.email || '',
           });
+          // Pre-fill KYC form với thông tin user
+          setKycForm(prev => ({
+            ...prev,
+            fullName: userInfo.fullName || userInfo.username || '',
+            email: userInfo.email || '',
+            phoneNumber: userInfo.phoneNumber || userInfo.phone || '',
+          }));
         } else {
-          // Nếu không có endpoint, dùng dữ liệu từ props
           setForm({
             username: user?.username || '',
             email: user?.email || '',
           });
         }
+
+        // Xử lý KYC status
+        if (kycStatusData.status === 'fulfilled' && kycStatusData.value?.data) {
+          const kycData = kycStatusData.value.data;
+          const status = kycData.status || 'NOT_VERIFIED';
+          setKycStatus(status === 'APPROVED' ? 'APPROVED' : status === 'REJECTED' ? 'REJECTED' : status === 'PENDING' ? 'PENDING' : 'NOT_VERIFIED');
+          
+          // Pre-fill form với dữ liệu KYC đã có
+          if (kycData) {
+            setKycForm(prev => ({
+              ...prev,
+              citizenId: kycData.citizenId || '',
+              fullName: kycData.fullName || prev.fullName,
+              dateOfBirth: kycData.dateOfBirth || '',
+              gender: kycData.gender || 'MALE',
+              placeOfIssue: kycData.placeOfIssue || '',
+              dateOfIssue: kycData.dateOfIssue || '',
+              expiryDate: kycData.expiryDate || '',
+              permanentAddress: kycData.permanentAddress || '',
+              currentAddress: kycData.currentAddress || '',
+              phoneNumber: kycData.phoneNumber || prev.phoneNumber,
+              email: kycData.email || prev.email,
+            }));
+            setFrontImageUrl(kycData.frontIdImageUrl);
+            setBackImageUrl(kycData.backIdImageUrl);
+            setSelfieImageUrl(kycData.selfieImageUrl);
+          }
+        }
       } catch (err) {
         console.error('Error fetching user data:', err);
         setError('Không thể tải thông tin người dùng. Sử dụng dữ liệu hiện có.');
-        // Vẫn dùng dữ liệu từ props
         setForm({
           username: user?.username || '',
           email: user?.email || '',
@@ -82,21 +132,24 @@ const Settings = ({ user, onUpdate }) => {
   const handleImageChange = (e, type) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Vui lòng chọn file ảnh hợp lệ.');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Kích thước ảnh không được vượt quá 5MB.');
+        return;
+      }
+
       if (type === 'front') {
         setIdFrontImage(file);
       } else if (type === 'back') {
         setIdBackImage(file);
+      } else if (type === 'selfie') {
+        setSelfieImage(file);
       } else if (type === 'avatar') {
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-          setError('Vui lòng chọn file ảnh hợp lệ.');
-          return;
-        }
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          setError('Kích thước ảnh không được vượt quá 5MB.');
-          return;
-        }
         setAvatarFile(file);
         // Create preview
         const reader = new FileReader();
@@ -216,17 +269,85 @@ const Settings = ({ user, onUpdate }) => {
     }
   };
 
-  const handleKycSubmit = (e) => {
+  const handleKycSubmit = async (e) => {
     e.preventDefault();
-    // Demo - sẽ thay bằng API call thực tế
-    setKycStatus('PENDING');
-    alert('Đã gửi yêu cầu xác thực KYC. Vui lòng chờ duyệt.');
+    
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
+    if (!token) {
+      setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      return;
+    }
+
+    // Validate required fields
+    if (!kycForm.citizenId || !kycForm.fullName || !kycForm.dateOfBirth || 
+        !kycForm.permanentAddress || !kycForm.phoneNumber) {
+      setError('Vui lòng điền đầy đủ các trường bắt buộc.');
+      return;
+    }
+
+    // Validate images - chỉ cần chọn file, không cần upload thực
+    if (!idFrontImage || !idBackImage || !selfieImage) {
+      setError('Vui lòng chọn đầy đủ 3 ảnh: mặt trước, mặt sau giấy tờ và ảnh chân dung.');
+      return;
+    }
+
+    setSubmittingKyc(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Tạm thời dùng URL mặc định vì backend chưa có endpoint upload thực
+      const frontUrl = '/assets/kyc-placeholder.jpg';
+      const backUrl = '/assets/kyc-placeholder.jpg';
+      const selfieUrl = '/assets/kyc-placeholder.jpg';
+
+      // Prepare KYC request data
+      const kycData = {
+        citizenId: kycForm.citizenId,
+        fullName: kycForm.fullName,
+        dateOfBirth: kycForm.dateOfBirth,
+        gender: kycForm.gender,
+        placeOfIssue: kycForm.placeOfIssue || null,
+        dateOfIssue: kycForm.dateOfIssue || null,
+        expiryDate: kycForm.expiryDate || null,
+        permanentAddress: kycForm.permanentAddress,
+        currentAddress: kycForm.currentAddress || null,
+        phoneNumber: kycForm.phoneNumber,
+        email: kycForm.email || user?.email || null,
+        frontIdImageUrl: frontUrl,
+        backIdImageUrl: backUrl,
+        selfieImageUrl: selfieUrl,
+      };
+
+      // Submit KYC request
+      const response = await submitKycRequestApi(token, kycData);
+
+      if (response?.success || response?.data) {
+        setKycStatus('PENDING');
+        setSuccess('Đã gửi yêu cầu xác thực KYC thành công. Vui lòng chờ admin duyệt.');
+        // Clear form images
+        setIdFrontImage(null);
+        setIdBackImage(null);
+        setSelfieImage(null);
+        setFrontImageUrl(frontUrl);
+        setBackImageUrl(backUrl);
+        setSelfieImageUrl(selfieUrl);
+      } else {
+        throw new Error(response?.message || 'Không thể gửi yêu cầu KYC.');
+      }
+    } catch (err) {
+      console.error('Error submitting KYC:', err);
+      setError(err.message || 'Không thể gửi yêu cầu KYC. Vui lòng thử lại.');
+    } finally {
+      setSubmittingKyc(false);
+    }
   };
 
   const getKycStatusBadge = () => {
     const statusMap = {
       NOT_VERIFIED: { text: 'Chưa xác thực', class: 'bg-secondary' },
       PENDING: { text: 'Đang chờ duyệt', class: 'bg-warning' },
+      APPROVED: { text: 'Đã xác thực', class: 'bg-success' },
       VERIFIED: { text: 'Đã xác thực', class: 'bg-success' },
       REJECTED: { text: 'Từ chối', class: 'bg-danger' },
     };
@@ -338,6 +459,7 @@ const Settings = ({ user, onUpdate }) => {
           </Link>
         </div>
 
+        {/* Tạm thời tắt tính năng thay đổi ảnh đại diện
         <div className="form-group">
           <h5>Ảnh đại diện</h5>
           <div className="mb-3">
@@ -389,6 +511,7 @@ const Settings = ({ user, onUpdate }) => {
             )}
           </div>
         </div>
+        */}
       </form>
 
       {/* KYC Tài khoản Section */}
@@ -398,7 +521,7 @@ const Settings = ({ user, onUpdate }) => {
           {getKycStatusBadge()}
         </div>
 
-        {kycStatus === 'VERIFIED' ? (
+        {kycStatus === 'APPROVED' || kycStatus === 'VERIFIED' ? (
           <div className="alert alert-success">
             <i className="fas fa-check-circle me-2"></i>
             Tài khoản của bạn đã được xác thực thành công. Bạn có thể sử dụng đầy đủ các tính năng của hệ thống.
@@ -421,35 +544,33 @@ const Settings = ({ user, onUpdate }) => {
 
             <div className="form-group">
               <label className="form-control-label">
-                Loại giấy tờ <span className="text-danger">*</span>
+                Họ và tên <span className="text-danger">*</span>
               </label>
-              <select
-                name="idType"
+              <input
+                name="fullName"
+                type="text"
                 className="form-control form-control-lg"
-                value={kycForm.idType}
+                value={kycForm.fullName}
                 onChange={handleKycChange}
+                placeholder="Nhập họ và tên"
                 required
-                disabled={kycStatus === 'PENDING' || kycStatus === 'VERIFIED'}
-              >
-                <option value="CCCD">Căn cước công dân (CCCD)</option>
-                <option value="CMND">Chứng minh nhân dân (CMND)</option>
-                <option value="Passport">Hộ chiếu (Passport)</option>
-              </select>
+                disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
+              />
             </div>
 
             <div className="form-group">
               <label className="form-control-label">
-                Số giấy tờ <span className="text-danger">*</span>
+                Số giấy tờ (CCCD/CMND/Passport) <span className="text-danger">*</span>
               </label>
               <input
-                name="idNumber"
+                name="citizenId"
                 type="text"
                 className="form-control form-control-lg"
-                value={kycForm.idNumber}
+                value={kycForm.citizenId}
                 onChange={handleKycChange}
                 placeholder="Nhập số giấy tờ"
                 required
-                disabled={kycStatus === 'PENDING' || kycStatus === 'VERIFIED'}
+                disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
               />
             </div>
 
@@ -457,33 +578,119 @@ const Settings = ({ user, onUpdate }) => {
               <div className="col-md-6">
                 <div className="form-group">
                   <label className="form-control-label">
-                    Ngày cấp <span className="text-danger">*</span>
+                    Ngày sinh <span className="text-danger">*</span>
                   </label>
                   <input
-                    name="issueDate"
+                    name="dateOfBirth"
                     type="date"
                     className="form-control form-control-lg"
-                    value={kycForm.issueDate}
+                    value={kycForm.dateOfBirth}
                     onChange={handleKycChange}
                     required
-                    disabled={kycStatus === 'PENDING' || kycStatus === 'VERIFIED'}
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
                   />
                 </div>
               </div>
               <div className="col-md-6">
                 <div className="form-group">
                   <label className="form-control-label">
-                    Nơi cấp <span className="text-danger">*</span>
+                    Giới tính <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="gender"
+                    className="form-control form-control-lg"
+                    value={kycForm.gender}
+                    onChange={handleKycChange}
+                    required
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
+                  >
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                    <option value="OTHER">Khác</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <div className="form-group">
+                  <label className="form-control-label">
+                    Ngày cấp
                   </label>
                   <input
-                    name="issuePlace"
+                    name="dateOfIssue"
+                    type="date"
+                    className="form-control form-control-lg"
+                    value={kycForm.dateOfIssue}
+                    onChange={handleKycChange}
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
+                  />
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="form-group">
+                  <label className="form-control-label">
+                    Nơi cấp
+                  </label>
+                  <input
+                    name="placeOfIssue"
                     type="text"
                     className="form-control form-control-lg"
-                    value={kycForm.issuePlace}
+                    value={kycForm.placeOfIssue}
                     onChange={handleKycChange}
                     placeholder="Nhập nơi cấp"
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-control-label">
+                Ngày hết hạn
+              </label>
+              <input
+                name="expiryDate"
+                type="date"
+                className="form-control form-control-lg"
+                value={kycForm.expiryDate}
+                onChange={handleKycChange}
+                disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
+              />
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <div className="form-group">
+                  <label className="form-control-label">
+                    Số điện thoại <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    name="phoneNumber"
+                    type="tel"
+                    className="form-control form-control-lg"
+                    value={kycForm.phoneNumber}
+                    onChange={handleKycChange}
+                    placeholder="Nhập số điện thoại"
                     required
-                    disabled={kycStatus === 'PENDING' || kycStatus === 'VERIFIED'}
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
+                  />
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="form-group">
+                  <label className="form-control-label">
+                    Email
+                  </label>
+                  <input
+                    name="email"
+                    type="email"
+                    className="form-control form-control-lg"
+                    value={kycForm.email}
+                    onChange={handleKycChange}
+                    placeholder="Nhập email"
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
                   />
                 </div>
               </div>
@@ -494,14 +701,29 @@ const Settings = ({ user, onUpdate }) => {
                 Địa chỉ thường trú <span className="text-danger">*</span>
               </label>
               <textarea
-                name="address"
+                name="permanentAddress"
                 className="form-control form-control-lg"
-                value={kycForm.address}
+                value={kycForm.permanentAddress}
                 onChange={handleKycChange}
                 rows="3"
                 placeholder="Nhập địa chỉ thường trú"
                 required
-                disabled={kycStatus === 'PENDING' || kycStatus === 'VERIFIED'}
+                disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-control-label">
+                Địa chỉ hiện tại
+              </label>
+              <textarea
+                name="currentAddress"
+                className="form-control form-control-lg"
+                value={kycForm.currentAddress}
+                onChange={handleKycChange}
+                rows="3"
+                placeholder="Nhập địa chỉ hiện tại (nếu khác địa chỉ thường trú)"
+                disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
               />
             </div>
           </fieldset>
@@ -510,17 +732,17 @@ const Settings = ({ user, onUpdate }) => {
             <legend className="border-bottom mb-4">Tài liệu đính kèm</legend>
 
             <div className="row">
-              <div className="col-md-6 mb-3">
+              <div className="col-md-4 mb-3">
                 <div className="form-group">
                   <label className="form-control-label">
                     Mặt trước giấy tờ <span className="text-danger">*</span>
                   </label>
                   <input
                     type="file"
-                    className="form-control-file"
+                    className="form-control form-control-lg"
                     accept="image/*"
                     onChange={(e) => handleImageChange(e, 'front')}
-                    disabled={kycStatus === 'PENDING' || kycStatus === 'VERIFIED'}
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
                     required={kycStatus === 'NOT_VERIFIED' || kycStatus === 'REJECTED'}
                   />
                   {idFrontImage && (
@@ -531,23 +753,31 @@ const Settings = ({ user, onUpdate }) => {
                       </small>
                     </div>
                   )}
+                  {frontImageUrl && !idFrontImage && (
+                    <div className="mt-2">
+                      <small className="text-info">
+                        <i className="fas fa-image me-1"></i>
+                        Đã có ảnh đã upload
+                      </small>
+                    </div>
+                  )}
                   <small className="form-text text-muted d-block mt-1">
                     Vui lòng upload ảnh rõ ràng, đầy đủ thông tin
                   </small>
                 </div>
               </div>
 
-              <div className="col-md-6 mb-3">
+              <div className="col-md-4 mb-3">
                 <div className="form-group">
                   <label className="form-control-label">
                     Mặt sau giấy tờ <span className="text-danger">*</span>
                   </label>
                   <input
                     type="file"
-                    className="form-control-file"
+                    className="form-control form-control-lg"
                     accept="image/*"
                     onChange={(e) => handleImageChange(e, 'back')}
-                    disabled={kycStatus === 'PENDING' || kycStatus === 'VERIFIED'}
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
                     required={kycStatus === 'NOT_VERIFIED' || kycStatus === 'REJECTED'}
                   />
                   {idBackImage && (
@@ -558,8 +788,51 @@ const Settings = ({ user, onUpdate }) => {
                       </small>
                     </div>
                   )}
+                  {backImageUrl && !idBackImage && (
+                    <div className="mt-2">
+                      <small className="text-info">
+                        <i className="fas fa-image me-1"></i>
+                        Đã có ảnh đã upload
+                      </small>
+                    </div>
+                  )}
                   <small className="form-text text-muted d-block mt-1">
                     Vui lòng upload ảnh rõ ràng, đầy đủ thông tin
+                  </small>
+                </div>
+              </div>
+
+              <div className="col-md-4 mb-3">
+                <div className="form-group">
+                  <label className="form-control-label">
+                    Ảnh chân dung <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    className="form-control form-control-lg"
+                    accept="image/*"
+                    onChange={(e) => handleImageChange(e, 'selfie')}
+                    disabled={kycStatus === 'PENDING' || kycStatus === 'APPROVED' || kycStatus === 'VERIFIED'}
+                    required={kycStatus === 'NOT_VERIFIED' || kycStatus === 'REJECTED'}
+                  />
+                  {selfieImage && (
+                    <div className="mt-2">
+                      <small className="text-success">
+                        <i className="fas fa-check me-1"></i>
+                        Đã chọn: {selfieImage.name}
+                      </small>
+                    </div>
+                  )}
+                  {selfieImageUrl && !selfieImage && (
+                    <div className="mt-2">
+                      <small className="text-info">
+                        <i className="fas fa-image me-1"></i>
+                        Đã có ảnh đã upload
+                      </small>
+                    </div>
+                  )}
+                  <small className="form-text text-muted d-block mt-1">
+                    Vui lòng upload ảnh chân dung rõ ràng
                   </small>
                 </div>
               </div>
@@ -568,14 +841,23 @@ const Settings = ({ user, onUpdate }) => {
 
           {(kycStatus === 'NOT_VERIFIED' || kycStatus === 'REJECTED') && (
             <div className="form-group">
-              <button type="submit" className="btn btn-primary">
-                <i className="fas fa-paper-plane me-2"></i>
-                Gửi yêu cầu xác thực
+              <button type="submit" className="btn btn-primary" disabled={submittingKyc}>
+                {submittingKyc ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Đang gửi...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-paper-plane me-2"></i>
+                    Gửi yêu cầu xác thực
+                  </>
+                )}
               </button>
             </div>
           )}
 
-          {kycStatus === 'VERIFIED' && (
+          {(kycStatus === 'APPROVED' || kycStatus === 'VERIFIED') && (
             <div className="alert alert-info">
               <i className="fas fa-info-circle me-2"></i>
               Tài khoản của bạn đã được xác thực. Nếu cần cập nhật thông tin, vui lòng liên hệ bộ phận hỗ trợ.

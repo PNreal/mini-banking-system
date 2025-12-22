@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCountersApi } from '../api/client';
+import { getCountersApi, withdrawAtCounterApi } from '../api/client';
 
 // Port UI từ prototype trong folder `rút/` (Vite/Tailwind) sang JSX + CSS thuần trong CRA.
 // Lưu ý: chỉ port giao diện/UX, phần xử lý giao dịch vẫn dùng props: balance, onSubmit, isFrozen.
@@ -459,11 +459,35 @@ const Withdraw = ({ balance, onSubmit, isFrozen }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isValidForm) return;
-    const success = onSubmit(totalDeduct);
-    if (success) navigate('/dashboard');
+    if (!isValidForm || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      // Nếu là rút tiền tại quầy, gọi API riêng
+      if (withdrawMethod === 'atm' && selectedDestination) {
+        const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
+        const response = await withdrawAtCounterApi(token, numericAmount, selectedDestination);
+        if (response && response.data) {
+          alert(`Yêu cầu rút tiền đã được tạo. Mã giao dịch: ${response.data.transactionCode || 'N/A'}\n\nVui lòng đến quầy giao dịch để nhận tiền.`);
+          navigate('/dashboard');
+        }
+        return;
+      }
+      
+      // Các phương thức khác
+      const success = await onSubmit(numericAmount);
+      if (success) {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      alert('Lỗi khi tạo yêu cầu rút tiền: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -760,8 +784,8 @@ const Withdraw = ({ balance, onSubmit, isFrozen }) => {
             {/* CTA */}
             <div className="wds-cta" aria-label="Xác nhận rút tiền">
               <div className="wds-cta-inner">
-                <button type="submit" className="wds-primary-btn" disabled={!isValidForm}>
-                  Xác nhận rút tiền
+                <button type="submit" className="wds-primary-btn" disabled={!isValidForm || isSubmitting}>
+                  {isSubmitting ? 'Đang xử lý...' : 'Xác nhận rút tiền'}
                 </button>
               </div>
             </div>

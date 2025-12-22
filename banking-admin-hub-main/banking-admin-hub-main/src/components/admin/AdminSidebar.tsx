@@ -8,7 +8,8 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Landmark,
+  Wallet,
+  FileCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -19,6 +20,7 @@ const navItems = [
   { icon: Users, label: "Quản lý người dùng", path: "/admin/users" },
   { icon: Building2, label: "Quản lý quầy", path: "/admin/counters" },
   { icon: UserCog, label: "Quản lý nhân viên", path: "/admin/employees" },
+  { icon: FileCheck, label: "Quản lý KYC", path: "/admin/kyc" },
   { icon: Receipt, label: "Giao dịch", path: "/admin/transactions" },
   { icon: BarChart3, label: "Thống kê", path: "/admin/statistics" },
 ];
@@ -37,7 +39,7 @@ export function AdminSidebar() {
         {/* Logo */}
         <div className="flex h-20 items-center gap-3 border-b border-sidebar-border px-6">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl gradient-primary shadow-glow">
-            <Landmark className="h-6 w-6 text-primary-foreground" />
+            <Wallet className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
             <h1 className="font-display text-lg font-bold text-sidebar-foreground">

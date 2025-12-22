@@ -22,8 +22,16 @@ async function request(
   });
 
   let data;
+  const contentType = res.headers.get('content-type') || '';
+  
   try {
-    data = await res.json();
+    if (contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      // Handle text/plain response
+      const text = await res.text();
+      data = { success: res.ok, message: text };
+    }
   } catch (e) {
     data = null;
   }
@@ -80,6 +88,15 @@ export async function registerApi(payload) {
   return request(GATEWAY_API_BASE, '/users/register', {
     method: 'POST',
     body: payload,
+  });
+}
+
+export async function changePasswordApi(token, currentPassword, newPassword) {
+  // Đổi mật khẩu: PUT http://localhost:8080/api/v1/users/change-password
+  return request(GATEWAY_API_BASE, '/users/change-password', {
+    method: 'PUT',
+    body: { currentPassword, newPassword },
+    token,
   });
 }
 
@@ -161,10 +178,70 @@ export async function uploadAvatarApi(token, file) {
   }
 }
 
+export async function uploadKycImageApi(token, file) {
+  // Upload ảnh KYC - có thể dùng cùng endpoint với avatar hoặc endpoint riêng
+  // Tạm thời dùng uploadAvatarApi làm template, có thể cần endpoint riêng
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('image', file);
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+  };
+
+  try {
+    // Thử endpoint upload image chung
+    const res = await fetch(`${GATEWAY_API_BASE}/kyc/upload-image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      // Fallback: dùng endpoint avatar nếu không có endpoint riêng
+      return await uploadAvatarApi(token, file);
+    }
+
+    return await res.json();
+  } catch (error) {
+    // Fallback: dùng endpoint avatar
+    return await uploadAvatarApi(token, file);
+  }
+}
+
+export async function submitKycRequestApi(token, kycData) {
+  // POST /api/kyc/submit - Gửi yêu cầu KYC
+  // Note: API Gateway sẽ route đến user-service
+  return request(GATEWAY_API_BASE, '/kyc/submit', {
+    method: 'POST',
+    body: kycData,
+    token,
+  });
+}
+
+export async function getMyKycStatusApi(token) {
+  // GET /api/kyc/my-status - Lấy trạng thái KYC của user hiện tại
+  // Note: API Gateway sẽ route đến user-service
+  return request(GATEWAY_API_BASE, '/kyc/my-status', {
+    method: 'GET',
+    token,
+  });
+}
+
 export async function depositApi(token, amount) {
   // Nạp tiền vào tài khoản
   // POST /transactions/deposit
   return request(GATEWAY_API_BASE, '/transactions/deposit', {
+    method: 'POST',
+    body: { amount },
+    token,
+  });
+}
+
+export async function withdrawApi(token, amount) {
+  // Rút tiền khỏi tài khoản
+  // POST /transactions/withdraw
+  return request(GATEWAY_API_BASE, '/transactions/withdraw', {
     method: 'POST',
     body: { amount },
     token,
@@ -209,10 +286,49 @@ export async function cancelCounterDepositApi(token, transactionId) {
   });
 }
 
+export async function getPendingCounterTransactionsApi(token) {
+  // Lấy danh sách giao dịch tại quầy đang chờ xử lý của user
+  // GET /transactions/pending-counter
+  return request(GATEWAY_API_BASE, '/transactions/pending-counter', {
+    method: 'GET',
+    token,
+  });
+}
+
 export async function confirmCounterDepositApi(token, transactionId) {
   // Nhân viên xác nhận nạp tiền ở quầy
   // POST /transactions/deposit-counter/{transactionId}/confirm
   return request(GATEWAY_API_BASE, `/transactions/deposit-counter/${transactionId}/confirm`, {
+    method: 'POST',
+    token,
+  });
+}
+
+// ========== Counter Withdraw APIs ==========
+
+export async function withdrawAtCounterApi(token, amount, counterId) {
+  // Rút tiền ở quầy
+  // POST /transactions/withdraw-counter
+  return request(GATEWAY_API_BASE, '/transactions/withdraw-counter', {
+    method: 'POST',
+    body: { amount, counterId },
+    token,
+  });
+}
+
+export async function cancelCounterWithdrawApi(token, transactionId) {
+  // Hủy giao dịch rút tiền ở quầy
+  // POST /transactions/withdraw-counter/{transactionId}/cancel
+  return request(GATEWAY_API_BASE, `/transactions/withdraw-counter/${transactionId}/cancel`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export async function confirmCounterWithdrawApi(token, transactionId) {
+  // Nhân viên xác nhận rút tiền ở quầy
+  // POST /transactions/withdraw-counter/{transactionId}/confirm
+  return request(GATEWAY_API_BASE, `/transactions/withdraw-counter/${transactionId}/confirm`, {
     method: 'POST',
     token,
   });

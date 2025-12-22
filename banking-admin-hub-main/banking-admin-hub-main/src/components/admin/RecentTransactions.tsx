@@ -1,73 +1,57 @@
 import { ArrowUpRight, ArrowDownLeft, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import type { TransactionItem } from "@/lib/api";
 
-interface Transaction {
-  id: string;
-  type: "deposit" | "withdraw" | "transfer";
-  amount: number;
-  user: string;
-  status: "completed" | "pending" | "failed";
-  time: string;
-}
+type Props = {
+  transactions?: TransactionItem[];
+};
 
-const transactions: Transaction[] = [
+// Mock data for when no real data is available
+const mockTransactions = [
   {
-    id: "TXN001",
-    type: "deposit",
+    transactionId: "TXN001",
+    type: "DEPOSIT" as const,
     amount: 5000000,
-    user: "Nguyễn Văn A",
-    status: "completed",
-    time: "2 phút trước",
+    status: "SUCCESS" as const,
+    timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
   },
   {
-    id: "TXN002",
-    type: "transfer",
+    transactionId: "TXN002",
+    type: "TRANSFER" as const,
     amount: 2500000,
-    user: "Trần Thị B",
-    status: "pending",
-    time: "15 phút trước",
+    status: "PENDING" as const,
+    timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
   },
   {
-    id: "TXN003",
-    type: "withdraw",
+    transactionId: "TXN003",
+    type: "WITHDRAW" as const,
     amount: 1000000,
-    user: "Lê Văn C",
-    status: "completed",
-    time: "32 phút trước",
-  },
-  {
-    id: "TXN004",
-    type: "deposit",
-    amount: 10000000,
-    user: "Phạm Thị D",
-    status: "completed",
-    time: "1 giờ trước",
-  },
-  {
-    id: "TXN005",
-    type: "transfer",
-    amount: 500000,
-    user: "Hoàng Văn E",
-    status: "failed",
-    time: "2 giờ trước",
+    status: "SUCCESS" as const,
+    timestamp: new Date(Date.now() - 32 * 60 * 1000).toISOString(),
   },
 ];
 
 const typeConfig = {
-  deposit: {
+  DEPOSIT: {
     icon: ArrowDownLeft,
     label: "Nạp tiền",
     color: "text-success",
     bg: "bg-success/10",
   },
-  withdraw: {
+  COUNTER_DEPOSIT: {
+    icon: Building2,
+    label: "Nạp tại quầy",
+    color: "text-success",
+    bg: "bg-success/10",
+  },
+  WITHDRAW: {
     icon: ArrowUpRight,
     label: "Rút tiền",
     color: "text-warning",
     bg: "bg-warning/10",
   },
-  transfer: {
+  TRANSFER: {
     icon: Building2,
     label: "Chuyển khoản",
     color: "text-info",
@@ -76,32 +60,51 @@ const typeConfig = {
 };
 
 const statusConfig = {
-  completed: { label: "Hoàn thành", variant: "default" as const },
-  pending: { label: "Đang xử lý", variant: "secondary" as const },
-  failed: { label: "Thất bại", variant: "destructive" as const },
+  SUCCESS: { label: "Hoàn thành", variant: "default" as const },
+  PENDING: { label: "Đang xử lý", variant: "secondary" as const },
+  FAILED: { label: "Thất bại", variant: "destructive" as const },
+  CANCELLED: { label: "Đã hủy", variant: "outline" as const },
 };
 
-export function RecentTransactions() {
+function formatTimeAgo(timestamp: string): string {
+  const now = new Date();
+  const time = new Date(timestamp);
+  const diffMs = now.getTime() - time.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "Vừa xong";
+  if (diffMins < 60) return `${diffMins} phút trước`;
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  return `${diffDays} ngày trước`;
+}
+
+export function RecentTransactions({ transactions }: Props) {
+  const displayTransactions = transactions && transactions.length > 0
+    ? transactions.slice(0, 5)
+    : mockTransactions;
+
   return (
     <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-6 flex items-center justify-between">
         <h3 className="font-display text-lg font-semibold text-foreground">
           Giao dịch gần đây
         </h3>
-        <button className="text-sm font-medium text-primary hover:underline">
+        <a href="/admin/transactions" className="text-sm font-medium text-primary hover:underline">
           Xem tất cả
-        </button>
+        </a>
       </div>
 
       <div className="space-y-4">
-        {transactions.map((tx, index) => {
-          const config = typeConfig[tx.type];
-          const status = statusConfig[tx.status];
+        {displayTransactions.map((tx, index) => {
+          const config = typeConfig[tx.type as keyof typeof typeConfig] || typeConfig.DEPOSIT;
+          const status = statusConfig[tx.status as keyof typeof statusConfig] || statusConfig.PENDING;
           const Icon = config.icon;
 
           return (
             <div
-              key={tx.id}
+              key={tx.transactionId}
               className="flex items-center justify-between animate-fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
             >
@@ -116,10 +119,10 @@ export function RecentTransactions() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {tx.user}
+                    {tx.transactionCode || tx.transactionId.slice(0, 8)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {config.label} • {tx.time}
+                    {config.label} • {formatTimeAgo(tx.timestamp)}
                   </p>
                 </div>
               </div>
@@ -127,10 +130,10 @@ export function RecentTransactions() {
                 <p
                   className={cn(
                     "text-sm font-semibold",
-                    tx.type === "withdraw" ? "text-destructive" : "text-success"
+                    tx.type === "WITHDRAW" ? "text-destructive" : "text-success"
                   )}
                 >
-                  {tx.type === "withdraw" ? "-" : "+"}
+                  {tx.type === "WITHDRAW" ? "-" : "+"}
                   {tx.amount.toLocaleString("vi-VN")}đ
                 </p>
                 <Badge variant={status.variant} className="text-xs">
@@ -140,6 +143,12 @@ export function RecentTransactions() {
             </div>
           );
         })}
+
+        {displayTransactions.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            Chưa có giao dịch nào
+          </div>
+        )}
       </div>
     </div>
   );

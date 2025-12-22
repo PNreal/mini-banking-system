@@ -78,10 +78,11 @@ public class UserService {
     }
 
     public AuthResponse loginStaff(UserLoginRequest request) {
-        return loginWithRole(request, "STAFF");
+        // Cho phép các role staff: STAFF, COUNTER_ADMIN, COUNTER_STAFF
+        return loginWithStaffRoles(request);
     }
 
-    private AuthResponse loginWithRole(UserLoginRequest request, String requiredRole) {
+    private AuthResponse loginWithStaffRoles(UserLoginRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -92,17 +93,75 @@ public class UserService {
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            // Xử lý tăng số lần đăng nhập sai
             int attempts = user.getFailedLoginAttempts() + 1;
             user.setFailedLoginAttempts(attempts);
 
-            // Nếu sai từ 5 lần trở lên -> khóa 10 phút
             if (attempts >= 5) {
                 user.setLoginLockedUntil(Instant.now().plus(10, ChronoUnit.MINUTES));
-                user.setFailedLoginAttempts(0); // reset lại bộ đếm sau khi khóa
+                user.setFailedLoginAttempts(0);
             }
 
             userRepository.save(user);
+            throw new BadRequestException("Invalid email or password");
+        }
+
+        if (user.getStatus() == UserStatus.FROZEN) {
+            throw new IllegalStateException("Account is frozen");
+        }
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new IllegalStateException("Account is locked");
+        }
+
+        // Kiểm tra role phải là một trong các staff roles
+        String role = user.getRole();
+        if (!"STAFF".equals(role) && !"COUNTER_ADMIN".equals(role) && !"COUNTER_STAFF".equals(role)) {
+            throw new BadRequestException("Access denied. Staff role required.");
+        }
+
+        // Tạo token với userId và role
+        String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getId(), user.getRole());
+        String refreshToken = jwtService.generateRefreshToken(user.getEmail());
+
+        user.setRefreshToken(refreshToken);
+        user.setRefreshTokenExpiry(Instant.now().plus(7, ChronoUnit.DAYS));
+        user.setFailedLoginAttempts(0);
+        user.setLoginLockedUntil(null);
+        userRepository.save(user);
+
+        publishEvent("USER_LOGIN", user.getId());
+
+        AuthResponse response = new AuthResponse();
+        response.setUserId(user.getId());
+        response.setAccessToken(accessToken);
+        response.setRefreshToken(refreshToken);
+        response.setRole(user.getRole());
+        return response;
+    }
+
+    private AuthResponse loginWithRole(UserLoginRequest request, String requiredRole) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        // Kiểm tra tài khoản có đang bị khóa tạm thời do nhập sai nhiều lần không (chỉ áp dụng cho non-admin)
+        if (!"ADMIN".equals(user.getRole()) && user.getLoginLockedUntil() != null && user.getLoginLockedUntil().isAfter(Instant.now())) {
+            throw new BadRequestException("Tài khoản đã bị tạm khóa 10 phút do nhập sai mật khẩu quá nhiều lần.");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            // Xử lý tăng số lần đăng nhập sai (chỉ áp dụng cho non-admin)
+            if (!"ADMIN".equals(user.getRole())) {
+                int attempts = user.getFailedLoginAttempts() + 1;
+                user.setFailedLoginAttempts(attempts);
+
+                // Nếu sai từ 5 lần trở lên -> khóa 10 phút
+                if (attempts >= 5) {
+                    user.setLoginLockedUntil(Instant.now().plus(10, ChronoUnit.MINUTES));
+                    user.setFailedLoginAttempts(0); // reset lại bộ đếm sau khi khóa
+                }
+
+                userRepository.save(user);
+            }
             throw new BadRequestException("Invalid email or password");
         }
         if (user.getStatus() == UserStatus.FROZEN) {
@@ -117,7 +176,8 @@ public class UserService {
             throw new BadRequestException("Access denied. Required role: " + requiredRole);
         }
 
-        String accessToken = jwtService.generateAccessToken(user.getEmail());
+        // Tạo token với userId và role
+        String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getId(), user.getRole());
         String refreshToken = jwtService.generateRefreshToken(user.getEmail());
 
         user.setRefreshToken(refreshToken);
@@ -126,10 +186,12 @@ public class UserService {
 
         publishEvent("USER_LOGIN", user.getId());
 
-        // Đăng nhập thành công: reset lại bộ đếm và trạng thái khóa tạm thời
-        user.setFailedLoginAttempts(0);
-        user.setLoginLockedUntil(null);
-        userRepository.save(user);
+        // Đăng nhập thành công: reset lại bộ đếm và trạng thái khóa tạm thời (chỉ áp dụng cho non-admin)
+        if (!"ADMIN".equals(user.getRole())) {
+            user.setFailedLoginAttempts(0);
+            user.setLoginLockedUntil(null);
+            userRepository.save(user);
+        }
 
         AuthResponse response = new AuthResponse();
         response.setAccessToken(accessToken);
@@ -174,6 +236,34 @@ public class UserService {
     }
 
     @Transactional
+    public void changePassword(String token, String currentPassword, String newPassword) {
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        String email = jwtService.extractUsername(token);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        // Verify current password
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BadRequestException("Current password is incorrect");
+        }
+
+        // Validate new password is different
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new BadRequestException("New password must be different from current password");
+        }
+
+        // Update password
+        String hashedPassword = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashedPassword);
+        userRepository.save(user);
+
+        publishEvent("PASSWORD_CHANGED", user.getId());
+        log.info("Password changed successfully for user: {}", email);
+    }
+
+    @Transactional
     public void freezeCurrentUser(String token) {
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
@@ -212,7 +302,8 @@ public class UserService {
             throw new BadRequestException("Refresh token has expired. Please login again.");
         }
 
-        String newAccessToken = jwtService.generateAccessToken(user.getEmail());
+        // Tạo token mới với userId và role
+        String newAccessToken = jwtService.generateAccessToken(user.getEmail(), user.getId(), user.getRole());
         AuthResponse response = new AuthResponse();
         response.setAccessToken(newAccessToken);
         response.setRefreshToken(request.getRefreshToken());
@@ -330,7 +421,23 @@ public class UserService {
     }
 
     /**
-     * Tạo tài khoản employee (COUNTER_ADMIN, COUNTER_STAFF, KYC_STAFF)
+     * Cập nhật avatar URL cho user
+     * Tạm thời dùng URL giả vì chưa có storage service
+     */
+    @Transactional
+    public UserResponse updateAvatar(String email, String avatarUrl) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found with email: " + email));
+        
+        user.setAvatarUrl(avatarUrl);
+        User updated = userRepository.save(user);
+        publishEvent("USER_AVATAR_UPDATED", updated.getId());
+        
+        return UserResponse.from(updated);
+    }
+
+    /**
+     * Tạo tài khoản employee (COUNTER_ADMIN, COUNTER_STAFF)
      * Được gọi từ các service khác qua internal endpoint
      */
     @Transactional
@@ -343,7 +450,7 @@ public class UserService {
 
         // Validate role
         String role = request.getRole().toUpperCase();
-        if (!List.of("COUNTER_ADMIN", "COUNTER_STAFF", "KYC_STAFF", "ADMIN").contains(role)) {
+        if (!List.of("COUNTER_ADMIN", "COUNTER_STAFF", "ADMIN").contains(role)) {
             throw new BadRequestException("Invalid role: " + role);
         }
 
@@ -397,9 +504,6 @@ public class UserService {
                 break;
             case "COUNTER_STAFF":
                 prefix = "CS";
-                break;
-            case "KYC_STAFF":
-                prefix = "KS";
                 break;
             case "ADMIN":
                 prefix = "AD";

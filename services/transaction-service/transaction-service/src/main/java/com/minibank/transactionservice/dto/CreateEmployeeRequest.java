@@ -13,7 +13,7 @@ public class CreateEmployeeRequest {
     private String email;
     private String fullName;
     private String phoneNumber;
-    private String role; // COUNTER_ADMIN, COUNTER_STAFF, KYC_STAFF
+    private String role; // COUNTER_ADMIN, COUNTER_STAFF
     private String employeeCode; // Optional
     private String password; // Optional
 }

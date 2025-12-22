@@ -2,6 +2,7 @@ package com.minibank.userservice.controller;
 
 import com.minibank.userservice.dto.ApiResponse;
 import com.minibank.userservice.dto.AuthResponse;
+import com.minibank.userservice.dto.ChangePasswordRequest;
 import com.minibank.userservice.dto.PasswordResetConfirmRequest;
 import com.minibank.userservice.dto.PasswordResetRequest;
 import com.minibank.userservice.dto.TokenRefreshRequest;
@@ -13,6 +14,7 @@ import com.minibank.userservice.service.UserService;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,7 +24,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
@@ -84,6 +88,15 @@ public class UserController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
+    // --- Đổi mật khẩu (yêu cầu đăng nhập) ---
+    @PutMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @RequestHeader("Authorization") String token,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(token, request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(new ApiResponse<>("Password changed successfully", null));
+    }
+
     // --- JWT: Cấp lại Access Token ---
     @PostMapping("/refresh-token")
     public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
@@ -113,6 +126,71 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>("User not found: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Upload avatar cho user hiện tại (tạm thời trả về URL mặc định) ---
+    @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> uploadAvatar(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
+        try {
+            // Extract email từ JWT token
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            
+            // Tạm thời: dùng URL mặc định, bỏ qua file upload
+            String defaultAvatarUrl = "/assets/default.jpg";
+            
+            // Cập nhật avatar URL trong database
+            userService.updateAvatar(email, defaultAvatarUrl);
+            
+            java.util.Map<String, String> responseData = new java.util.HashMap<>();
+            responseData.put("avatarUrl", defaultAvatarUrl);
+            responseData.put("imageUrl", defaultAvatarUrl);
+            
+            return ResponseEntity.ok(new ApiResponse<>("Avatar uploaded successfully", responseData));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to upload avatar: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Upload avatar (endpoint thay thế) ---
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> uploadAvatarAlt(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
+        return uploadAvatar(authHeader, file, image);
+    }
+
+    // --- Admin: Tạo user mới ---
+    @PostMapping("/admin/users")
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @Valid @RequestBody com.minibank.userservice.dto.CreateUserRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Verify admin role from token
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            UserResponse createdUser = userService.createUser(request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ApiResponse<>("User created successfully", createdUser));
+        } catch (com.minibank.userservice.exception.BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to create user: " + e.getMessage(), null));
         }
     }
 

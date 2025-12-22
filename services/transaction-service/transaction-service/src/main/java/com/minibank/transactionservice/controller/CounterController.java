@@ -7,6 +7,7 @@ import com.minibank.transactionservice.dto.CounterRequest;
 import com.minibank.transactionservice.dto.CounterResponse;
 import com.minibank.transactionservice.entity.Counter;
 import com.minibank.transactionservice.entity.CounterStaff;
+import com.minibank.transactionservice.exception.BadRequestException;
 import com.minibank.transactionservice.exception.ForbiddenException;
 import com.minibank.transactionservice.service.CounterService;
 import jakarta.validation.Valid;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -142,6 +144,54 @@ public class CounterController {
 
         Counter counter = counterService.reactivateCounter(counterId);
         return ResponseEntity.ok(ApiResponse.success(toResponse(counter)));
+    }
+
+    /**
+     * POST /counters/{counterId}/staff - Thêm nhân viên vào quầy (chỉ ADMIN tổng)
+     */
+    @PostMapping("/{counterId}/staff")
+    public ResponseEntity<ApiResponse<Void>> addStaffToCounter(
+            @PathVariable UUID counterId,
+            @RequestBody Map<String, String> payload,
+            @RequestHeader(value = "X-User-Role", required = false) String role
+    ) {
+        if (role == null || !"ADMIN".equalsIgnoreCase(role.trim())) {
+            throw new ForbiddenException("Chỉ ADMIN mới có quyền thêm nhân viên vào quầy.");
+        }
+
+        String userIdStr = payload.get("userId");
+        String email = payload.get("email");
+        
+        UUID staffUserId = null;
+        if (userIdStr != null && !userIdStr.trim().isEmpty()) {
+            staffUserId = UUID.fromString(userIdStr);
+        } else if (email != null && !email.trim().isEmpty()) {
+            staffUserId = counterService.resolveUserIdByEmail(email);
+        }
+        
+        if (staffUserId == null) {
+            throw new BadRequestException("Cần truyền userId hoặc email của nhân viên.");
+        }
+
+        counterService.addStaffToCounterByAdmin(counterId, staffUserId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
+     * DELETE /counters/{counterId}/staff/{staffUserId} - Xóa nhân viên khỏi quầy (chỉ ADMIN tổng)
+     */
+    @DeleteMapping("/{counterId}/staff/{staffUserId}")
+    public ResponseEntity<ApiResponse<Void>> removeStaffFromCounter(
+            @PathVariable UUID counterId,
+            @PathVariable UUID staffUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String role
+    ) {
+        if (role == null || !"ADMIN".equalsIgnoreCase(role.trim())) {
+            throw new ForbiddenException("Chỉ ADMIN mới có quyền xóa nhân viên khỏi quầy.");
+        }
+
+        counterService.removeStaffFromCounterByAdmin(counterId, staffUserId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /**

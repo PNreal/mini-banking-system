@@ -30,6 +30,7 @@ public class SecurityConfig {
     // Đơn giản hóa: toàn bộ /api/v1/users/** là public (user-service tự xử lý auth chi tiết)
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/users/**",
+            "/api/v1/kyc/**",
             "/api/v1/health",
             "/actuator/health",
             "/actuator/info"

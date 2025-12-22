@@ -223,6 +223,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=user_user
       - SPRING_DATASOURCE_PASSWORD=user_password
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - ACCOUNT_SERVICE_URL=http://account-service:8082
     networks:
       - banking-network
     restart: unless-stopped
@@ -267,6 +268,8 @@ services:
       - SPRING_DATASOURCE_USERNAME=transaction_user
       - SPRING_DATASOURCE_PASSWORD=transaction_password
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SERVICES_ACCOUNT_SERVICE_URL=http://account-service:8082/api
+      - SERVICES_USER_SERVICE_URL=http://user-service:8081
     networks:
       - banking-network
     restart: unless-stopped

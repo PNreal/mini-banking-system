@@ -50,6 +50,9 @@ public class User {
     @Column(length = 20)
     private String phoneNumber;
 
+    @Column(length = 500)
+    private String avatarUrl;
+
     @Column(nullable = false)
     private boolean emailVerified = false;
 
@@ -212,6 +215,14 @@ public class User {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public boolean isEmailVerified() {

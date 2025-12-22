@@ -22,6 +22,12 @@ public class GatewayController {
         return gatewayService.forwardRequest(request, response, "/users");
     }
 
+    // KYC Routes (User Service)
+    @RequestMapping(value = "/kyc/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE})
+    public ResponseEntity<?> routeToKycApis(HttpServletRequest request, HttpServletResponse response) {
+        return gatewayService.forwardRequest(request, response, "/users");
+    }
+
     // Account Service Routes
     @RequestMapping(value = "/account/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE})
     public ResponseEntity<?> routeToAccountService(HttpServletRequest request, HttpServletResponse response) {

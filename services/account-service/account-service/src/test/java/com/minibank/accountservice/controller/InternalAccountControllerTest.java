@@ -46,7 +46,7 @@ class InternalAccountControllerTest {
     @BeforeEach
     void setUp() {
         restClient = RestClient.builder()
-                .baseUrl("http://localhost:" + port)
+                .baseUrl("http://localhost:" + port + "/api")
                 .defaultHeader("X-Internal-Secret", SECRET)
                 .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .build();
