@@ -24,7 +24,7 @@ public class CreateEmployeeRequest {
     private String phoneNumber;
 
     @NotNull(message = "Role is required")
-    private String role; // COUNTER_ADMIN, COUNTER_STAFF
+    private String role; // STAFF, COUNTER_ADMIN, COUNTER_STAFF, ADMIN
 
     private String employeeCode; // Optional, will be auto-generated if not provided
 

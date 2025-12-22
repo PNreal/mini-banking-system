@@ -3,6 +3,8 @@ package com.minibank.userservice.controller;
 import com.minibank.userservice.dto.ApiResponse;
 import com.minibank.userservice.dto.AuthResponse;
 import com.minibank.userservice.dto.ChangePasswordRequest;
+import com.minibank.userservice.dto.CreateEmployeeRequest;
+import com.minibank.userservice.dto.CreateEmployeeResponse;
 import com.minibank.userservice.dto.PasswordResetConfirmRequest;
 import com.minibank.userservice.dto.PasswordResetRequest;
 import com.minibank.userservice.dto.TokenRefreshRequest;
@@ -357,6 +359,57 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>("Failed to delete user: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Admin: Tạo nhân viên (Staff/Counter Staff/Counter Admin) ---
+    @PostMapping("/admin/employees")
+    public ResponseEntity<ApiResponse<CreateEmployeeResponse>> createEmployee(
+            @Valid @RequestBody CreateEmployeeRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Verify admin role from token
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            CreateEmployeeResponse response = userService.createEmployee(request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ApiResponse<>("Employee created successfully", response));
+        } catch (com.minibank.userservice.exception.BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to create employee: " + e.getMessage(), null));
+        }
+    }
+
+    // --- Admin: Lấy danh sách nhân viên ---
+    @GetMapping("/admin/employees")
+    public ResponseEntity<ApiResponse<java.util.List<UserResponse>>> getAllEmployees(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Verify admin role from token
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String email = jwtService.extractEmail(token);
+            UserResponse currentUser = userService.getUserByEmail(email);
+            
+            if (!"ADMIN".equals(currentUser.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
+            }
+            
+            java.util.List<UserResponse> employees = userService.getAllEmployees();
+            return ResponseEntity.ok(new ApiResponse<>("Employees retrieved successfully", employees));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Failed to retrieve employees: " + e.getMessage(), null));
         }
     }
 }

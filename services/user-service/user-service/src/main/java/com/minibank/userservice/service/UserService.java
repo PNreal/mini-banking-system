@@ -87,21 +87,8 @@ public class UserService {
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        // Kiểm tra tài khoản có đang bị khóa tạm thời do nhập sai nhiều lần không
-        if (user.getLoginLockedUntil() != null && user.getLoginLockedUntil().isAfter(Instant.now())) {
-            throw new BadRequestException("Tài khoản đã bị tạm khóa 10 phút do nhập sai mật khẩu quá nhiều lần.");
-        }
-
+        // Staff không bị khóa tạm thời khi sai password - chỉ kiểm tra password
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            int attempts = user.getFailedLoginAttempts() + 1;
-            user.setFailedLoginAttempts(attempts);
-
-            if (attempts >= 5) {
-                user.setLoginLockedUntil(Instant.now().plus(10, ChronoUnit.MINUTES));
-                user.setFailedLoginAttempts(0);
-            }
-
-            userRepository.save(user);
             throw new BadRequestException("Invalid email or password");
         }
 
@@ -317,6 +304,16 @@ public class UserService {
                 .toList();
     }
 
+    public List<UserResponse> getAllEmployees() {
+        return userRepository.findAll().stream()
+                .filter(user -> {
+                    String role = user.getRole();
+                    return "STAFF".equals(role) || "COUNTER_STAFF".equals(role) || "COUNTER_ADMIN".equals(role);
+                })
+                .map(UserResponse::from)
+                .toList();
+    }
+
     public UserResponse getUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -336,7 +333,13 @@ public class UserService {
 
     @Transactional
     public void unlockUser(UUID userId) {
-        updateStatus(userId, UserStatus.ACTIVE);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        user.setStatus(UserStatus.ACTIVE);
+        // Reset cả trạng thái khóa tạm thời do sai password
+        user.setLoginLockedUntil(null);
+        user.setFailedLoginAttempts(0);
+        userRepository.save(user);
     }
 
     @Transactional
@@ -437,7 +440,7 @@ public class UserService {
     }
 
     /**
-     * Tạo tài khoản employee (COUNTER_ADMIN, COUNTER_STAFF)
+     * Tạo tài khoản employee (STAFF, COUNTER_ADMIN, COUNTER_STAFF)
      * Được gọi từ các service khác qua internal endpoint
      */
     @Transactional
@@ -450,7 +453,7 @@ public class UserService {
 
         // Validate role
         String role = request.getRole().toUpperCase();
-        if (!List.of("COUNTER_ADMIN", "COUNTER_STAFF", "ADMIN").contains(role)) {
+        if (!List.of("STAFF", "COUNTER_ADMIN", "COUNTER_STAFF", "ADMIN").contains(role)) {
             throw new BadRequestException("Invalid role: " + role);
         }
 
@@ -499,6 +502,9 @@ public class UserService {
     private String generateEmployeeCode(String role) {
         String prefix;
         switch (role) {
+            case "STAFF":
+                prefix = "ST";
+                break;
             case "COUNTER_ADMIN":
                 prefix = "CA";
                 break;
