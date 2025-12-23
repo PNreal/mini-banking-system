@@ -477,5 +477,13 @@ public class CounterService {
         cs.setIsActive(false);
         counterStaffRepository.save(cs);
     }
+
+    /**
+     * Kiểm tra xem staff có thuộc quầy không (active)
+     */
+    public boolean isStaffInCounter(UUID staffId, UUID counterId) {
+        CounterStaff cs = counterStaffRepository.findByCounterIdAndUserId(counterId, staffId);
+        return cs != null && Boolean.TRUE.equals(cs.getIsActive());
+    }
 }
 
