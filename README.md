@@ -1,130 +1,135 @@
-# Mini Banking System
+# 🏦 Mini Banking System
 
-Hệ thống ngân hàng mini với kiến trúc microservices, chạy hoàn toàn bằng Docker.
+Dự án mô phỏng hệ thống Ngân hàng số (Mini Banking) hỗ trợ đăng ký tài khoản, xác minh danh tính (KYC), nạp/rút/chuyển tiền trực tuyến và xử lý giao dịch tại quầy. Hệ thống được xây dựng bằng Spring Boot, React và chạy trên Docker.
 
-## Khởi Động Hệ Thống
+---
 
-### Yêu cầu
-- Docker Desktop
-- Docker Compose
+## ⚡ Khởi Động Nhanh Hệ Thống (Quick Start)
 
-### Bước 1: Khởi động tất cả dịch vụ
+### 1. Yêu cầu môi trường
+* **Docker Desktop / Docker Engine** (đã bật và đang chạy)
+* **Docker Compose** (phiên bản v2.x trở lên)
+
+### 2. Khởi chạy toàn bộ hệ thống bằng 1 lệnh duy nhất:
 ```bash
-docker-compose up -d
+docker-compose up -d --build
 ```
 
-### Bước 2: Kiểm tra trạng thái
+### 3. Kiểm tra trạng thái các container:
 ```bash
 docker-compose ps
 ```
 
-### Bước 3: Xem logs (nếu cần)
+### 4. Xem nhật ký log hoạt động:
 ```bash
 docker-compose logs -f
 ```
 
-## Truy Cập Ứng Dụng
-
-- **Customer Web (Khách hàng & Quầy):** http://localhost:3000
-- **Admin Panel (Quản trị viên):** http://localhost:3001
-- **API Gateway:** http://localhost:8080
-
-## Tài Khoản Test
-
-| Loại | Email | Password |
-|------|-------|----------|
-| Admin | admin@minibank.com | Admin@123 |
-| Customer | test.user@example.com | TestPassword#123 |
-| Staff | staff@minibank.com | Staff@123 |
-| Counter Admin | counter.admin@minibank.com | CounterAdmin@123 |
-
-## Dừng Hệ Thống
-
+### 5. Dừng hệ thống khi không sử dụng:
 ```bash
 docker-compose down
 ```
 
-## Xử Lý Sự Cố
+---
 
-### Lỗi: Docker không chạy
-```bash
-# Khởi động lại Docker Desktop
-# Sau đó chạy lại:
-docker-compose up -d
-```
+## 🌐 Đường Dẫn Truy Cập & Phân Bổ Cổng (Port Allocation)
 
-### Reset toàn bộ hệ thống
-```bash
-docker-compose down -v
-docker-compose up -d
-```
-
-## Kiến Trúc
-
-### Backend Services (Microservices)
-- **API Gateway** (8080) - Điểm vào chính, xử lý routing, JWT validation và CORS
-- **User Service** (8081) - Quản lý người dùng, phân quyền RBAC (Admin, Staff, Customer), và xác minh KYC
-- **Core Banking Service** (8082) - Quản lý tài khoản, số dư, nạp/rút/chuyển tiền, và giao dịch tại quầy (Counter)
-- **Log Service** (8083) - Ghi nhật ký kiểm toán hệ thống (Audit Log qua Kafka)
-- **Notification Service** (8084) - Gửi thông báo đa kênh (Real-time WebSocket & Email)
-
-### Frontend Applications
-- **Customer Web** (3000) - Giao diện khách hàng và nhân viên quầy (React)
-- **Admin Panel** (3001) - Giao diện quản trị hệ thống (React + Vite)
-
-### Databases & Infrastructure
-- PostgreSQL (4 databases liên tục: `user_db:5432`, `banking_db:5433`, `log_db:5434`, `notification_db:5435`)
-- Kafka + Zookeeper (Event-driven message broker)
-
-## Cấu Trúc Project
-
-```
-mini-banking-system/
-├── api-gateway/              # API Gateway service (Port 8080)
-├── services/                 # Backend microservices
-│   ├── user-service/         # User, KYC & RBAC service (Port 8081)
-│   ├── core-banking-service/ # Accounts, Balances, Transactions & Counters (Port 8082)
-│   ├── log-service/          # System audit log service (Port 8083)
-│   └── notification-service/ # Multi-channel notification service (Port 8084)
-├── frontend/                 # Frontend applications
-│   ├── customer/             # Customer & Staff React app (Port 3000)
-│   └── admin/                # Admin Hub React + Vite app (Port 3001)
-├── docker/                   # Docker init scripts & templates
-│   ├── init-scripts/
-│   └── templates/
-├── documentation/            # Tài liệu dự án
-├── .github/                  # CI/CD Workflows
-└── docker-compose.yml        # Docker compose orchestrator
-```
-
-## Features
-
-### User Features
-- Đăng ký/Đăng nhập
-- Nạp tiền (Ví điện tử, Quét mã QR, Nạp tại quầy)
-- Rút tiền (Rút tại quầy, Ví điện tử)
-- Chuyển khoản
-- Xem lịch sử giao dịch
-- Quản lý thông tin cá nhân
-
-### Admin Features
-- Quản lý người dùng (Khóa/Mở khóa, Đóng băng/Mở đóng băng)
-- **Quản lý quầy giao dịch** (Thêm, Sửa, Xóa quầy)
-- **Quản lý nhân viên trong quầy** (Thêm, Sửa, Xóa nhân viên - mã số và tên)
-- Xem thống kê và báo cáo
-
-### Staff Features
-- Xác nhận giao dịch nạp tiền tại quầy
-- Xem thông báo về yêu cầu nạp tiền
-
-## Tài Liệu Tham Khảo
-
-- [docker/README.md](docker/README.md) - Hướng dẫn Docker chi tiết
-- [scripts/README.md](scripts/README.md) - Scripts quản lý hệ thống
+### 1. Giao diện Người dùng (Frontend)
+| Ứng dụng | Cổng Host | Công nghệ | URL Truy cập | Đối tượng sử dụng |
+| :--- | :---: | :---: | :--- | :--- |
+| **Customer Web** | **`3000`** | React + TS | http://localhost:3000 | Khách hàng & Nhân viên quầy |
+| **Admin Hub** | **`3001`** | React + Vite | http://localhost:3001 | Super Admin |
 
 ---
 
-**Phiên bản:** 1.0  
-**Cập nhật:** 2025-12-22  
-> Java Spring Boot Microservices + React + PostgreSQL + Docker  
-> Team 6 members — 2025
+### 2. Dịch vụ Backend Microservices (`8080` ➔ `8084` liên tục)
+| Dịch vụ | Cổng Host | Vai trò chính |
+| :--- | :---: | :--- |
+| **`api-gateway`** | **`8080`** | Điểm vào duy nhất (Single Entry), định tuyến API & Header Enrichment |
+| **`user-service`** | **`8081`** | Quản lý Người dùng, Xác thực JWT, Xác minh KYC, Phân quyền Admin/Staff |
+| **`core-banking-service`** | **`8082`** | Tài khoản, Số dư, Giao dịch (Nạp/Rút/Chuyển), Giao dịch & Quản trị Quầy |
+| **`log-service`** | **`8083`** | Ghi nhận Audit Log hệ thống từ Kafka |
+| **`notification-service`** | **`8084`** | Gửi thông báo WebSocket Realtime & Email |
+
+---
+
+### 3. Cơ Sở Dữ Liệu PostgreSQL (`5432` ➔ `5435` liên tục)
+| Container DB | Cổng Host | Tên Database | Username | Password | Service sở hữu |
+| :--- | :---: | :--- | :--- | :--- | :--- |
+| `postgres-user` | **`5432`** | `user_db` | `user_user` | `user_password` | `user-service` |
+| `postgres-banking` | **`5433`** | `banking_db` | `banking_user` | `banking_password` | `core-banking-service` |
+| `postgres-log` | **`5434`** | `log_db` | `log_user` | `log_password` | `log-service` |
+| `postgres-notification` | **`5435`** | `notification_db` | `notification_user` | `notification_password` | `notification-service` |
+
+---
+
+### 4. Message Broker (Kafka & Zookeeper)
+* **Zookeeper:** `localhost:2181`
+* **Apache Kafka Broker:** `localhost:9092` (Host) / `kafka:29092` (Docker Network)
+
+---
+
+## 🔑 Tài Khoản Test Mặc Định
+
+| Vai trò (Role) | Email Đăng nhập | Mật khẩu | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| **Super Admin** | `admin@minibank.com` | `Admin@123` | Quản trị toàn bộ User, duyệt KYC, quản lý Quầy |
+| **Customer** | `customer@minibank.com` | `Password123@` | Nạp, rút, chuyển khoản, gửi hồ sơ KYC |
+| **Staff (Nhân viên)** | `staff@minibank.com` | `Staff@123` | Xác nhận và xử lý nạp/rút tiền tại quầy |
+| **Counter Admin** | `counter.admin@minibank.com` | `CounterAdmin@123` | Quản lý nhân sự tại quầy giao dịch |
+
+---
+
+## 🏗️ Cấu Trúc Mã Nguồn (Project Structure)
+
+```text
+mini-banking-system/
+├── api-gateway/              # API Gateway điều phối routing (Port 8080)
+├── services/                 # Backend Microservices (Spring Boot 3.3, Java 17)
+│   ├── user-service/         # IAM, KYC & RBAC Service (Port 8081 - DB: 5432)
+│   ├── core-banking-service/ # Accounts, Balances, Transactions & Counters (Port 8082 - DB: 5433)
+│   ├── log-service/          # Audit Logging Service (Port 8083 - DB: 5434)
+│   └── notification-service/ # Realtime WebSocket & Email Service (Port 8084 - DB: 5435)
+├── frontend/                 # Giao diện Web
+│   ├── customer/             # Web khách hàng & nhân viên quầy (Port 3000)
+│   └── admin/                # Web Super Admin Dashboard (Port 3001)
+├── docker/                   # Docker scripts & templates
+│   ├── init-scripts/         # Các file SQL tự động seed DB
+│   └── templates/            # Template cấu hình mẫu
+├── documentation/            # Tài liệu kỹ thuật chi tiết
+├── .github/workflows/        # CI/CD Pipeline (GitHub Actions)
+└── docker-compose.yml        # File điều phối toàn bộ hệ thống
+```
+
+---
+
+## 💻 Hướng Dẫn Dành Cho Developer (Chạy và Test riêng từng Service)
+
+Nếu bạn muốn code và debug riêng 1 service (ví dụ `core-banking-service`) bằng IDE:
+
+1. **Bật Database & Kafka phụ thuộc qua Docker:**
+   ```bash
+   docker-compose up -d postgres-banking zookeeper kafka
+   ```
+2. **Chạy service bằng lệnh Maven hoặc click Run trong IDE:**
+   ```bash
+   mvn spring-boot:run -f services/core-banking-service/pom.xml
+   ```
+3. **Chạy toàn bộ Unit Test của một service:**
+   ```bash
+   mvn test -f services/user-service/pom.xml
+   ```
+
+---
+
+## 🛠️ Xử Lý Sự Cố Thường Gặp (Troubleshooting)
+
+### 1. Muốn xóa sạch dữ liệu và khởi động lại từ đầu:
+```bash
+docker-compose down -v
+docker-compose up -d --build
+```
+
+### 2. Trùng cổng (Port Conflict):
+* Đảm bảo trên máy tính của bạn không có dịch vụ PostgreSQL cục bộ nào đang chiếm cổng `5432` hoặc `8080`.
+* Nếu bị trùng, hãy tắt PostgreSQL cục bộ (`sudo systemctl stop postgresql`) trước khi chạy Docker.

@@ -1,90 +1,83 @@
 # User Service - MiniBank System
 
-User Service là dịch vụ cốt lõi của hệ thống Mini Banking System, chịu trách nhiệm quản lý định danh, xác thực và thông tin người dùng.
+User Service là dịch vụ **quản lý danh tính, xác thực và phân quyền (IAM & RBAC)** của hệ thống Mini Banking.
 
-## Tính năng
+---
 
-- **Authentication**: Đăng ký (Register), Đăng nhập (Login), cấp phát JWT Access Token & Refresh Token.
-- **Security**: Đổi mật khẩu, Quên mật khẩu (gửi email thật qua SMTP), Tự khóa tài khoản (Self-freeze).
-- **Validation**: Kiểm tra dữ liệu đầu vào (Email, Password) chặt chẽ.
+## 🚀 Thông tin Kỹ thuật & Cổng kết nối
 
-## Tech Stack
+* **Cổng dịch vụ (App Port):** `http://localhost:8081`
+* **Cơ sở dữ liệu (PostgreSQL):** `localhost:5432` (Database: `user_db`, User: `user_user`, Pass: `user_password`)
+* **Message Broker (Kafka):** `localhost:9092` (Host) / `kafka:29092` (Docker Network)
+* **Bảo mật:** Spring Security 6 với `JwtAuthenticationFilter` chuẩn Stateless & `@PreAuthorize`
 
-- **Ngôn ngữ:** Java 17
-- **Framework:** Spring Boot 3.x / 4.x
-- **Database:** PostgreSQL (chạy trong Docker container)
-- **Security:** Spring Security & JWT
-- **Mail:** JavaMailSender (Gmail SMTP)
-- **Build Tool:** Maven
+---
 
-## API Endpoints
+## 📌 Danh Mục API Endpoints
 
-### Public Endpoints (Ai cũng gọi được)
+### 1. Khách Hàng & Xác Thực (`/api/users`)
+| Method | Endpoint | Quyền | Mô tả |
+| :---: | :--- | :---: | :--- |
+| `POST` | `/api/users/register` | Public | Đăng ký tài khoản khách hàng mới |
+| `POST` | `/api/users/login` | Public | Đăng nhập lấy JWT Access Token & Refresh Token |
+| `POST` | `/api/users/forgot-password` | Public | Yêu cầu mã OTP đặt lại mật khẩu |
+| `POST` | `/api/users/reset-password` | Public | Đặt lại mật khẩu qua Token xác nhận |
+| `GET` | `/api/users/me` | Authenticated | Xem thông tin hồ sơ của người dùng hiện tại |
+| `PUT` | `/api/users/me` | Authenticated | Cập nhật thông tin cá nhân (Họ tên, SĐT, Địa chỉ) |
+| `POST` | `/api/users/change-password` | Authenticated | Đổi mật khẩu đăng nhập |
+| `POST` | `/api/users/refresh-token` | Authenticated | Cấp Access Token mới từ Refresh Token |
+| `POST` | `/api/users/self-freeze` | Authenticated | Người dùng tự khóa/đóng băng tài khoản khẩn cấp |
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------------|
-| POST | `/api/users/register` | Đăng ký tài khoản mới |
-| POST | `/api/users/login` | Đăng nhập hệ thống (Trả về Token) |
-| POST | `/api/users/forgot-password` | Yêu cầu reset mật khẩu (Gửi Email) |
+### 2. Xác Minh Danh Tính KYC (`/api/kyc`)
+| Method | Endpoint | Quyền | Mô tả |
+| :---: | :--- | :---: | :--- |
+| `POST` | `/api/kyc/submit` | Authenticated | Nộp hồ sơ KYC (CCCD mặt trước/sau, thông tin cá nhân) |
+| `GET` | `/api/kyc/my-status` | Authenticated | Kiểm tra trạng thái KYC hiện tại (`PENDING`, `APPROVED`, `REJECTED`) |
+| `GET` | `/api/kyc/admin/requests` | Admin / Staff | Lấy danh sách hồ sơ KYC đang chờ duyệt |
+| `GET` | `/api/kyc/admin/requests/{id}` | Admin / Staff | Xem chi tiết 1 hồ sơ KYC |
+| `PUT` | `/api/kyc/admin/requests/{id}/review` | Admin / Staff | Phê duyệt (`APPROVED`) hoặc Từ chối (`REJECTED`) KYC |
 
-### Protected Endpoints (Cần Token)
+### 3. Quản Trị Hệ Thống & Nhân Viên (`/api/users/admin`)
+| Method | Endpoint | Quyền | Mô tả |
+| :---: | :--- | :---: | :--- |
+| `POST` | `/api/users/admin/login` | Public | Đăng nhập riêng cho Admin & Staff |
+| `GET` | `/api/users/admin/users` | Admin (`hasRole('ADMIN')`) | Lấy danh sách tất cả người dùng trong hệ thống |
+| `POST` | `/api/users/admin/users` | Admin (`hasRole('ADMIN')`) | Tạo mới người dùng hoặc quản trị viên |
+| `PUT` | `/api/users/admin/users/{id}` | Admin (`hasRole('ADMIN')`) | Cập nhật thông tin bất kỳ người dùng nào |
+| `PUT` | `/api/users/admin/users/{id}/lock` | Admin (`hasRole('ADMIN')`) | Khóa tài khoản người dùng |
+| `PUT` | `/api/users/admin/users/{id}/unlock` | Admin (`hasRole('ADMIN')`) | Mở khóa tài khoản người dùng |
+| `POST` | `/api/users/admin/employees` | Admin (`hasRole('ADMIN')`) | Tạo tài khoản nhân viên giao dịch quầy |
+| `GET` | `/api/users/admin/employees` | Admin (`hasRole('ADMIN')`) | Danh sách nhân viên giao dịch |
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------------|
-| GET | `/api/users/profile` | Lấy thông tin user hiện tại |
-| PUT | `/api/users/profile` | Cập nhật thông tin user |
-| POST | `/api/users/change-password` | Đổi mật khẩu |
-| POST | `/api/users/refresh-token` | Cấp Access Token mới từ Refresh Token |
-| POST | `/api/users/logout` | Đăng xuất (Blacklist token) |
-| POST | `/api/users/verify-email` | Xác thực email |
-| POST | `/api/users/resend-verification` | Gửi lại email xác thực |
-| POST | `/api/users/self-freeze` | Tự khóa tài khoản |
-| POST | `/api/users/reset-password` | Reset mật khẩu (Sau khi quên) |
+### 4. Internal API dành cho Microservices (`/internal/users`)
+* Được bảo vệ bằng header `X-Internal-Secret: internal-secret`
+* `GET /internal/users/by-email?email=...`: Lấy thông tin user bằng email
+* `GET /internal/users/{id}`: Lấy thông tin chi tiết user theo UUID
 
-## Cấu hình Docker
+---
 
-Service được cấu hình trong `docker-compose.yml` với các cổng:
-- User Service: `http://localhost:8081`
-- PostgreSQL (external): `5434`
-- Kafka: `9092` (external), `29092` (internal)
+## 🔒 Cơ Chế Bảo Mật
 
-## 🔗 Tích hợp với các service khác
+1. **Spring Security Filter Chain:**
+   * `JwtAuthenticationFilter` tự động trích xuất token từ header `Authorization: Bearer <token>`, giải mã claim `role` và gắn `ROLE_ADMIN` / `ROLE_CUSTOMER` / `ROLE_STAFF` vào `SecurityContextHolder`.
+   * Endpoint Admin được bảo vệ bởi annotation chuẩn `@PreAuthorize("hasRole('ADMIN')")`.
+2. **Chống tấn công dò mật khẩu (Brute-force Protection):**
+   * Tự động khóa tài khoản sau 5 lần nhập sai mật khẩu liên tiếp.
+3. **Mã hóa Mật khẩu:** Sử dụng thuật toán BCrypt băm mật khẩu 1 chiều an toàn.
 
-- **Account Service**: User Service gọi để tạo tài khoản mới khi người dùng đăng ký
-- **Transaction Service**: Xác thực người dùng trước khi thực hiện giao dịch
-- **Notification Service**: Gửi thông báo qua Kafka khi có sự kiện liên quan đến người dùng
-- **Log Service**: Ghi log các hoạt động của người dùng
+---
 
-## Database Schema
+## 📊 Database Schema (`user_db`)
 
-Bảng chính: `users`
+1. **`users`:** `id` (UUID), `email`, `password_hash`, `full_name`, `phone_number`, `role` (`CUSTOMER`, `ADMIN`, `STAFF`, `COUNTER_ADMIN`), `status` (`ACTIVE`, `LOCKED`, `FROZEN`), `kyc_status` (`NOT_SUBMITTED`, `PENDING`, `APPROVED`, `REJECTED`), `failed_attempts`, `created_at`, `updated_at`.
+2. **`kyc_requests`:** `id` (UUID), `user_id`, `citizen_id`, `front_card_url`, `back_card_url`, `status`, `rejection_reason`, `reviewed_by`, `reviewed_at`.
+3. **`refresh_tokens`:** Quản lý phiên đăng nhập và gia hạn token.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| id | BIGINT | Primary Key, Auto Increment |
-| email | VARCHAR(255) | Email đăng nhập (Unique) |
-| password | VARCHAR(255) | Mật khẩu đã mã hóa (BCrypt) |
-| full_name | VARCHAR(100) | Họ và tên |
-| phone_number | VARCHAR(20) | Số điện thoại |
-| date_of_birth | DATE | Ngày sinh |
-| address | TEXT | Địa chỉ |
-| is_email_verified | BOOLEAN | Email đã xác thực chưa |
-| is_active | BOOLEAN | Tài khoản còn active không |
-| is_locked | BOOLEAN | Tài khoản bị khóa không |
-| is_frozen | BOOLEAN | Tài khoản bị đóng băng không |
-| role | VARCHAR(20) | Vai trò (USER, ADMIN, STAFF, COUNTER_ADMIN) |
-| created_at | TIMESTAMP | Thời điểm tạo |
-| updated_at | TIMESTAMP | Thời điểm cập nhật |
+---
 
-## Events Kafka
+## 📨 Kafka Events
 
-User Service gửi các events sau:
-
-| Event | Description |
-|-------|-------------|
-| USER_CREATED | Khi có người dùng mới đăng ký |
-| USER_UPDATED | Khi thông tin người dùng thay đổi |
-| USER_LOCKED | Khi người dùng bị khóa |
-| USER_UNLOCKED | Khi người dùng được mở khóa |
-| PASSWORD_CHANGED | Khi người dùng đổi mật khẩu |
-| EMAIL_VERIFIED | Khi email được xác thực |
+| Topic | Khi nào phát ra? | Mục đích |
+| :--- | :--- | :--- |
+| **`USER_EVENT`** | Khi có người dùng đăng ký mới, cập nhật hồ sơ | Đồng bộ trạng thái sang `log-service` và `notification-service` |
+| **`ADMIN_ACTION`** | Khi Admin khóa/mở khóa/thao tác người dùng | Ghi nhật ký kiểm toán hệ thống |
