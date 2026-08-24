@@ -97,9 +97,9 @@ docker-compose down
 
 ## **TEMPLATES**
 
-- `docker/TEMPLATE_docker-compose-service.yml` - Template docker-compose
-- `docker/TEMPLATE_application.properties` - Template application.properties
-- `docker/TEMPLATE_init-script.sql` - Template init script
+- `docker/templates/docker-compose-service.yml` - Template docker-compose
+- `docker/templates/application.properties` - Template application.properties
+- `docker/templates/init-script.sql` - Template init script
 
 ---
 

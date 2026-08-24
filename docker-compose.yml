@@ -170,7 +170,7 @@ services:
   # Frontend Application
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend/customer
       dockerfile: Dockerfile
     container_name: banking-frontend
     ports:
@@ -179,8 +179,8 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      - ./frontend/customer/src:/app/src
+      - ./frontend/customer/public:/app/public
     networks:
       - banking-network
     stdin_open: true
@@ -189,7 +189,7 @@ services:
   # Admin Hub Application
   admin-hub:
     build:
-      context: ./banking-admin-hub-main/banking-admin-hub-main
+      context: ./frontend/admin
       dockerfile: Dockerfile
     container_name: banking-admin-hub
     ports:
@@ -198,8 +198,8 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
     volumes:
-      - ./banking-admin-hub-main/banking-admin-hub-main/src:/app/src
-      - ./banking-admin-hub-main/banking-admin-hub-main/public:/app/public
+      - ./frontend/admin/src:/app/src
+      - ./frontend/admin/public:/app/public
     networks:
       - banking-network
     stdin_open: true
@@ -208,7 +208,7 @@ services:
   # User Service
   user-service:
     build:
-      context: ./services/user-service/user-service
+      context: ./services/user-service
       dockerfile: Dockerfile
     container_name: user-service
     ports:
@@ -231,7 +231,7 @@ services:
   # Account Service
   account-service:
     build:
-      context: ./services/account-service/account-service
+      context: ./services/account-service
       dockerfile: Dockerfile
     container_name: account-service
     ports:
@@ -253,7 +253,7 @@ services:
   # Transaction Service
   transaction-service:
     build:
-      context: ./services/transaction-service/transaction-service
+      context: ./services/transaction-service
       dockerfile: Dockerfile
     container_name: transaction-service
     ports:
@@ -277,7 +277,7 @@ services:
   # Admin Service
   admin-service:
     build:
-      context: ./services/admin-service/admin-service
+      context: ./services/admin-service
       dockerfile: Dockerfile
     container_name: admin-service
     ports:
@@ -299,7 +299,7 @@ services:
   # Log Service
   log-service:
     build:
-      context: ./services/log-service/log-service
+      context: ./services/log-service
       dockerfile: Dockerfile
     container_name: log-service
     ports:
@@ -321,7 +321,7 @@ services:
   # Notification Service
   notification-service:
     build:
-      context: ./services/notification-service/notification-service
+      context: ./services/notification-service
       dockerfile: Dockerfile
     container_name: notification-service
     ports:
@@ -343,7 +343,7 @@ services:
   # API Gateway
   api-gateway:
     build:
-      context: ./api-gateway/api-gateway
+      context: ./api-gateway
       dockerfile: Dockerfile
     container_name: api-gateway
     ports:

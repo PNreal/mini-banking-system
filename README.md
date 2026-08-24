@@ -82,21 +82,21 @@ docker-compose up -d
 
 ```
 mini-banking-system/
- api-gateway/              # API Gateway service
- services/                 # Backend microservices
-    user-service/
-    account-service/
-    transaction-service/
-    admin-service/
-    log-service/
-    notification-service/
- frontend/                 # Customer/Staff UI (React)
- banking-admin-hub-main/   # Admin Panel (React + Vite)
- docker/                   # Docker configs & init scripts
- scripts/                  # Scripts quản lý
- documentation/            # Tài liệu kỹ thuật
- docker-compose.yml        # Docker Compose config
- README.md                 # File này
+├── api-gateway/              # API Gateway service
+├── services/                 # Backend microservices
+│   ├── user-service/
+│   ├── account-service/
+│   ├── transaction-service/
+│   ├── admin-service/
+│   ├── log-service/
+│   └── notification-service/
+├── frontend/                 # Frontend applications
+│   ├── customer/             # Customer/Staff UI (React)
+│   └── admin/                # Admin Panel (React + Vite)
+├── docker/                   # Docker configs & init scripts
+├── documentation/            # Tài liệu kỹ thuật
+├── docker-compose.yml        # Docker Compose config
+└── README.md                 # File này
 ```
 
 ## Features

@@ -1,8 +1,0 @@
-target/
-.mvn/wrapper/maven-wrapper.jar
-.git
-.gitignore
-README.md
-*.md
-
-

@@ -26,13 +26,10 @@ docker-compose logs -f
 
 ### **4. Truy cập ứng dụng:**
 - **Customer Web:** http://localhost:3002
-- **Admin Panel:** http://localhost:3001
-- **API Gateway:** http://localhost:8080
-
-### **5. Dừng services:**
-```bash
-docker-compose down
-```
+- [Templates](./templates/) - Templates để copy khi tạo service mới
+- [Port Allocation](./SERVICE_PORT_ALLOCATION.md) - Bảng phân bổ port
+- [Init Scripts](./init-scripts/) - Scripts khởi tạo database
+- [README_DOCKER](../documentation/README_DOCKER.md) - Hướng dẫn Docker chi tiết
 
 ---
 
@@ -43,9 +40,9 @@ Xem file [SERVICE_PORT_ALLOCATION.md](./SERVICE_PORT_ALLOCATION.md) để chọn
 
 ### **Bước 2: Copy Template**
 Copy template từ:
-- `docker/TEMPLATE_docker-compose-service.yml` → Thêm vào `docker-compose.yml`
-- `docker/TEMPLATE_application.properties` → Copy vào `services/{service-name}/{service-name}/src/main/resources/application.properties`
-- `docker/TEMPLATE_init-script.sql` → Copy vào `docker/init-scripts/{service-name}-init.sql`
+- `docker/templates/docker-compose-service.yml` → Thêm vào `docker-compose.yml`
+- `docker/templates/application.properties` → Copy vào `services/{service-name}/src/main/resources/application.properties`
+- `docker/templates/init-script.sql` → Copy vào `docker/init-scripts/{service-name}-init.sql`
 
 ### **Bước 3: Điền thông tin**
 Thay thế các `{placeholders}` trong template:
@@ -59,8 +56,14 @@ Thay thế các `{placeholders}` trong template:
 
 ### **Bước 5: Test**
 ```bash
-docker-compose up -d
-docker-compose ps
+# Khởi động service mới
+docker-compose up -d {service-name}-service
+
+# Kiểm tra logs
+docker-compose logs -f {service-name}-service
+
+# Kiểm tra health
+docker inspect --format='{{.State.Health.Status}}' {service-name}-service
 ```
 
 ---
