@@ -1,0 +1,64 @@
+name: Continuous Integration (CI)
+
+on:
+  push:
+    branches: [ "main", "develop", "master" ]
+  pull_request:
+    branches: [ "main", "develop", "master" ]
+
+jobs:
+  # 1. Kiểm tra & Build toàn bộ Backend Microservices
+  backend-test:
+    name: Backend Test (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - services/user-service
+          - services/core-banking-service
+          - services/log-service
+          - services/notification-service
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compile & Run Tests
+        run: |
+          cd ${{ matrix.service }}
+          mvn clean test-compile
+
+  # 2. Kiểm tra & Build 2 Frontend Applications
+  frontend-test:
+    name: Frontend Build (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - frontend/customer
+          - frontend/admin
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.app }}/package-lock.json'
+
+      - name: Install & Build Check
+        run: |
+          cd ${{ matrix.app }}
+          npm ci --legacy-peer-deps
+          npm run build

@@ -25,8 +25,8 @@ docker-compose logs -f
 
 ## Truy Cập Ứng Dụng
 
-- **Customer Web:** http://localhost:3002
-- **Admin Panel:** http://localhost:3001
+- **Customer Web (Khách hàng & Quầy):** http://localhost:3000
+- **Admin Panel (Quản trị viên):** http://localhost:3001
 - **API Gateway:** http://localhost:8080
 
 ## Tài Khoản Test
@@ -62,41 +62,39 @@ docker-compose up -d
 ## Kiến Trúc
 
 ### Backend Services (Microservices)
-- **API Gateway** (8080) - Điểm vào chính, xử lý routing và CORS
-- **User Service** (8081) - Quản lý người dùng và authentication
-- **Account Service** (8082) - Quản lý tài khoản ngân hàng
-- **Transaction Service** (8083) - Xử lý giao dịch
-- **Admin Service** (8084) - Quản lý admin
-- **Log Service** (8085) - Ghi log hệ thống
-- **Notification Service** (8086) - Gửi thông báo
+- **API Gateway** (8080) - Điểm vào chính, xử lý routing, JWT validation và CORS
+- **User Service** (8081) - Quản lý người dùng, phân quyền RBAC (Admin, Staff, Customer), và xác minh KYC
+- **Core Banking Service** (8082) - Quản lý tài khoản, số dư, nạp/rút/chuyển tiền, và giao dịch tại quầy (Counter)
+- **Log Service** (8083) - Ghi nhật ký kiểm toán hệ thống (Audit Log qua Kafka)
+- **Notification Service** (8084) - Gửi thông báo đa kênh (Real-time WebSocket & Email)
 
 ### Frontend Applications
-- **Customer Web** (3002) - Giao diện khách hàng (React)
-- **Admin Panel** (3001) - Giao diện quản trị (React + Vite)
+- **Customer Web** (3000) - Giao diện khách hàng và nhân viên quầy (React)
+- **Admin Panel** (3001) - Giao diện quản trị hệ thống (React + Vite)
 
 ### Databases & Infrastructure
-- PostgreSQL (6 databases riêng cho mỗi service)
-- Kafka + Zookeeper (Message queue)
+- PostgreSQL (4 databases liên tục: `user_db:5432`, `banking_db:5433`, `log_db:5434`, `notification_db:5435`)
+- Kafka + Zookeeper (Event-driven message broker)
 
 ## Cấu Trúc Project
 
 ```
 mini-banking-system/
-├── api-gateway/              # API Gateway service
+├── api-gateway/              # API Gateway service (Port 8080)
 ├── services/                 # Backend microservices
-│   ├── user-service/
-│   ├── account-service/
-│   ├── transaction-service/
-│   ├── admin-service/
-│   ├── log-service/
-│   └── notification-service/
+│   ├── user-service/         # User, KYC & RBAC service (Port 8081)
+│   ├── core-banking-service/ # Accounts, Balances, Transactions & Counters (Port 8082)
+│   ├── log-service/          # System audit log service (Port 8083)
+│   └── notification-service/ # Multi-channel notification service (Port 8084)
 ├── frontend/                 # Frontend applications
-│   ├── customer/             # Customer/Staff UI (React)
-│   └── admin/                # Admin Panel (React + Vite)
-├── docker/                   # Docker configs & init scripts
-├── documentation/            # Tài liệu kỹ thuật
-├── docker-compose.yml        # Docker Compose config
-└── README.md                 # File này
+│   ├── customer/             # Customer & Staff React app (Port 3000)
+│   └── admin/                # Admin Hub React + Vite app (Port 3001)
+├── docker/                   # Docker init scripts & templates
+│   ├── init-scripts/
+│   └── templates/
+├── documentation/            # Tài liệu dự án
+├── .github/                  # CI/CD Workflows
+└── docker-compose.yml        # Docker compose orchestrator
 ```
 
 ## Features

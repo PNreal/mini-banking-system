@@ -1,28 +1,11 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database for Log Service
-  postgres-log:
-    image: postgres:15-alpine
-    container_name: postgres-log-service
-    environment:
-      POSTGRES_DB: log_db
-      POSTGRES_USER: log_user
-      POSTGRES_PASSWORD: log_password
-    ports:
-      - "5433:5432"  # Port 5433 để tránh conflict với PostgreSQL khác
-    volumes:
-      - postgres-log-data:/var/lib/postgresql/data
-      - ./docker/init-scripts/log-service-init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - banking-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U log_user -d log_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # ==========================================
+  # DATABASES (PostgreSQL) - Ports 5432 -> 5435
+  # ==========================================
 
-  # PostgreSQL Database for User Service
+  # 1. PostgreSQL for User Service (Port 5432)
   postgres-user:
     image: postgres:15-alpine
     container_name: postgres-user-service
@@ -31,7 +14,7 @@ services:
       POSTGRES_USER: user_user
       POSTGRES_PASSWORD: user_password
     ports:
-      - "5434:5432"
+      - "5432:5432"
     volumes:
       - postgres-user-data:/var/lib/postgresql/data
       - ./docker/init-scripts/user-service-init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -43,68 +26,49 @@ services:
       timeout: 5s
       retries: 5
 
-  # PostgreSQL Database for Account Service
-  postgres-account:
+  # 2. PostgreSQL for Core Banking Service (Port 5433)
+  postgres-banking:
     image: postgres:15-alpine
-    container_name: postgres-account-service
+    container_name: postgres-banking-service
     environment:
-      POSTGRES_DB: account_db
-      POSTGRES_USER: account_user
-      POSTGRES_PASSWORD: account_password
+      POSTGRES_DB: banking_db
+      POSTGRES_USER: banking_user
+      POSTGRES_PASSWORD: banking_password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres-account-data:/var/lib/postgresql/data
+      - postgres-banking-data:/var/lib/postgresql/data
+      - ./docker/init-scripts/core-banking-service-init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - banking-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U account_user -d account_db"]
+      test: ["CMD-SHELL", "pg_isready -U banking_user -d banking_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # PostgreSQL Database for Admin Service
-  postgres-admin:
+  # 3. PostgreSQL for Log Service (Port 5434)
+  postgres-log:
     image: postgres:15-alpine
-    container_name: postgres-admin-service
+    container_name: postgres-log-service
     environment:
-      POSTGRES_DB: admin_db
-      POSTGRES_USER: admin_user
-      POSTGRES_PASSWORD: admin_password
+      POSTGRES_DB: log_db
+      POSTGRES_USER: log_user
+      POSTGRES_PASSWORD: log_password
     ports:
-      - "5435:5432"
+      - "5434:5432"
     volumes:
-      - postgres-admin-data:/var/lib/postgresql/data
+      - postgres-log-data:/var/lib/postgresql/data
+      - ./docker/init-scripts/log-service-init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - banking-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin_user -d admin_db"]
+      test: ["CMD-SHELL", "pg_isready -U log_user -d log_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # PostgreSQL Database for Transaction Service
-  postgres-transaction:
-    image: postgres:15-alpine
-    container_name: postgres-transaction-service
-    environment:
-      POSTGRES_DB: transaction_db
-      POSTGRES_USER: transaction_user
-      POSTGRES_PASSWORD: transaction_password
-    ports:
-      - "5437:5432"
-    volumes:
-      - postgres-transaction-data:/var/lib/postgresql/data
-      - ./docker/init-scripts/transaction-service-init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - banking-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U transaction_user -d transaction_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # PostgreSQL Database for Notification Service
+  # 4. PostgreSQL for Notification Service (Port 5435)
   postgres-notification:
     image: postgres:15-alpine
     container_name: postgres-notification-service
@@ -113,9 +77,10 @@ services:
       POSTGRES_USER: notification_user
       POSTGRES_PASSWORD: notification_password
     ports:
-      - "5436:5432"
+      - "5435:5432"
     volumes:
       - postgres-notification-data:/var/lib/postgresql/data
+      - ./docker/init-scripts/notification-service-init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - banking-network
     healthcheck:
@@ -124,7 +89,10 @@ services:
       timeout: 5s
       retries: 5
 
-  # Zookeeper for Kafka
+  # ==========================================
+  # MESSAGE BROKER (Apache Kafka & Zookeeper)
+  # ==========================================
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
@@ -141,7 +109,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Kafka Broker
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
@@ -150,13 +117,13 @@ services:
         condition: service_healthy
     ports:
       - "9092:9092"
-      - "9093:9093"
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     networks:
@@ -167,180 +134,11 @@ services:
       timeout: 5s
       retries: 5
 
-  # Frontend Application
-  frontend:
-    build:
-      context: ./frontend/customer
-      dockerfile: Dockerfile
-    container_name: banking-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true
-    volumes:
-      - ./frontend/customer/src:/app/src
-      - ./frontend/customer/public:/app/public
-    networks:
-      - banking-network
-    stdin_open: true
-    tty: true
+  # ==========================================
+  # MICROSERVICES (Backend) - Ports 8080 -> 8084
+  # ==========================================
 
-  # Admin Hub Application
-  admin-hub:
-    build:
-      context: ./frontend/admin
-      dockerfile: Dockerfile
-    container_name: banking-admin-hub
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true
-    volumes:
-      - ./frontend/admin/src:/app/src
-      - ./frontend/admin/public:/app/public
-    networks:
-      - banking-network
-    stdin_open: true
-    tty: true
-
-  # User Service
-  user-service:
-    build:
-      context: ./services/user-service
-      dockerfile: Dockerfile
-    container_name: user-service
-    ports:
-      - "8081:8081"
-    depends_on:
-      postgres-user:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-user:5432/user_db
-      - SPRING_DATASOURCE_USERNAME=user_user
-      - SPRING_DATASOURCE_PASSWORD=user_password
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - ACCOUNT_SERVICE_URL=http://account-service:8082
-    networks:
-      - banking-network
-    restart: unless-stopped
-
-  # Account Service
-  account-service:
-    build:
-      context: ./services/account-service
-      dockerfile: Dockerfile
-    container_name: account-service
-    ports:
-      - "8082:8082"
-    depends_on:
-      postgres-account:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-account:5432/account_db
-      - SPRING_DATASOURCE_USERNAME=account_user
-      - SPRING_DATASOURCE_PASSWORD=account_password
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-    networks:
-      - banking-network
-    restart: unless-stopped
-
-  # Transaction Service
-  transaction-service:
-    build:
-      context: ./services/transaction-service
-      dockerfile: Dockerfile
-    container_name: transaction-service
-    ports:
-      - "8083:8083"
-    depends_on:
-      postgres-transaction:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-transaction:5432/transaction_db
-      - SPRING_DATASOURCE_USERNAME=transaction_user
-      - SPRING_DATASOURCE_PASSWORD=transaction_password
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - SERVICES_ACCOUNT_SERVICE_URL=http://account-service:8082/api
-      - SERVICES_USER_SERVICE_URL=http://user-service:8081
-    networks:
-      - banking-network
-    restart: unless-stopped
-
-  # Admin Service
-  admin-service:
-    build:
-      context: ./services/admin-service
-      dockerfile: Dockerfile
-    container_name: admin-service
-    ports:
-      - "8084:8084"
-    depends_on:
-      postgres-admin:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-admin:5432/admin_db
-      - SPRING_DATASOURCE_USERNAME=admin_user
-      - SPRING_DATASOURCE_PASSWORD=admin_password
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-    networks:
-      - banking-network
-    restart: unless-stopped
-
-  # Log Service
-  log-service:
-    build:
-      context: ./services/log-service
-      dockerfile: Dockerfile
-    container_name: log-service
-    ports:
-      - "8085:8085"
-    depends_on:
-      postgres-log:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-log:5432/log_db
-      - SPRING_DATASOURCE_USERNAME=log_user
-      - SPRING_DATASOURCE_PASSWORD=log_password
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-    networks:
-      - banking-network
-    restart: unless-stopped
-
-  # Notification Service
-  notification-service:
-    build:
-      context: ./services/notification-service
-      dockerfile: Dockerfile
-    container_name: notification-service
-    ports:
-      - "8086:8086"
-    depends_on:
-      postgres-notification:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-notification:5432/notification_db
-      - SPRING_DATASOURCE_USERNAME=notification_user
-      - SPRING_DATASOURCE_PASSWORD=notification_password
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-    networks:
-      - banking-network
-    restart: unless-stopped
-
-  # API Gateway
+  # 0. API Gateway (Port 8080)
   api-gateway:
     build:
       context: ./api-gateway
@@ -348,32 +146,151 @@ services:
     container_name: api-gateway
     ports:
       - "8080:8080"
+    environment:
+      USER_SERVICE_URL: http://user-service:8081
+      CORE_BANKING_SERVICE_URL: http://core-banking-service:8082
+      LOG_SERVICE_URL: http://log-service:8083
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
     depends_on:
       - user-service
-      - account-service
-      - transaction-service
-      - admin-service
+      - core-banking-service
       - log-service
       - notification-service
-    environment:
-      - USER_SERVICE_URL=http://user-service:8081
-      - ACCOUNT_SERVICE_URL=http://account-service:8082
-      - TRANSACTION_SERVICE_URL=http://transaction-service:8083
-      - ADMIN_SERVICE_URL=http://admin-service:8084
-      - LOG_SERVICE_URL=http://log-service:8085
-      - NOTIFICATION_SERVICE_URL=http://notification-service:8086
     networks:
       - banking-network
     restart: unless-stopped
 
-volumes:
-  postgres-log-data:
-  postgres-user-data:
-  postgres-account-data:
-  postgres-admin-data:
-  postgres-transaction-data:
-  postgres-notification-data:
+  # 1. User Service (Port 8081)
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-user:5432/user_db
+      SPRING_DATASOURCE_USERNAME: user_user
+      SPRING_DATASOURCE_PASSWORD: user_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SERVICES_ACCOUNT_SERVICE_URL: http://core-banking-service:8082
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - banking-network
+    restart: unless-stopped
+
+  # 2. Core Banking Service (Port 8082)
+  core-banking-service:
+    build:
+      context: ./services/core-banking-service
+      dockerfile: Dockerfile
+    container_name: core-banking-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-banking:5432/banking_db
+      SPRING_DATASOURCE_USERNAME: banking_user
+      SPRING_DATASOURCE_PASSWORD: banking_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SERVICES_USER_SERVICE_URL: http://user-service:8081
+    depends_on:
+      postgres-banking:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - banking-network
+    restart: unless-stopped
+
+  # 3. Log Service (Port 8083)
+  log-service:
+    build:
+      context: ./services/log-service
+      dockerfile: Dockerfile
+    container_name: log-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-log:5432/log_db
+      SPRING_DATASOURCE_USERNAME: log_user
+      SPRING_DATASOURCE_PASSWORD: log_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      postgres-log:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - banking-network
+    restart: unless-stopped
+
+  # 4. Notification Service (Port 8084)
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notification:5432/notification_db
+      SPRING_DATASOURCE_USERNAME: notification_user
+      SPRING_DATASOURCE_PASSWORD: notification_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - banking-network
+    restart: unless-stopped
+
+  # ==========================================
+  # FRONTEND APPLICATIONS - Ports 3000 -> 3001
+  # ==========================================
+
+  frontend-customer:
+    build:
+      context: ./frontend/customer
+      dockerfile: Dockerfile
+    container_name: frontend-customer
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+      - REACT_APP_WS_URL=ws://localhost:8084/ws
+    depends_on:
+      - api-gateway
+    networks:
+      - banking-network
+    restart: unless-stopped
+
+  frontend-admin:
+    build:
+      context: ./frontend/admin
+      dockerfile: Dockerfile
+    container_name: frontend-admin
+    ports:
+      - "3001:3001"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - api-gateway
+    networks:
+      - banking-network
+    restart: unless-stopped
 
 networks:
   banking-network:
     driver: bridge
+
+volumes:
+  postgres-user-data:
+  postgres-banking-data:
+  postgres-log-data:
+  postgres-notification-data:

@@ -170,20 +170,10 @@ public class UserController {
 
     // --- Admin: Tạo user mới ---
     @PostMapping("/admin/users")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> createUser(
-            @Valid @RequestBody com.minibank.userservice.dto.CreateUserRequest request,
-            @RequestHeader("Authorization") String authHeader) {
+            @Valid @RequestBody com.minibank.userservice.dto.CreateUserRequest request) {
         try {
-            // Verify admin role from token
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             UserResponse createdUser = userService.createUser(request);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse<>("User created successfully", createdUser));
@@ -198,19 +188,9 @@ public class UserController {
 
     // --- Admin: Lấy danh sách tất cả users ---
     @GetMapping("/admin/users")
-    public ResponseEntity<ApiResponse<java.util.List<UserResponse>>> getAllUsers(
-            @RequestHeader("Authorization") String authHeader) {
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.List<UserResponse>>> getAllUsers() {
         try {
-            // Verify admin role from token
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             java.util.List<UserResponse> users = userService.getAllUsers();
             return ResponseEntity.ok(new ApiResponse<>("Users retrieved successfully", users));
         } catch (Exception e) {
@@ -221,21 +201,11 @@ public class UserController {
 
     // --- Admin: Cập nhật thông tin user ---
     @PutMapping("/admin/users/{userId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(
             @PathVariable("userId") java.util.UUID userId,
-            @RequestBody com.minibank.userservice.dto.UpdateUserRequest request,
-            @RequestHeader("Authorization") String authHeader) {
+            @RequestBody com.minibank.userservice.dto.UpdateUserRequest request) {
         try {
-            // Verify admin role from token
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             UserResponse updatedUser = userService.updateUser(userId, request);
             return ResponseEntity.ok(new ApiResponse<>("User updated successfully", updatedUser));
         } catch (IllegalArgumentException e) {
@@ -249,19 +219,10 @@ public class UserController {
 
     // --- Admin: Khóa tài khoản user ---
     @PutMapping("/admin/users/{userId}/lock")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> lockUser(
-            @PathVariable("userId") java.util.UUID userId,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable("userId") java.util.UUID userId) {
         try {
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             userService.lockUser(userId);
             return ResponseEntity.ok(new ApiResponse<>("User locked successfully", null));
         } catch (Exception e) {
@@ -272,19 +233,10 @@ public class UserController {
 
     // --- Admin: Mở khóa tài khoản user ---
     @PutMapping("/admin/users/{userId}/unlock")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> unlockUser(
-            @PathVariable("userId") java.util.UUID userId,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable("userId") java.util.UUID userId) {
         try {
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             userService.unlockUser(userId);
             return ResponseEntity.ok(new ApiResponse<>("User unlocked successfully", null));
         } catch (Exception e) {
@@ -295,20 +247,11 @@ public class UserController {
 
     // --- Admin: Đặt lại mật khẩu cho user ---
     @PutMapping("/admin/users/{userId}/reset-password")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> adminResetPassword(
             @PathVariable("userId") java.util.UUID userId,
-            @Valid @RequestBody com.minibank.userservice.dto.AdminResetPasswordRequest request,
-            @RequestHeader("Authorization") String authHeader) {
+            @Valid @RequestBody com.minibank.userservice.dto.AdminResetPasswordRequest request) {
         try {
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             userService.adminResetPassword(userId, request.getNewPassword());
             return ResponseEntity.ok(new ApiResponse<>("Password reset successfully", null));
         } catch (Exception e) {
@@ -319,19 +262,10 @@ public class UserController {
 
     // --- Admin: Đóng băng tài khoản user ---
     @PutMapping("/admin/users/{userId}/freeze")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> freezeUser(
-            @PathVariable("userId") java.util.UUID userId,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable("userId") java.util.UUID userId) {
         try {
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             userService.freezeUser(userId);
             return ResponseEntity.ok(new ApiResponse<>("User frozen successfully", null));
         } catch (Exception e) {
@@ -342,19 +276,10 @@ public class UserController {
 
     // --- Admin: Mở đóng băng tài khoản user ---
     @PutMapping("/admin/users/{userId}/unfreeze")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> unfreezeUser(
-            @PathVariable("userId") java.util.UUID userId,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable("userId") java.util.UUID userId) {
         try {
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             userService.unfreezeUser(userId);
             return ResponseEntity.ok(new ApiResponse<>("User unfrozen successfully", null));
         } catch (Exception e) {
@@ -365,19 +290,10 @@ public class UserController {
 
     // --- Admin: Xóa tài khoản user ---
     @DeleteMapping("/admin/users/{userId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUser(
-            @PathVariable("userId") java.util.UUID userId,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable("userId") java.util.UUID userId) {
         try {
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             userService.deleteUser(userId);
             return ResponseEntity.ok(new ApiResponse<>("User deleted successfully", null));
         } catch (Exception e) {
@@ -388,20 +304,10 @@ public class UserController {
 
     // --- Admin: Tạo nhân viên (Staff/Counter Staff/Counter Admin) ---
     @PostMapping("/admin/employees")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CreateEmployeeResponse>> createEmployee(
-            @Valid @RequestBody CreateEmployeeRequest request,
-            @RequestHeader("Authorization") String authHeader) {
+            @Valid @RequestBody CreateEmployeeRequest request) {
         try {
-            // Verify admin role from token
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             CreateEmployeeResponse response = userService.createEmployee(request);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse<>("Employee created successfully", response));
@@ -416,19 +322,9 @@ public class UserController {
 
     // --- Admin: Lấy danh sách nhân viên ---
     @GetMapping("/admin/employees")
-    public ResponseEntity<ApiResponse<java.util.List<UserResponse>>> getAllEmployees(
-            @RequestHeader("Authorization") String authHeader) {
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.List<UserResponse>>> getAllEmployees() {
         try {
-            // Verify admin role from token
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String email = jwtService.extractEmail(token);
-            UserResponse currentUser = userService.getUserByEmail(email);
-            
-            if (!"ADMIN".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>("Access denied. Admin role required.", null));
-            }
-            
             java.util.List<UserResponse> employees = userService.getAllEmployees();
             return ResponseEntity.ok(new ApiResponse<>("Employees retrieved successfully", employees));
         } catch (Exception e) {

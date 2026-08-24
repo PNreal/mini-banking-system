@@ -24,8 +24,8 @@ docker-compose down
 
 ## **TRUY CẬP HỆ THỐNG**
 
-- **Customer Web:** http://localhost:3002
-- **Admin Panel:** http://localhost:3001
+- **Customer Web (Khách hàng & Quầy):** http://localhost:3000
+- **Admin Panel (Quản trị viên):** http://localhost:3001
 - **API Gateway:** http://localhost:8080
 
 ---
@@ -41,33 +41,27 @@ docker-compose down
 
 ---
 
-## **PORT ALLOCATION**
+## **PORT ALLOCATION (ĐÃ TÁI CẤU TRÚC)**
 
-### **Application Ports:**
+### **Application Ports (Backend):**
 - API Gateway: `8080`
 - User Service: `8081`
-- Account Service: `8082`
-- Transaction Service: `8083`
-- Admin Service: `8084`
-- Log Service: `8085`
-- Notification Service: `8086`
-- Available: `8087`, `8088`, `8089`
+- Core Banking Service: `8082`
+- Log Service: `8083`
+- Notification Service: `8084`
 
 ### **Frontend Ports:**
-- Customer Web: `3002`
+- Customer Web: `3000`
 - Admin Panel: `3001`
-- Available: `3003`, `3004`
 
-### **PostgreSQL Ports:**
-- User Service: `5434`
-- Account Service: `5435`
-- Transaction Service: `5436`
-- Admin Service: `5437`
-- Log Service: `5438`
-- Notification Service: `5439`
+### **PostgreSQL Ports (Liên tục 5432 -> 5435):**
+- User DB (`user_db`): `5432`
+- Core Banking DB (`banking_db`): `5433`
+- Log DB (`log_db`): `5434`
+- Notification DB (`notification_db`): `5435`
 
 ### **Shared Services:**
-- Kafka: `9092` (external), `29092` (internal)
+- Kafka: `9092` (host), `29092` (internal)
 - Zookeeper: `2181`
 
 **Lưu ý:** Kafka và Zookeeper là SHARED - chỉ có 1 instance!

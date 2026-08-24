@@ -10,22 +10,16 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class GatewayConfig {
 
-    @Value("${gateway.services.user-service}")
+    @Value("${gateway.services.user-service:${USER_SERVICE_URL:http://localhost:8081}}")
     private String userServiceUrl;
 
-    @Value("${gateway.services.account-service}")
-    private String accountServiceUrl;
+    @Value("${gateway.services.core-banking-service:${CORE_BANKING_SERVICE_URL:http://localhost:8082}}")
+    private String coreBankingServiceUrl;
 
-    @Value("${gateway.services.transaction-service}")
-    private String transactionServiceUrl;
-
-    @Value("${gateway.services.admin-service}")
-    private String adminServiceUrl;
-
-    @Value("${gateway.services.log-service}")
+    @Value("${gateway.services.log-service:${LOG_SERVICE_URL:http://localhost:8083}}")
     private String logServiceUrl;
 
-    @Value("${gateway.services.notification-service}")
+    @Value("${gateway.services.notification-service:${NOTIFICATION_SERVICE_URL:http://localhost:8084}}")
     private String notificationServiceUrl;
 
     @Bean
@@ -43,21 +37,24 @@ public class GatewayConfig {
         return factory;
     }
 
-    // Service URLs are used by GatewayService
     public String getUserServiceUrl() {
         return userServiceUrl;
     }
 
+    public String getCoreBankingServiceUrl() {
+        return coreBankingServiceUrl;
+    }
+
     public String getAccountServiceUrl() {
-        return accountServiceUrl;
+        return coreBankingServiceUrl;
     }
 
     public String getTransactionServiceUrl() {
-        return transactionServiceUrl;
+        return coreBankingServiceUrl;
     }
 
     public String getAdminServiceUrl() {
-        return adminServiceUrl;
+        return userServiceUrl;
     }
 
     public String getLogServiceUrl() {

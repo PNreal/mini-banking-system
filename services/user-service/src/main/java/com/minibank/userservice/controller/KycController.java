@@ -84,13 +84,13 @@ public class KycController {
      * Admin/Staff lấy tất cả KYC requests (alias cho /admin/all)
      */
     @GetMapping("/admin/requests")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<KycResponse>>> getKycRequests(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(required = false) KycStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
-            verifyAdminOrStaff(authHeader);
             Pageable pageable = PageRequest.of(page, size);
             Page<KycResponse> requests = kycService.getAllKycRequests(status, pageable);
             return ResponseEntity.ok(new ApiResponse<>("KYC requests retrieved", requests));
@@ -104,11 +104,10 @@ public class KycController {
      * Admin/Staff xem chi tiết KYC request (alias)
      */
     @GetMapping("/admin/requests/{kycId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<KycResponse>> getKycRequestDetail(
-            @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID kycId) {
         try {
-            verifyAdminOrStaff(authHeader);
             KycResponse response = kycService.getKycRequest(kycId);
             return ResponseEntity.ok(new ApiResponse<>("KYC request retrieved", response));
         } catch (Exception e) {
@@ -121,13 +120,13 @@ public class KycController {
      * Admin/Staff review KYC (alias)
      */
     @PutMapping("/admin/requests/{kycId}/review")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<KycResponse>> reviewKycRequestAlias(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID kycId,
             @Valid @RequestBody KycReviewRequest reviewRequest) {
         try {
             UUID staffId = extractUserId(authHeader);
-            verifyAdminOrStaff(authHeader);
             KycResponse response = kycService.reviewKycRequest(kycId, staffId, reviewRequest);
             return ResponseEntity.ok(new ApiResponse<>("KYC request reviewed successfully", response));
         } catch (Exception e) {
@@ -140,12 +139,11 @@ public class KycController {
      * Admin/Staff lấy danh sách KYC pending
      */
     @GetMapping("/admin/pending")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<KycResponse>>> getPendingKycRequests(
-            @RequestHeader("Authorization") String authHeader,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
-            verifyAdminOrStaff(authHeader);
             Pageable pageable = PageRequest.of(page, size);
             Page<KycResponse> requests = kycService.getPendingKycRequests(pageable);
             return ResponseEntity.ok(new ApiResponse<>("Pending KYC requests retrieved", requests));
@@ -159,13 +157,12 @@ public class KycController {
      * Admin/Staff lấy tất cả KYC requests
      */
     @GetMapping("/admin/all")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<KycResponse>>> getAllKycRequests(
-            @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) KycStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
-            verifyAdminOrStaff(authHeader);
             Pageable pageable = PageRequest.of(page, size);
             Page<KycResponse> requests = kycService.getAllKycRequests(status, pageable);
             return ResponseEntity.ok(new ApiResponse<>("KYC requests retrieved", requests));
@@ -179,11 +176,10 @@ public class KycController {
      * Admin/Staff xem chi tiết KYC request
      */
     @GetMapping("/admin/{kycId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<KycResponse>> getKycRequest(
-            @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID kycId) {
         try {
-            verifyAdminOrStaff(authHeader);
             KycResponse response = kycService.getKycRequest(kycId);
             return ResponseEntity.ok(new ApiResponse<>("KYC request retrieved", response));
         } catch (Exception e) {
@@ -196,13 +192,13 @@ public class KycController {
      * Admin/Staff review KYC (approve/reject)
      */
     @PostMapping("/admin/{kycId}/review")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<KycResponse>> reviewKycRequest(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID kycId,
             @Valid @RequestBody KycReviewRequest reviewRequest) {
         try {
             UUID staffId = extractUserId(authHeader);
-            verifyAdminOrStaff(authHeader);
             KycResponse response = kycService.reviewKycRequest(kycId, staffId, reviewRequest);
             return ResponseEntity.ok(new ApiResponse<>("KYC request reviewed successfully", response));
         } catch (Exception e) {
@@ -215,10 +211,9 @@ public class KycController {
      * Đếm số KYC pending
      */
     @GetMapping("/admin/count-pending")
-    public ResponseEntity<ApiResponse<Long>> countPendingKyc(
-            @RequestHeader("Authorization") String authHeader) {
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Long>> countPendingKyc() {
         try {
-            verifyAdminOrStaff(authHeader);
             long count = kycService.countPendingKyc();
             return ResponseEntity.ok(new ApiResponse<>("Pending KYC count", count));
         } catch (Exception e) {
@@ -231,10 +226,9 @@ public class KycController {
      * Đếm số KYC pending (alias)
      */
     @GetMapping("/admin/pending-count")
-    public ResponseEntity<Long> countPendingKycSimple(
-            @RequestHeader("Authorization") String authHeader) {
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Long> countPendingKycSimple() {
         try {
-            verifyAdminOrStaff(authHeader);
             long count = kycService.countPendingKyc();
             return ResponseEntity.ok(count);
         } catch (Exception e) {

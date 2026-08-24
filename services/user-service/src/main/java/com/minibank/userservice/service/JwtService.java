@@ -70,11 +70,32 @@ public class JwtService {
     public String extractEmail(String token) {
         return extractClaim(token, Claims::getSubject);
     }
+
+    public String extractRole(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return claims.get("role", String.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public UUID extractUserId(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            String userIdStr = claims.get("userId", String.class);
+            return userIdStr != null ? UUID.fromString(userIdStr) : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     // Hàm Generic lấy dữ liệu bất kỳ
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
+
     // Giải mã toàn bộ
     public Claims extractAllClaims(String token) {
         return Jwts.parser()
@@ -83,7 +104,16 @@ public class JwtService {
                 .parseSignedClaims(cleanToken(token))
                 .getPayload();
     }
+
     // Validation
+    public boolean validateToken(String token) {
+        try {
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
@@ -96,7 +126,7 @@ public class JwtService {
         return extractExpiration(token).toInstant();
     }
 
-    private String cleanToken(String token) {
+    public String cleanToken(String token) {
         if (token != null && token.startsWith("Bearer "))
             return token.substring(7);
         return token;
